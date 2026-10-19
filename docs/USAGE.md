@@ -26,3 +26,7 @@ For isolated development, set `OPENCHARGE_DATA_DIR` to an absolute temporary dir
 ## Window shortcuts
 
 Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command-3 activates the actual menu-bar status button, Command-4 opens the real popup directly in edit mode, and Command-comma opens settings. Closing windows keeps monitoring active; use Quit to stop the application.
+
+## Menu-bar appearance
+
+Settings → Appearance offers dynamic status, monochrome battery, colored battery and OpenCharge icon styles. Icon-only hides the percentage without changing style; numeric-only modes omit the icon. Optional yellow icon tint reads the system's actual Low Power Mode and never changes it. This option defaults off. Battery fill uses observed OS percentage, while unknown values remain unknown.

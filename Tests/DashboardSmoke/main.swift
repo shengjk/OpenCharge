@@ -4,6 +4,7 @@ import ChargeHardware
 
 @main struct DashboardSmoke {
  @MainActor static func main() throws {
+  try menuBarAppearanceChecks()
   let labelReading = BatteryReading(percent: 80.9, connected: true, charging: false, hardwarePercent: 77.4)
   let statusLabel = MenuBarLabel(display: "status", reading: labelReading)
   precondition(statusLabel.text == "80%" && statusLabel.symbol == "pause.circle")
@@ -12,7 +13,7 @@ import ChargeHardware
   let hardwareLabel = MenuBarLabel(display: "hardware", reading: labelReading)
   precondition(hardwareLabel.text == "77%" && hardwareLabel.symbol == nil)
   let iconLabel = MenuBarLabel(display: "icon", reading: labelReading)
-  precondition(iconLabel.text.isEmpty && iconLabel.symbol == "battery.75percent" && iconLabel.accessibilityText.contains("80%"))
+  precondition(iconLabel.text.isEmpty && iconLabel.symbol == "pause.circle" && iconLabel.accessibilityText.contains("80%"))
   let chargingLabel = MenuBarLabel(display: "status", reading: BatteryReading(percent: 80, connected: true, charging: true))
   precondition(chargingLabel.symbol == "battery.100percent.bolt")
   precondition(MenuBarLabel(display: "hardware", reading: BatteryReading(percent: 80, connected: false, charging: false)).text == "—")

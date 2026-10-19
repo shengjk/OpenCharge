@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.9
+
+- Added dynamic-status, monochrome battery, colored battery and OpenCharge menu-bar icon styles.
+- Battery icons use a continuous fill from observed OS charge; charging, plugged discharge, connected idle and unknown data remain distinct.
+- Added opt-in yellow icon tint for the system's actual Low Power Mode, updated through read-only power-state notifications.
+- Icon-only display now hides text without changing the selected icon style. Numeric-only modes stay icon-free.
+- Added production projection/rendering checks and light/dark contact-sheet verification; retained existing display/default preferences.
+
 ## 0.3.8
 
 - Added a separate same-boot MagSafe recovery journal, sharing the helper's private directory and lifetime lock with charge recovery.

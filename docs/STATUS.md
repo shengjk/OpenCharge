@@ -1,4 +1,4 @@
-# Status — 0.3.8
+# Status — 0.3.9
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -6,6 +6,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | --- | --- | --- |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
 | Automation | Recurrence and DST anchors, templates, history, CLI, URL scheme, eleven intents | System UI execution of setters; more calendar/session environments |
+| Menu-bar appearance | Four icon styles, observed battery fill, opt-in Low Power Mode tint and accessible state | Broader native appearance, multi-display and accessibility environments |
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |

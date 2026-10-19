@@ -3,27 +3,6 @@ import Combine
 import SwiftUI
 import ChargeHardware
 
-struct MenuBarLabel {
- let text: String
- let symbol: String?
- let accessibilityText: String
- init(display: String, reading: BatteryReading?) {
-  let percent = reading.flatMap { $0.percent.isFinite && (0...100).contains($0.percent) ? "\(Int($0.percent))%" : nil } ?? "—"
-  let batterySymbol = reading?.charging == true ? "battery.100percent.bolt" : reading?.connected == true ? "battery.75percent" : "battery.50percent"
-  switch display {
-  case "percentage": text = percent; symbol = nil
-  case "hardware":
-   text = reading?.hardwarePercent.flatMap { $0.isFinite && (0...100).contains($0) ? String(format: "%.0f%%", $0) : nil } ?? "—"
-   symbol = nil
-  case "icon": text = ""; symbol = batterySymbol
-  default:
-   text = percent
-   symbol = reading?.charging == true ? batterySymbol : reading?.connected == true ? "pause.circle" : batterySymbol
-  }
-  accessibilityText = "OpenCharge · \(text.isEmpty ? percent : text)"
- }
-}
-
 /// Owns the real status item and its anchored popover, including dismissal.
 @MainActor final class MenuBarController: NSObject, NSPopoverDelegate {
  private let model: ChargeModel
@@ -31,6 +10,8 @@ struct MenuBarLabel {
  private let popover = NSPopover()
  private var subscriptions = Set<AnyCancellable>()
  private var preferencesObserver: NSObjectProtocol?
+ private var powerObserver: NSObjectProtocol?
+ private var appearanceObservation: NSKeyValueObservation?
 
  init(model: ChargeModel) {
   self.model = model
@@ -47,6 +28,12 @@ struct MenuBarLabel {
   preferencesObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
    MainActor.assumeIsolated { self?.updateLabel() }
   }
+  powerObserver = NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
+   MainActor.assumeIsolated { self?.updateLabel() }
+  }
+  appearanceObservation = item.button?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+   DispatchQueue.main.async { self?.updateLabel() }
+  }
   model.openStatusPopoverEditor = { [weak self] in self?.openEditor() }
   updateLabel()
  }
@@ -54,14 +41,18 @@ struct MenuBarLabel {
  private func updateLabel() {
   guard let button = item.button else { return }
   let display = UserDefaults.standard.string(forKey: "menuDisplay") ?? "status"
-  let label = MenuBarLabel(display: display, reading: model.reading)
-  let image = label.symbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
-  image?.isTemplate = true
-  button.image = image
+  let defaults = UserDefaults.standard
+  let label = MenuBarLabel(display: display, reading: model.reading,
+   style: defaults.string(forKey: "menuIconStyle") ?? "status",
+   lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
+   tintLowPower: defaults.bool(forKey: "menuTintLowPower"))
+  button.effectiveAppearance.performAsCurrentDrawingAppearance {
+   button.image = MenuBarIconRenderer.image(for: label)
+  }
   button.imagePosition = .imageLeading
   button.title = label.text
   button.setAccessibilityLabel(label.accessibilityText)
-  button.toolTip = "OpenCharge · \(model.decision.reason)"
+  button.toolTip = "\(label.accessibilityText) · \(model.decision.reason)"
  }
 
  @objc func togglePopover(_ sender: Any? = nil) {
@@ -100,5 +91,6 @@ struct MenuBarLabel {
  }
  deinit {
   if let preferencesObserver { NotificationCenter.default.removeObserver(preferencesObserver) }
+  if let powerObserver { NotificationCenter.default.removeObserver(powerObserver) }
  }
 }

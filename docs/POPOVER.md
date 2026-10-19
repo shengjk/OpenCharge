@@ -32,3 +32,14 @@ Settings and Command-4 open the actual status popover directly in edit mode, inc
 The popup animation preference persists independently of layout. The native controller evaluates it on opening; system Reduce Motion disables animation regardless of the app preference. Reset Popup restores the default enabled preference along with the default layout and percentage display.
 
 Native runtime checks on 2026-10-18 confirmed both direct entry paths, switching an already visible popup into editing, and normal display mode after closing/reopening. Current component and specification selections were preserved. Animation UI presence was inspected; animation timing and changing the system accessibility preference were not measured.
+
+
+## Menu-bar icon appearance — 0.3.9
+
+Settings offer dynamic status, monochrome battery, colored battery and an independent OpenCharge symbol. Icon-only display hides text while preserving the selected style; OS/raw numeric-only displays remain icon-free. Existing display preferences remain intact and the new low-power tint defaults off. Battery fill uses valid observed OS percentage, not the policy limit or hardware reference. Missing/invalid values produce an unknown outline/glyph and em dash rather than a fabricated fill.
+
+Charging follows the OS charging flag. Plugged discharge requires a physical adapter connection and a finite negative current; a disconnected battery is not labeled as adapter discharge. Accessibility labels describe the observed state and Low Power Mode in every display mode. The optional yellow tint applies to icons only and follows `ProcessInfo.isLowPowerModeEnabled`, with power-state notifications for changes. It never sets a power mode. Native appearance changes refresh adaptive images; normal text retains system colors.
+
+Independent vector battery outlines and system symbols avoid importing third-party artwork. Colored battery icons use green for charging and red at or below 20%; the explicit low-power yellow option takes precedence. Image/description fixtures and a light/dark contact sheet cover the projection and renderer. Multi-display, overflow and full native presentation remain separate runtime validation.
+
+Native settings on the current Mac exposed all four styles, accepted colored battery selection and disabled style/tint controls in numeric-only mode. The previous dynamic-status display/style were restored. The system Low Power Mode was not toggled; its real notification-to-render transition remains unverified.

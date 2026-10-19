@@ -12,6 +12,8 @@ struct SettingsView: View {
  @EnvironmentObject var m: ChargeModel
  @AppStorage("appearance") private var appearance = "system"
  @AppStorage("menuDisplay") private var menuDisplay = "status"
+ @AppStorage("menuIconStyle") private var menuIconStyle = MenuIconStyle.status
+ @AppStorage("menuTintLowPower") private var menuTintLowPower = false
  @AppStorage("showDockIcon") private var showDockIcon = true
  @State private var loginError: String?
  var body: some View {
@@ -49,6 +51,11 @@ struct SettingsView: View {
   Card("外观") {
    Picker("主题", selection: $appearance) { Text("跟随系统").tag("system"); Text("浅色").tag("light"); Text("深色").tag("dark") }
    Picker("菜单栏显示", selection: $menuDisplay) { Text("动态状态与电量").tag("status"); Text("仅图标").tag("icon"); Text("macOS 电量").tag("percentage"); Text("硬件电量").tag("hardware") }
+   Picker("菜单栏图标样式", selection: $menuIconStyle) { ForEach(MenuIconStyle.allCases) { Text($0.title).tag($0) } }
+    .disabled(menuDisplay == "percentage" || menuDisplay == "hardware")
+   Toggle("低电量模式时图标显示黄色", isOn: $menuTintLowPower)
+    .disabled(menuDisplay == "percentage" || menuDisplay == "hardware")
+   Text("电池图形按 macOS 电量填充；接电状态来自实际读数。染色只跟随系统低电量模式，不会更改电源设置。").font(.caption).foregroundStyle(.secondary)
    Toggle("显示 Dock 图标", isOn: $showDockIcon).onChange(of: showDockIcon) { value in NSApp.setActivationPolicy(value ? .regular : .accessory) }
   }
   PopoverSettingsView(preferences: m.popoverPreferences, preview: { m.openPopoverPreview() }, openEditor: { m.openStatusPopoverEditor?() })
