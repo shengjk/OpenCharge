@@ -9,6 +9,7 @@ import ChargeHardware
  private let item: NSStatusItem
  private let popover = NSPopover()
  private var subscriptions = Set<AnyCancellable>()
+ private var renderCache = MenuBarRenderCache()
  private var preferencesObserver: NSObjectProtocol?
  private var powerObserver: NSObjectProtocol?
  private var appearanceObservation: NSKeyValueObservation?
@@ -31,7 +32,9 @@ import ChargeHardware
   powerObserver = NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
    MainActor.assumeIsolated { self?.updateLabel() }
   }
-  appearanceObservation = item.button?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+  // Status-button snapshots can invalidate their own appearance; observe the app instead.
+  appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.old, .new]) { [weak self] _, change in
+   guard change.oldValue?.name != change.newValue?.name else { return }
    DispatchQueue.main.async { self?.updateLabel() }
   }
   model.openStatusPopoverEditor = { [weak self] in self?.openEditor() }
@@ -46,13 +49,16 @@ import ChargeHardware
    style: defaults.string(forKey: "menuIconStyle") ?? "status",
    lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
    tintLowPower: defaults.bool(forKey: "menuTintLowPower"))
-  button.effectiveAppearance.performAsCurrentDrawingAppearance {
-   button.image = MenuBarIconRenderer.image(for: label)
+  if renderCache.needsRender(label, appearance: button.effectiveAppearance.name.rawValue) {
+   button.effectiveAppearance.performAsCurrentDrawingAppearance {
+    button.image = MenuBarIconRenderer.image(for: label)
+   }
+   button.imagePosition = .imageLeading
+   button.title = label.text
+   button.setAccessibilityLabel(label.accessibilityText)
   }
-  button.imagePosition = .imageLeading
-  button.title = label.text
-  button.setAccessibilityLabel(label.accessibilityText)
-  button.toolTip = "\(label.accessibilityText) · \(model.decision.reason)"
+  let tooltip = "\(label.accessibilityText) · \(model.decision.reason)"
+  if button.toolTip != tooltip { button.toolTip = tooltip }
  }
 
  @objc func togglePopover(_ sender: Any? = nil) {

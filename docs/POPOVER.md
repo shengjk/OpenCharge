@@ -43,3 +43,7 @@ Charging follows the OS charging flag. Plugged discharge requires a physical ada
 Independent vector battery outlines and system symbols avoid importing third-party artwork. Colored battery icons use green for charging and red at or below 20%; the explicit low-power yellow option takes precedence. Image/description fixtures and a light/dark contact sheet cover the projection and renderer. Multi-display, overflow and full native presentation remain separate runtime validation.
 
 Native settings on the current Mac exposed all four styles, accepted colored battery selection and disabled style/tint controls in numeric-only mode. The previous dynamic-status display/style were restored. The system Low Power Mode was not toggled; its real notification-to-render transition remains unverified.
+
+### Redraw stability — 0.3.10
+
+The 0.3.9 preview was withdrawn after native profiling showed a status-button appearance/snapshot redraw loop despite passing image fixtures. Appearance observation now belongs to the application, with semantic old/new name filtering. A bounded render cache records label/appearance before assigning an image, so unchanged notifications cannot recreate status snapshots. Tooltip-only changes do not redraw the icon. The regression fixture sends 1000 identical presentations and still verifies updates for genuine appearance, display, telemetry and power-state changes. Actual CPU measurement is required alongside these fixtures.

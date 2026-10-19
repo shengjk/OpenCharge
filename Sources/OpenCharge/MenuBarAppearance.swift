@@ -14,12 +14,12 @@ enum MenuBatteryState: String {
   switch self { case .unknown: return "状态未知"; case .charging: return "充电中"; case .discharging: return "接电放电"; case .holding: return "接电未充电"; case .battery: return "电池供电" }
  }
 }
-enum MenuBarTint { case monochrome, charging, lowBattery, lowPower
+enum MenuBarTint: Equatable { case monochrome, charging, lowBattery, lowPower
  var color: NSColor? {
   switch self { case .monochrome: return nil; case .charging: return .systemGreen; case .lowBattery: return .systemRed; case .lowPower: return .systemYellow }
  }
 }
-struct MenuBarLabel {
+struct MenuBarLabel: Equatable {
  let text: String
  let symbol: String?
  let accessibilityText: String
@@ -108,5 +108,18 @@ enum MenuBarIconRenderer {
   }
   image.isTemplate = label.tint == .monochrome
   return image
+ }
+}
+
+/// AppKit may invalidate effective appearance while snapshotting the status item itself.
+/// Cache semantic values before assigning an image, so those callbacks cannot redraw forever.
+struct MenuBarRenderCache {
+ private struct Key: Equatable { let label: MenuBarLabel; let appearance: String }
+ private var key: Key?
+ mutating func needsRender(_ label: MenuBarLabel, appearance: String) -> Bool {
+  let next = Key(label: label, appearance: appearance)
+  guard next != key else { return false }
+  key = next
+  return true
  }
 }

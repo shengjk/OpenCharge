@@ -34,6 +34,17 @@ import ChargeHardware
  expect(MenuBarLabel(display: "percentage", reading: held, lowPower: true, tintLowPower: true).symbol == nil, "low-power tint cannot add an unwanted icon")
  expect(MenuBarLabel(display: "status", reading: held, style: "invalid").style == .status, "unknown stored style has stable fallback")
  expect(MenuBarLabel(display: "status", reading: nil, style: "coloredBattery").tint == .monochrome, "unknown charge level cannot trigger a low battery warning")
+ var cache = MenuBarRenderCache()
+ let stable = MenuBarLabel(display: "status", reading: held)
+ expect(cache.needsRender(stable, appearance: "aqua"), "first presentation must render")
+ var duplicateRenders = 0
+ for _ in 0..<1000 { if cache.needsRender(stable, appearance: "aqua") { duplicateRenders += 1 } }
+ expect(duplicateRenders == 0, "repeated AppKit callbacks must not recreate an unchanged status image")
+ expect(cache.needsRender(stable, appearance: "darkAqua"), "real appearance changes must render")
+ expect(!cache.needsRender(stable, appearance: "darkAqua"), "the new appearance must settle")
+ expect(cache.needsRender(MenuBarLabel(display: "icon", reading: held), appearance: "darkAqua"), "display preference changes must render")
+ expect(cache.needsRender(MenuBarLabel(display: "icon", reading: charging), appearance: "darkAqua"), "new observed states must render")
+ expect(cache.needsRender(MenuBarLabel(display: "icon", reading: charging, lowPower: true, tintLowPower: true), appearance: "darkAqua"), "power state changes must render")
  let aqua = NSAppearance(named: .aqua)!
  var areas: [Int] = []
  for percent in [0.0, 25, 50, 75, 100] {

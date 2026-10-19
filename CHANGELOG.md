@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.10
+
+- Prevented status-item image reassignment when the observed label and semantic appearance are unchanged.
+- Ignored appearance notifications whose old/new appearance names match; updated tooltips independently from icon rendering.
+- Added a regression fixture for 1000 repeated callbacks while preserving updates for real appearance, display, telemetry and power-state changes.
+- Supersedes the withdrawn 0.3.9 preview, whose native validation exposed sustained status-item redraws. Its release remains a draft.
+
 ## 0.3.9
 
 - Added dynamic-status, monochrome battery, colored battery and OpenCharge menu-bar icon styles.
