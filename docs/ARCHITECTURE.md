@@ -19,4 +19,4 @@ Configuration and bounded history live in the application support directory. Pre
 
 The app delegate owns MenuBarController, its native status item and anchored popover. Native visibility and preview visibility are tracked separately; settings use a standard SwiftUI settings scene and share the model.
 
-The daemon alone supplies the charge planner with a private recovery-file store and kernel boot identity. Fixed charge entries are persisted before writes and compared/restored on same-boot restart. Recovery-directory lock/identity failures stop startup before socket replacement; malformed records block new charge actions. LED ownership and persistent power-mode preferences remain separate.
+The daemon alone supplies the charge planner with a private recovery-file store and kernel boot identity. Fixed charge entries are persisted before writes and compared/restored on same-boot restart. Recovery-directory lock/identity failures stop startup before socket replacement; malformed records block new charge actions. LED ownership uses a separately validated file view over the same private directory and lock. Persistent power-mode preferences remain separate.

@@ -58,7 +58,7 @@ public final class SMCController {
     }
 
     /// ACLC capability is separate from the charge-control protocol profile.
-    public func magSafeController() -> MagSafeController {
+    public func magSafeController(recoveryStore: ChargeRecoveryStore? = nil, bootSession: String = "") -> MagSafeController {
         MagSafeController(read: { [self] in
             lock.lock(); defer { lock.unlock() }; return try optionalKey("ACLC")
         }, write: { [self] bytes in
@@ -66,7 +66,7 @@ public final class SMCController {
             guard geteuid() == 0 else { throw HardwareError.permissionRequired }
             guard bytes.count == 1, bytes[0] <= 4 else { throw HardwareError.invalidData("ACLC bounds") }
             try writeKey("ACLC", bytes)
-        })
+        }, recoveryStore: recoveryStore, bootSession: bootSession)
     }
 
     public func apply(_ action: HardwareAction) throws {

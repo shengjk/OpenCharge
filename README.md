@@ -28,7 +28,7 @@ New installations start in monitoring mode. Hardware control requires a separate
 
 ## What works and what remains
 
-Version 0.3.7 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
+Version 0.3.8 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
 
 ## Build and verify
 
@@ -56,7 +56,7 @@ The app, CLI and daemon are built together with SwiftPM. `dist/`, `dist-universa
 
 ## Security and privacy
 
-Data stays in `~/Library/Application Support/OpenCharge/`. The helper exposes fixed commands over a restricted local socket; it does not accept arbitrary SMC keys or shell commands. Charge recovery uses a bounded same-boot ownership journal and is best effort; physical crash recovery remains unverified, and LED ownership remains in memory. Read [SECURITY.md](SECURITY.md) for boundaries and reporting.
+Data stays in `~/Library/Application Support/OpenCharge/`. The helper exposes fixed commands over a restricted local socket; it does not accept arbitrary SMC keys or shell commands. Charge and LED recovery use separate bounded same-boot ownership journals and remain best effort; physical crash recovery is unverified. Read [SECURITY.md](SECURITY.md) for boundaries and reporting.
 
 ## License
 

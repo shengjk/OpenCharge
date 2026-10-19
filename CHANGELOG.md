@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.8
+
+- Added a separate same-boot MagSafe recovery journal, sharing the helper's private directory and lifetime lock with charge recovery.
+- Recover captured LED values before new LED actions; preserve external changes and keep failed restoration retryable.
+- Reuse a durable record when it already covers both blink states, avoiding a disk sync on every blink.
+- Added abrupt-subprocess LED recovery and shared-store isolation fixtures. Physical LED/crash recovery remains unverified; the installed helper is unchanged.
+
 ## 0.3.7
 
 - Added a bounded, boot-scoped write-ahead journal for helper charge writes, with startup compare-and-restore before accepting new charge actions.

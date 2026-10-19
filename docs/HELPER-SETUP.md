@@ -1,6 +1,6 @@
 # OpenCharge 硬件服务安装与移除
 
-服务以 root 运行，只接受当前控制台用户的固定充电、灯光及电源模式动作。不接受任意 SMC 键、字节、路径或 shell 命令。首次安装且没有恢复日志时不会开启充电控制；新版服务启动时会先尝试恢复同一次开机中遗留的充电修改。请先退出其他充电控制器，再明确启用新的控制。
+服务以 root 运行，只接受当前控制台用户的固定充电、灯光及电源模式动作。不接受任意 SMC 键、字节、路径或 shell 命令。首次安装且没有恢复日志时不会开启充电控制；新版服务启动时会先尝试恢复同一次开机中遗留的充电与灯光修改。请先退出其他充电控制器，再明确启用新的控制。
 
 ## 正式签名、公证版本
 
@@ -37,3 +37,5 @@ sudo bash Scripts/uninstall-helper.sh
 - https://developer.apple.com/documentation/servicemanagement/smappservice
 - https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos
 - 当前 SDK 的 SMAppService.h（LaunchDaemon 公证要求、BundleProgram、批准及更新生命周期）。
+
+0.3.8 将同次开机恢复扩展到独立的灯光记录，共享私有目录与独占锁；不会自动继续旧闪烁模式。灯光恢复失败或记录损坏时暂停新的灯光写入，恢复完成后才接受新的控制。实际硬件恢复仍需验收。

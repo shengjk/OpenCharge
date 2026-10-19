@@ -1,4 +1,4 @@
-# Status — 0.3.7
+# Status — 0.3.8
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -9,7 +9,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |
-| Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge recovery journal | Real writes, physical crash recovery, LED crash recovery, user switching and reboot behavior |
+| Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
 | Distribution | Native and universal builds, local signatures, CI definition | Notarized releases, updater and broader model matrix |
 

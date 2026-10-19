@@ -11,7 +11,7 @@ public protocol ChargeRecoveryStore: AnyObject {
 public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
  private let directory: Int32
  private let owner: uid_t
- private let name = "charge-recovery.json"
+ private enum Record: String { case charge = "charge-recovery.json", magSafe = "magsafe-recovery.json" }
  private static let limit = 8192
  public init(directory path: String = "/var/db/org.opencharge.charged", owner: uid_t = 0) throws {
   self.owner = owner
@@ -37,8 +37,18 @@ public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
   }
   return uuid.uuidString
  }
- public func load() throws -> Data? {
-  let fd = openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+ public func load() throws -> Data? { try load(.charge) }
+ public func save(_ data: Data?) throws { try save(data, record: .charge) }
+ /// Shares the lifetime lock and directory descriptor; filenames are fixed, never provided by IPC.
+ public func magSafeStore() -> ChargeRecoveryStore { MagSafeFileView(parent: self) }
+ private final class MagSafeFileView: ChargeRecoveryStore {
+  let parent: ChargeRecoveryFileStore
+  init(parent: ChargeRecoveryFileStore) { self.parent = parent }
+  func load() throws -> Data? { try parent.load(.magSafe) }
+  func save(_ data: Data?) throws { try parent.save(data, record: .magSafe) }
+ }
+ private func load(_ record: Record) throws -> Data? {
+  let fd = openat(directory, record.rawValue, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
   if fd < 0 { if errno == ENOENT { return nil }; throw Self.failure("open recovery record") }
   defer { close(fd) }
   var info = stat()
@@ -55,9 +65,10 @@ public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
    data.append(contentsOf: buffer.prefix(count))
   }
  }
- public func save(_ data: Data?) throws {
+ private func save(_ data: Data?, record: Record) throws {
+  let name = record.rawValue
   // Refuse unexpected existing paths before either replacing or removing the record.
-  _ = try load()
+  _ = try load(record)
   guard let data else {
    if unlinkat(directory, name, 0) != 0 && errno != ENOENT { throw Self.failure("remove recovery record") }
    guard fsync(directory) == 0 else { throw Self.failure("sync recovery directory") }

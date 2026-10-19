@@ -23,11 +23,12 @@ do {
 }
 catch { controller = nil; smcFailure = error.localizedDescription; log("SMC unavailable; power-mode service remains available") }
 let powerModes = PowerModeController()
-let magSafe = controller?.magSafeController()
+let magSafe = controller?.magSafeController(recoveryStore: recoveryStore.magSafeStore(), bootSession: recoveryBootSession)
 let ledSession = magSafe.map { MagSafeSession(controller: $0) }
 var ledLease = ControlLease()
 var ledNeedsRestore = false
-func restoreLED() throws { try ledSession?.restore(); ledNeedsRestore = false; ledLease.clear() }
+var ledRecoveryPending = false
+func restoreLED() throws { try ledSession?.restore(); ledNeedsRestore = false; ledRecoveryPending = false; ledLease.clear() }
 func restoreSMC() throws {
  var failure: Error?
  do { try controller?.apply(.restore) } catch { failure = error }
@@ -71,6 +72,10 @@ if let controller {
 }
 var pauseOnSleep = false
 var currentAction: HardwareAction? = nil
+if ledSession != nil {
+ do { try restoreLED() }
+ catch { ledNeedsRestore = true; ledRecoveryPending = true; log("interrupted LED recovery pending: \(error.localizedDescription)") }
+}
 // Every caller runs on the main queue, serializing console changes and SMC actions.
 func synchronizeConsoleOwner() {
  let active = consoleUID() ?? 0
@@ -95,12 +100,13 @@ let timer = DispatchSource.makeTimerSource(queue: .main)
 timer.schedule(deadline: .now(), repeating: 1)
 timer.setEventHandler {
  synchronizeConsoleOwner()
- if ledNeedsRestore && ledLease.expired(at: ProcessInfo.processInfo.systemUptime) {
+ if ledRecoveryPending { do { try restoreLED() } catch { log("LED recovery retry failed: \(error.localizedDescription)") } }
+ if !ledRecoveryPending && ledNeedsRestore && ledLease.expired(at: ProcessInfo.processInfo.systemUptime) {
   do { try restoreLED() } catch { log("LED watchdog restoration failed: \(error.localizedDescription)") }
  }
- if ledNeedsRestore && !ledLease.expired(at: ProcessInfo.processInfo.systemUptime) {
+ if !ledRecoveryPending && ledNeedsRestore && !ledLease.expired(at: ProcessInfo.processInfo.systemUptime) {
   do { try ledSession?.tick(now: ProcessInfo.processInfo.systemUptime) }
-  catch { log("LED update failed: \(error.localizedDescription)") }
+  catch { ledRecoveryPending = true; log("LED update failed: \(error.localizedDescription)") }
  }
  if needsRestore && !restoreBeforeCommands && lease.expired(at: ProcessInfo.processInfo.systemUptime) {
   restoreBeforeCommands = true
@@ -112,12 +118,12 @@ let powerObserver: SystemPowerObserver?
 do {
  powerObserver = try SystemPowerObserver(onSleep: {
   lease.beginSleep(); ledLease.beginSleep()
-  if ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { log("LED sleep update failed: \(error.localizedDescription)") } }
+  if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED sleep update failed: \(error.localizedDescription)") } }
   if pauseOnSleep || currentAction == .forceDischarge {
    do { guard let controller else { return }; needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge }
    catch { log("pause on sleep failed: \(error.localizedDescription)") }
   }
- }, onWake: { lease.wake(at: ProcessInfo.processInfo.systemUptime); ledLease.wake(at: ProcessInfo.processInfo.systemUptime); if ledNeedsRestore { do { try ledSession?.wake(now: ProcessInfo.processInfo.systemUptime) } catch { log("LED wake update failed: \(error.localizedDescription)") } } })
+ }, onWake: { lease.wake(at: ProcessInfo.processInfo.systemUptime); ledLease.wake(at: ProcessInfo.processInfo.systemUptime); if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.wake(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED wake update failed: \(error.localizedDescription)") } } })
 } catch { powerObserver = nil; log("system sleep observation unavailable: \(error.localizedDescription)") }
 let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
 source.setEventHandler {
@@ -134,6 +140,7 @@ source.setEventHandler {
  guard uid == consoleUID(), uid == owner else { return }
  let response: String
  var attemptedAction = false
+ var attemptedLED = false
  do {
   if command == "capabilities" { response = "OK " + capabilities() }
   else if command == "sleepPolicyOn" || command == "sleepPolicyOff" {
@@ -147,19 +154,19 @@ source.setEventHandler {
    response = "OK retainedChargeInhibit"
   }
   else if command == "magSafeStatus" { guard let magSafe else { throw HelperError.rejected("MagSafe unavailable") }; response = "OK " + (try magSafe.status()) }
-  else if command == "magSafeRestore" { try restoreLED(); response = "OK MagSafe restored" }
+  else if command == "magSafeRestore" { attemptedLED = true; try restoreLED(); response = "OK MagSafe restored" }
   else if command == "magSafeSleepOn" || command == "magSafeSleepOff" {
-   guard let ledSession, let magSafe, command == "magSafeSleepOff" || powerObserver != nil else { throw HelperError.rejected("MagSafe sleep observation unavailable") }
+   guard !ledRecoveryPending, let ledSession, let magSafe, command == "magSafeSleepOff" || powerObserver != nil else { throw HelperError.rejected("MagSafe sleep observation unavailable") }
    _ = try magSafe.status()
-   ledNeedsRestore = true; ledLease.request(at: ProcessInfo.processInfo.systemUptime)
+   attemptedLED = true; ledNeedsRestore = true; ledLease.request(at: ProcessInfo.processInfo.systemUptime)
    try ledSession.setOffDuringSleep(command == "magSafeSleepOn", now: ProcessInfo.processInfo.systemUptime)
    response = "OK MagSafe sleep policy updated"
   }
   else if ["magSafeSystem", "magSafeOff", "magSafeGreen", "magSafeOrange", "magSafeBlinkOrange"].contains(command) {
-   guard let magSafe, let ledSession else { throw HelperError.rejected("MagSafe unavailable") }
+   guard !ledRecoveryPending, let magSafe, let ledSession else { throw HelperError.rejected("MagSafe unavailable") }
    _ = try magSafe.status()
    let patterns: [String: MagSafePattern] = ["magSafeSystem": .system, "magSafeOff": .off, "magSafeGreen": .green, "magSafeOrange": .orange, "magSafeBlinkOrange": .blinkOrange]
-   ledNeedsRestore = true; ledLease.request(at: ProcessInfo.processInfo.systemUptime)
+   attemptedLED = true; ledNeedsRestore = true; ledLease.request(at: ProcessInfo.processInfo.systemUptime)
    try ledSession.select(patterns[command]!, now: ProcessInfo.processInfo.systemUptime); response = "OK " + (try magSafe.status())
   }
   else if command == "lowPowerStatus" { response = "OK " + (try powerModes.status()).description }
@@ -186,6 +193,7 @@ source.setEventHandler {
   }
  } catch {
   if attemptedAction && needsRestore { restoreBeforeCommands = true }
+  if attemptedLED && ledNeedsRestore { ledRecoveryPending = true }
   response = "ERROR " + error.localizedDescription
  }
  do { try HelperSocketIO.writeLine(response, to: client, deadline: ProcessInfo.processInfo.systemUptime + 1) }
