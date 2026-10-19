@@ -21,7 +21,7 @@ sudo bash Scripts/install-helper.sh
 
 ## 移除与更新
 
-应用内注销先请求恢复本进程拥有的充电与灯光状态，再等待 SMAppService 的异步注销完成；设置与历史保留。若运行中的服务无法连接，应用不会声称已经完成恢复和移除。
+应用内注销先请求恢复本进程拥有的充电、灯光与睡眠控制状态，再等待 SMAppService 的异步注销完成；设置与历史保留。若运行中的服务无法连接，应用不会声称已经完成恢复和移除。
 
 开发脚本安装版本使用：
 
@@ -31,7 +31,7 @@ sudo bash Scripts/uninstall-helper.sh
 
 更新原生注册的服务时，先注销旧服务、等待完成，再替换完整应用并重新注册。Apple 文档说明更改可执行文件或 plist 后需要重新注册。开发脚本更新会先停止旧服务，再替换 root 副本。不要在运行中的 helper 上原地覆写二进制。
 
-45 秒心跳在服务仍存活且机器清醒时提供尽力恢复；睡眠期间暂停计时。0.3.7 新增同次开机的充电恢复日志，新服务重启时会先恢复记录，再接受新的充电操作；这也会释放旧服务保留的停充状态。跨开机记录只丢弃、不写硬件。损坏记录会阻止充电控制，请勿在未完成恢复时删除日志。移除脚本保留恢复目录，以免丢失未完成记录。灯光崩溃恢复、真实硬件恢复、断电及固件私有权限仍未验证。详见 HARDWARE.md。
+45 秒心跳在服务仍存活且机器清醒时提供尽力恢复；睡眠期间暂停计时。0.3.7 新增同次开机的充电恢复日志，新服务重启时会先恢复记录，再接受新的充电操作；这也会释放旧服务保留的停充状态。充电与灯光的跨开机记录只丢弃、不写硬件。损坏记录会阻止充电控制，请勿在未完成恢复时删除日志。移除脚本保留恢复目录，以免丢失未完成记录。灯光崩溃恢复、真实硬件恢复、断电及固件私有权限仍未验证。详见 HARDWARE.md。
 
 依据：
 - https://developer.apple.com/documentation/servicemanagement/smappservice
@@ -39,3 +39,6 @@ sudo bash Scripts/uninstall-helper.sh
 - 当前 SDK 的 SMAppService.h（LaunchDaemon 公证要求、BundleProgram、批准及更新生命周期）。
 
 0.3.8 将同次开机恢复扩展到独立的灯光记录，共享私有目录与独占锁；不会自动继续旧闪烁模式。灯光恢复失败或记录损坏时暂停新的灯光写入，恢复完成后才接受新的控制。实际硬件恢复仍需验收。
+
+
+0.3.13 adds a separate sleep recovery record. Global SleepDisabled preferences persist across reboot and must be restored even for a previous boot; the kernel lid flag is released only within its recorded boot. The development uninstall script refuses to delete helper files while any sleep recovery marker remains and requests the existing job restart for recovery. Do not downgrade to a helper without sleep recovery support or delete its record while an override is pending. Resolve recovery with the compatible service before retrying removal. The application does not update the installed service automatically. See [sleep control](SLEEP.md).

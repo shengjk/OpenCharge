@@ -55,6 +55,21 @@ import ChargeHardware
   let model = ChargeModel(dashboardDefaults: defaults)
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)
+  model.inspectSleepInterfaces(request: { _ in "chargeControl:fixture" })
+  let unavailableSleepStatus = model.sleepStatus
+  model.refresh(); precondition(model.sleepStatus == unavailableSleepStatus && model.sleepStatus.contains("未提供"), "read-only capability result must survive monitoring refresh")
+  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected" })
+  let detectedSleepStatus = model.sleepStatus
+  model.refresh(); precondition(model.sleepStatus == detectedSleepStatus && model.sleepStatus.contains("仍待"))
+  precondition(!model.config.hardwareEnabled && model.config.policy.keepAwakeWithLidClosed != true)
+  let sleepPlan = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true, action: .allowCharge, percent: 50, target: 80, calibrating: false, idleUntilTarget: false, systemUntilTarget: true, allowDisplaySleep: true)
+  var sleepAttempts = 0
+  model.updateSleepOverride(sleepPlan, request: { _ in sleepAttempts += 1; throw CocoaError(.fileReadUnknown) })
+  precondition(sleepAttempts == 1 && model.sleepStatus.contains("控制失败"))
+  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected" })
+  model.updateSleepOverride(sleepPlan, request: { _ in sleepAttempts += 1; return "fixture only" })
+  precondition(sleepAttempts == 1 && model.sleepStatus.contains("上次控制失败"), "read-only inspection must not resume failed writes")
+  print("Sleep interface projection/persistence/read-only retry boundary checked with injected responses; no helper requests")
   var quitCommands: [String] = []
   model.config.hardwareEnabled = true
   try model.prepareForQuit(request: { quitCommands.append($0); return "fixture restored" })

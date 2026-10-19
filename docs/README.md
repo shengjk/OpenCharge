@@ -5,6 +5,7 @@
 - [Usage and automation](USAGE.md)
 - [Software updates](UPDATES.md)
 - [Quit and discharge recovery](QUIT.md)
+- [Sleep and lid control](SLEEP.md)
 - [Hardware service setup and removal](HELPER-SETUP.md)
 - [Feature status and limitations](STATUS.md)
 - [Dashboard](DASHBOARD.md), [popover](POPOVER.md), [power flow](POWER-FLOW.md), [energy applications](ENERGY-APPS.md)

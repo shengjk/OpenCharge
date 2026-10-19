@@ -53,7 +53,7 @@ public enum HelperSocketIO {
 }
 public enum HelperClient {
  public static let socketPath = "/var/run/opencharge.sock"
- public static let supportedActions: Set<String> = ["sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
+ public static let supportedActions: Set<String> = ["sleepOverrideOn", "sleepOverrideDisplayOn", "sleepOverrideRestore", "sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
          "lowPowerOn", "lowPowerOff", "lowPowerRestore", "lowPowerStatus",
          "lowPowerBatteryOn", "lowPowerBatteryOff", "lowPowerACOn", "lowPowerACOff",
          "magSafeSystem", "magSafeBlinkOrange", "magSafeSleepOn", "magSafeSleepOff", "magSafeStatus", "magSafeOff", "magSafeGreen", "magSafeOrange", "magSafeRestore"]

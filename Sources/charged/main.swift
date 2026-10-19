@@ -25,6 +25,16 @@ catch { controller = nil; smcFailure = error.localizedDescription; log("SMC unav
 let powerModes = PowerModeController()
 let magSafe = controller?.magSafeController(recoveryStore: recoveryStore.magSafeStore(), bootSession: recoveryBootSession)
 let ledSession = magSafe.map { MagSafeSession(controller: $0) }
+let sleepIO = try? SleepOverrideIO()
+let sleepOverrides = sleepIO.map { SleepOverrideController(transport: $0.transport, store: recoveryStore.sleepStore(), bootSession: recoveryBootSession) }
+var sleepLease = ControlLease()
+var sleepNeedsRestore = false
+var sleepRecoveryPending = false
+func restoreSleep() throws {
+ if let sleepOverrides { try sleepOverrides.restore() }
+ else if try recoveryStore.sleepStore().load() != nil { throw SleepOverrideError.unavailable("sleep recovery transport") }
+ sleepNeedsRestore = false; sleepRecoveryPending = false; sleepLease.clear()
+}
 var ledLease = ControlLease()
 var ledNeedsRestore = false
 var ledRecoveryPending = false
@@ -33,6 +43,7 @@ func restoreSMC() throws {
  var failure: Error?
  do { try controller?.apply(.restore) } catch { failure = error }
  do { try restoreLED() } catch { failure = failure ?? error }
+ do { try restoreSleep() } catch { failure = failure ?? error }
  if let failure { throw failure }
 }
 func capabilities() -> String {
@@ -41,6 +52,7 @@ func capabilities() -> String {
  catch { values.append("lowPower:unavailable") }
  if let status = try? magSafe?.status() { values.append("magSafe:" + status) }
  else { values.append("magSafe:unavailable") }
+ if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected") } else { values.append("sleepOverride:unavailable") }
  return values.joined(separator: ", ")
 }
 let path = HelperClient.socketPath
@@ -76,10 +88,13 @@ if ledSession != nil {
  do { try restoreLED() }
  catch { ledNeedsRestore = true; ledRecoveryPending = true; log("interrupted LED recovery pending: \(error.localizedDescription)") }
 }
+do { try restoreSleep() }
+catch { sleepNeedsRestore = true; sleepRecoveryPending = true; log("sleep recovery pending: \(error.localizedDescription)") }
 // Every caller runs on the main queue, serializing console changes and SMC actions.
 func synchronizeConsoleOwner() {
  let active = consoleUID() ?? 0
  if active != owner {
+  if sleepNeedsRestore { do { try restoreSleep() } catch { log("sleep console restoration failed: \(error.localizedDescription)"); return } }
   if ledNeedsRestore { do { try restoreLED() } catch { log("LED console restoration failed: \(error.localizedDescription)"); return } }
   restoreBeforeCommands = restoreBeforeCommands || (needsRestore && !lease.retained)
   // Keep the old owner on error so the next timer retries the ownership transition.
@@ -100,6 +115,9 @@ let timer = DispatchSource.makeTimerSource(queue: .main)
 timer.schedule(deadline: .now(), repeating: 1)
 timer.setEventHandler {
  synchronizeConsoleOwner()
+ if sleepNeedsRestore && (sleepRecoveryPending || sleepLease.expired(at: ProcessInfo.processInfo.systemUptime)) {
+  do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep restoration retry failed: \(error.localizedDescription)") }
+ }
  if ledRecoveryPending { do { try restoreLED() } catch { log("LED recovery retry failed: \(error.localizedDescription)") } }
  if !ledRecoveryPending && ledNeedsRestore && ledLease.expired(at: ProcessInfo.processInfo.systemUptime) {
   do { try restoreLED() } catch { log("LED watchdog restoration failed: \(error.localizedDescription)") }
@@ -117,6 +135,7 @@ timer.resume()
 let powerObserver: SystemPowerObserver?
 do {
  powerObserver = try SystemPowerObserver(onSleep: {
+  if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   lease.beginSleep(); ledLease.beginSleep()
   if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED sleep update failed: \(error.localizedDescription)") } }
   if pauseOnSleep || currentAction == .forceDischarge {
@@ -143,12 +162,21 @@ source.setEventHandler {
  var attemptedLED = false
  do {
   if command == "capabilities" { response = "OK " + capabilities() }
+  else if command == "sleepOverrideRestore" { try restoreSleep(); response = "OK sleep override released" }
+  else if command == "sleepOverrideOn" || command == "sleepOverrideDisplayOn" {
+   guard !sleepRecoveryPending, let sleepOverrides, currentAction != nil, currentAction != .restore else { throw HelperError.rejected("sleep override requires a current charge session and recovered helper") }
+   sleepNeedsRestore = true; sleepLease.request(at: ProcessInfo.processInfo.systemUptime)
+   do { try sleepOverrides.apply(preventDisplaySleep: command == "sleepOverrideDisplayOn") }
+   catch { sleepRecoveryPending = true; throw error }
+   response = "OK sleep override accepted; physical effects unverified"
+  }
   else if command == "sleepPolicyOn" || command == "sleepPolicyOff" {
    guard command == "sleepPolicyOff" || (controller != nil && powerObserver != nil) else { throw HelperError.rejected("sleep policy unavailable") }
    pauseOnSleep = command == "sleepPolicyOn"; response = "OK sleepPolicy=\(pauseOnSleep ? "on" : "off")"
   }
   else if command == "retainChargeInhibit" {
    guard !restoreBeforeCommands, let controller else { throw HelperError.rejected("SMC or cleanup unavailable") }
+   try restoreSleep()
    attemptedAction = true; needsRestore = true; lease.request(at: ProcessInfo.processInfo.systemUptime)
    try controller.apply(.inhibitCharge); currentAction = .inhibitCharge; lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
    response = "OK retainedChargeInhibit"
@@ -187,6 +215,7 @@ source.setEventHandler {
    guard let controller else { throw HelperError.rejected("SMC unavailable: \(smcFailure ?? "unknown")") }
    attemptedAction = true
    lease.request(at: ProcessInfo.processInfo.systemUptime); needsRestore = true
+   if action == .restore { try restoreSleep() }
    try controller.apply(action); needsRestore = action != .restore; currentAction = action
    if action == .restore { pauseOnSleep = false; lease.clear() }
    response = "OK \(action.rawValue)"

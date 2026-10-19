@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 84 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 89 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -64,3 +64,14 @@ Final 0.3.12 validation also confirmed that the choice window stops polling whil
 
 
 The actual 0.3.12 application also launched in monitoring mode, quit normally without a recovery dialog, and reopened with hardware/system actions still disabled. Two 5-second CPU-time-delta samples in its static settings window measured 2.99% and 0.00% of one core. The installed helper's bytes matched the existing baseline. This does not exercise the real active-control branch.
+
+
+0.3.13 adds five pure sleep-plan methods covering monitoring, unplug/unknown adapter, physical power during discharge, completion/pause/invalid values, independent opt-ins, calibration display precedence, incompatible settings and backup import. `Scripts/test-sleep.sh` uses entirely injected state and private files, including abrupt subprocess exits around global/lid writes and restores. The optional `--read-only-api` mode resolves the installed SPI and compares stored/effective global state; it never calls a power setter, creates an assertion or opens the lid-control user client. It does not prove that either private write interface will succeed. The installed service is kept unchanged; newer helper interfaces cannot be exercised through the old installed service.
+
+
+The production-model fixture also verifies that a read-only sleep-interface inspection neither clears a prior failed-write stop state nor resumes enabling requests. Service replies and failures are injected, with no real helper traffic.
+
+
+The sleep suite passed 31 fake/file scenarios including eight abruptly exited subprocesses. A separate four-case removal test runs the actual uninstall script with system paths remapped into a temporary tree and launchctl replaced by a recording stub; root identity is bypassed only in that fixture. It verifies successful ordinary removal and preservation/restart requests for regular, dangling-link and directory recovery markers. No actual service command or system-path mutation is performed. The read-only SPI preflight on the validation Mac found consistent effective/stored state; pmset preference snapshots before/after were identical.
+
+Native 0.3.13 inspection confirmed both prevention options off, display-sleep preference disabled until full control is selected, and the older installed helper explicitly reported as lacking sleep interfaces. That read-only detection result remained visible after a monitoring refresh. The static control-page CPU samples in the final package were 1.20% and 0.00% of one core over two 5-second intervals (short one-host observations). No prevention checkbox, hardware toggle or power action was enabled. Source review and the final injected fixture also ensure that inspection does not restart failed writes. New-helper installation, private setters, assertions, physical lid/display transitions and actual boot recovery remain unverified; the installed helper was unchanged. Final affected dashboard checks and native/universal builds passed after the UI fixes.

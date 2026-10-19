@@ -18,6 +18,8 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var mode: ChargeMode = .automatic
  public var reserve = 15.0
  public var keepAwakeUntilLimit: Bool? = nil
+ public var keepAwakeWithLidClosed: Bool? = nil
+ public var allowDisplaySleep: Bool? = nil
  public var stopInSleep = false
  public var stopOnQuit = false
  public var clamshellDischarge = false
@@ -26,6 +28,7 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var estimatedPercentPerHour = 30.0
  public init() {}
  public mutating func normalize() {
+  if keepAwakeWithLidClosed == true { stopInSleep = false }
   limit = min(100, max(20, limit.isFinite ? limit : 80))
   sailingWidth = min(20, max(1, sailingWidth.isFinite ? sailingWidth : 5))
   reserve = min(40, max(10, reserve.isFinite ? reserve : 15))

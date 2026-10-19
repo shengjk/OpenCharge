@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.13
+
+- Added opt-in system/lid sleep control through fixed helper commands and dynamically resolved power-management interfaces; disabled by default.
+- Added a separate persistent sleep-recovery record: global state is recovered across boots, while a prior boot’s lid flag is never replayed. Display assertions remain process-owned.
+- Added helper heartbeat, console-user, sleep-entry and exit cleanup; preserve an already-disabled global sleep setting and report partial restoration failures.
+- Use physical adapter presence during owned discharge, keep idle sleep inhibited during active calibration, and separate display-sleep preferences from system/lid control.
+- Added fake/file recovery fixtures and abrupt subprocess boundaries. Physical lid/display/sleep behavior remains unverified; the installed helper was not updated.
+
 ## 0.3.12
 
 - Added deferred native quit handling: finish session cleanup and, after owned active discharge, wait for stable OS power-source recovery before exiting.

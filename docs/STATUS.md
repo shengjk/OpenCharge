@@ -1,4 +1,4 @@
-# Status — 0.3.12
+# Status — 0.3.13
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -12,10 +12,11 @@ This is a development release. Implemented policy, OS integration and physical h
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |
 | Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
+| Sleep control | Public idle assertion; opt-in fixed system/lid SPI and display assertion; durable global recovery and same-boot lid cleanup | Physical lid/display transitions, private-interface compatibility, powerd interference, actual sleep/boot recovery |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
 | Software updates | Manual / opt-in scheduled checks, preview channel, bounded verified ZIP download with quarantine metadata | Signed automatic installation, notarization and broader network environments |
 | Distribution | Native and universal builds, local signatures, CI definition | Notarized releases and broader model matrix |
 
-Unsupported or incomplete: BCLM-only firmware control, forced clamshell wake, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
+Unsupported or incomplete: BCLM-only firmware control, guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
 
 The installed development helper was validated only through read-only capabilities. Hardware control and scheduled system actions remain disabled on the validation machine. No physical effects are claimed from capability detection or fake-backend tests.
