@@ -32,7 +32,7 @@ public struct ConfigurationBackup: Codable {
         Set(config.schedules.map(\.id)).count == config.schedules.count,
         config.schedules.allSatisfy({ $0.value.isFinite && $0.date.timeIntervalSince1970.isFinite })
   else { throw ConfigurationBackupError.invalidSchedules }
-  config.policy.keepAwakeWithLidClosed = false; config.policy.allowDisplaySleep = true
+  config.policy.keepAwakeWithLidClosed = false; config.policy.allowDisplaySleep = true; config.policy.lockScreenWhenClosed = false
   config.policy.normalize()
   // An imported file must never resume a hardware operation or an overdue task.
   config.hardwareEnabled = false; config.systemActionsEnabled = false

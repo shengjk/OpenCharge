@@ -53,6 +53,15 @@ struct FilePower {
    let c = SleepOverrideController(transport: io.transport, store: store.sleepStore(), bootSession: bootA)
    try c.apply(preventDisplaySleep: false); try c.restore(); preconditionFailure("crash point not reached")
   }
+  if CommandLine.arguments.dropFirst().first == "--read-only-lid-lock" {
+   try ScreenLockClient.inspect()
+   let observer = try LidStateObserver { _ = LidStateObserver.currentState() }
+   withExtendedLifetime(observer) {
+    print("Lid observer registered read-only; state readable:", LidStateObserver.currentState() != nil, "; console session active:", ScreenLockClient.consoleSessionActive)
+    print("Lock SPI entry resolved only; no lock request, assertion or power setter invoked")
+   }
+   return
+  }
   if CommandLine.arguments.dropFirst().first == "--read-only-api" {
    do { let io = try SleepOverrideIO(); _ = try io.captureGlobal(); print("Sleep SPI symbols/effective+stored baseline inspected read-only; write support and physical effects remain unverified") }
    catch { print("Sleep read-only inspection unavailable:", error.localizedDescription) }
@@ -65,6 +74,8 @@ struct FilePower {
   do {
    let f = FakePower(), s = MemoryStore(), c = controller(f, s)
    try c.apply(preventDisplaySleep: false); precondition(f.global && f.lid && !f.display && c.active)
+   let journal = try JSONSerialization.jsonObject(with: s.data!) as! [String: Any]
+   precondition(journal["version"] as? Int == 2, "older version-1 helpers must reject new journals rather than ignore recovery phases")
    let initial = s.saves; precondition(initial == 2)
    for _ in 0..<1000 { try c.apply(preventDisplaySleep: false) }
    precondition(s.saves == initial && f.events.filter { $0 == "global:true" }.count == 1 && f.events.filter { $0 == "lid:true" }.count == 1)
@@ -152,10 +163,17 @@ struct FilePower {
    precondition(!committed && releases == 1 && store.data == nil); scenarios += 1
   }
   // Legacy records lack phases: a false cache is not proof of durable restoration.
-  do {
-   let s = MemoryStore(); s.data = try JSONSerialization.data(withJSONObject: ["version": 1, "boot": bootA, "originalGlobal": false, "globalPending": true, "lidPending": false])
+  for oldPhase in [nil, "setting", "restoring"] as [String?] {
+   let s = MemoryStore()
+   var record: [String: Any] = ["version": 1, "boot": bootA, "originalGlobal": false, "globalPending": true, "lidPending": false]
+   if let oldPhase { record["globalPhase"] = oldPhase }
+   s.data = try JSONSerialization.data(withJSONObject: record)
    var committed = true
-   let io = SleepOverrideTransport(captureGlobal: { false }, readGlobal: { false }, setGlobal: { committed = $0 }, setLid: { _ in }, setDisplay: { _ in })
+   let io = SleepOverrideTransport(captureGlobal: { false }, readGlobal: { false }, setGlobal: {
+    let intent = try JSONSerialization.jsonObject(with: s.data!) as! [String: Any]
+    precondition(intent["version"] as? Int == 2 && intent["globalPhase"] as? String == "restoring")
+    committed = $0
+   }, setLid: { _ in }, setDisplay: { _ in })
    try SleepOverrideController(transport: io, store: s, bootSession: bootB).recover()
    precondition(!committed && s.data == nil); scenarios += 1
   }

@@ -20,6 +20,7 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var keepAwakeUntilLimit: Bool? = nil
  public var keepAwakeWithLidClosed: Bool? = nil
  public var allowDisplaySleep: Bool? = nil
+ public var lockScreenWhenClosed: Bool? = nil
  public var stopInSleep = false
  public var stopOnQuit = false
  public var clamshellDischarge = false
@@ -113,14 +114,12 @@ public struct ChargeEngine: Sendable {
     if sample.date.timeIntervalSince(holdingSince ?? sample.date) >= 3600 { calibration = .returning }
     return result(.allowCharge, "校准：满电保持一小时", 100)
    case .draining:
-    if sample.lidClosed && !p.clamshellDischarge { return result(.inhibitCharge, "校准等待开盖") }
     return result(.forceDischarge, "校准：放电至 10%", 10)
    case .refilling:
     if sample.percent >= 100 { calibration = .holding; holdingSince = sample.date }
     return result(.allowCharge, "校准：重新充满电", 100)
    case .returning:
     if sample.percent <= limit { calibration = .complete; return result(.inhibitCharge, "校准完成") }
-    if sample.lidClosed && !p.clamshellDischarge { return result(.inhibitCharge, "校准等待开盖") }
     return result(.forceDischarge, "校准：恢复日常上限")
    case .complete:
     return result(sample.percent < limit ? .allowCharge : .inhibitCharge, "校准完成，日常上限控制")

@@ -52,24 +52,59 @@ import ChargeHardware
   preferences.layout = DashboardLayout(widgets: [.battery, .specifications], specifications: [.voltage, .current])
   var config = Configuration(); config.policy.limit = 80; config.historyEnabled = false
   try config.save()
-  let model = ChargeModel(dashboardDefaults: defaults)
+  let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("fixture must never invoke an uninjected lock") })
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)
   model.inspectSleepInterfaces(request: { _ in "chargeControl:fixture" })
   let unavailableSleepStatus = model.sleepStatus
   model.refresh(); precondition(model.sleepStatus == unavailableSleepStatus && model.sleepStatus.contains("未提供"), "read-only capability result must survive monitoring refresh")
+  let requiredPlan = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true, action: .allowCharge, percent: 50, target: 100, calibrating: true, idleUntilTarget: false, systemUntilTarget: false, allowDisplaySleep: true)
+  model.config.hardwareEnabled = true; model.config.policy.mode = .calibration
+  var unsupportedCommands: [String] = []
+  model.applyHardwareDecision(requiredPlan, request: { unsupportedCommands.append($0); return "fixture" })
+  precondition(unsupportedCommands.isEmpty && !model.config.hardwareEnabled && model.calibrationPending, "missing required sleep capability must stop before any charge command")
+  model.config.policy.mode = .automatic; model.calibrationPending = false
   model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
   let detectedSleepStatus = model.sleepStatus
   model.refresh(); precondition(model.sleepStatus == detectedSleepStatus && model.sleepStatus.contains("仍待"))
   precondition(!model.config.hardwareEnabled && model.config.policy.keepAwakeWithLidClosed != true)
   let sleepPlan = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true, action: .allowCharge, percent: 50, target: 80, calibrating: false, idleUntilTarget: false, systemUntilTarget: true, allowDisplaySleep: true)
+  var lockRequests = 0
+  model.inspectLidLock(request: {}); precondition(model.lidLockStatus.contains("未请求"))
+  model.handleLidState(true, consoleActive: true, request: { lockRequests += 1 })
+  precondition(lockRequests == 0)
+  model.config.hardwareEnabled = true; model.config.policy.keepAwakeWithLidClosed = true; model.config.policy.lockScreenWhenClosed = true
+  model.handleLidState(true, consoleActive: true, request: { lockRequests += 1 }); precondition(lockRequests == 0, "no acknowledged sleep session must not lock")
+  model.config.policy.stopInSleep = true
+  var protectedCommands: [String] = []
+  model.decision = Decision(.allowCharge, "fixture", limit: 80)
+  model.applyHardwareDecision(sleepPlan, request: { protectedCommands.append($0); return "fixture acknowledgement" })
+  precondition(protectedCommands == ["sleepPolicyOff", "allowCharge"], "required full protection must suppress the conflicting sleep-entry policy")
+  model.config.policy.stopInSleep = false
+  model.updateSleepOverride(sleepPlan, request: { _ in "fixture acknowledgement" })
+  model.handleLidState(true, consoleActive: false, request: { lockRequests += 1 }); precondition(lockRequests == 0)
+  model.handleLidState(true, consoleActive: true, request: { lockRequests += 1 }); precondition(lockRequests == 1 && model.lidLockStatus.contains("尚未确认"))
+  for _ in 0..<1000 { model.handleLidState(true, consoleActive: true, request: { lockRequests += 1 }) }
+  precondition(lockRequests == 1)
+  model.handleLidState(false, consoleActive: true, request: { lockRequests += 1 })
+  model.handleLidState(true, consoleActive: true, request: { throw CocoaError(.fileReadUnknown) })
+  precondition(model.lidLockStatus.contains("失败"))
+  model.inspectLidLock(request: {})
+  model.handleLidState(true, consoleActive: true, request: { lockRequests += 1 }); precondition(lockRequests == 1, "inspection must not rearm locking")
+  model.updateSleepOverride(SleepProtectionPlan.evaluate(controlEnabled: false, connected: true, physicalAdapterConnected: true, action: .restore, percent: 50, target: 80, calibrating: false, idleUntilTarget: false, systemUntilTarget: false, allowDisplaySleep: true), request: { _ in "fixture release" })
+  model.config.hardwareEnabled = false; model.config.policy.keepAwakeWithLidClosed = false; model.config.policy.lockScreenWhenClosed = false
+  print("Lid-lock opt-in/session/console gating, duplicate suppression and read-only inspection checked with injected calls; no real lock")
   var sleepAttempts = 0
+  model.config.hardwareEnabled = true
   model.updateSleepOverride(sleepPlan, request: { _ in sleepAttempts += 1; throw CocoaError(.fileReadUnknown) })
-  precondition(sleepAttempts == 1 && model.sleepStatus.contains("控制失败"))
+  precondition(sleepAttempts == 2 && !model.config.hardwareEnabled && model.sleepStatus.contains("控制失败"))
   model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
+  model.config.hardwareEnabled = true
   model.updateSleepOverride(sleepPlan, request: { _ in sleepAttempts += 1; return "fixture only" })
-  precondition(sleepAttempts == 1 && model.sleepStatus.contains("上次控制失败"), "read-only inspection must not resume failed writes")
-  print("Sleep interface projection/persistence/read-only retry boundary checked with injected responses; no helper requests")
+  precondition(sleepAttempts == 2 && model.sleepStatus.contains("上次控制失败"), "read-only inspection must not resume failed writes")
+  model.config.hardwareEnabled = false
+  model.updateSleepOverride(sleepPlan, request: { command in precondition(command == "sleepOverrideRestore"); return "fixture pending recovery released" })
+  print("Required sleep preflight, projection/persistence, rollback and read-only retry boundary checked with injected responses; no helper requests")
   var quitCommands: [String] = []
   model.config.hardwareEnabled = true
   try model.prepareForQuit(request: { quitCommands.append($0); return "fixture restored" })

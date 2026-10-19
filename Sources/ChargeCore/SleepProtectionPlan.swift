@@ -8,11 +8,11 @@ public struct SleepProtectionPlan: Equatable, Sendable {
   let fields = Set(capabilities.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
   return fields.contains("sleepOverride:interfacesDetected") && fields.contains("sleepRecovery:phasesV1")
  }
- public static func evaluate(controlEnabled: Bool, connected: Bool, physicalAdapterConnected: Bool?, action: ChargeAction, percent: Double, target: Double, calibrating: Bool, idleUntilTarget: Bool, systemUntilTarget: Bool, allowDisplaySleep: Bool) -> Self {
+ public static func evaluate(controlEnabled: Bool, connected: Bool, physicalAdapterConnected: Bool?, action: ChargeAction, percent: Double, target: Double, calibrating: Bool, idleUntilTarget: Bool, systemUntilTarget: Bool, allowDisplaySleep: Bool, clamshellDischarge: Bool = false) -> Self {
   guard controlEnabled, action != .restore, physicalAdapterConnected ?? connected else { return Self(preventIdleSleep: false, preventSystemAndLidSleep: false, preventDisplaySleep: false) }
   let moving = action == .forceDischarge || (action == .allowCharge && percent.isFinite && target.isFinite && percent < target)
   let needed = moving || calibrating
-  let full = needed && systemUntilTarget
+  let full = calibrating || (action == .forceDischarge && clamshellDischarge) || (needed && systemUntilTarget)
   return Self(preventIdleSleep: needed && (idleUntilTarget || calibrating), preventSystemAndLidSleep: full, preventDisplaySleep: full && (calibrating || !allowDisplaySleep))
  }
 }

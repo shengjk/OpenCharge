@@ -7,7 +7,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 ## Features
 
 - Charge limits, Sailing hysteresis, timed thermal protection, Top Up, discharge and resumable calibration policies.
-- Separate idle sleep and opt-in experimental system/lid sleep control with recovery records.
+- Separate idle and system/lid sleep protection, required calibration protection, recovery journals and optional foreground lid locking.
 - Deferred discharge-exit recovery with retry, cancellation and explicit timeout choices.
 - Recurring schedules, departure estimates, presets, decision history and JSON configuration backups.
 - Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings.
@@ -31,7 +31,7 @@ New installations start in monitoring mode. Hardware control requires a separate
 
 ## What works and what remains
 
-Version 0.3.14 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
+Version 0.3.15 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
 
 ## Build and verify
 

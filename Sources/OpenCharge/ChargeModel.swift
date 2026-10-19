@@ -82,6 +82,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var sleepOverrideSessionActive = false
  private var sleepOverrideFailed = false
  private var sleepOverrideCapability: Bool?
+ private let screenLockRequest: () throws -> Void
+ private var lidLockPolicy = LidLockPolicy()
+ private var lidObserver: LidStateObserver?
+ @Published var lidLockStatus = "默认关闭 · 未请求锁屏"
  @Published var sleepStatus = "尚未使用合盖睡眠控制"
  private var magSafeSessionActive = false
  private var magSafePolicyFailed = false
@@ -98,7 +102,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard) {
+ init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock) {
+  self.screenLockRequest = screenLockRequest
   updates = AppUpdates(defaults: dashboardDefaults)
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
@@ -111,6 +116,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } }
   dashboardPreferences.changed = { [weak self] in self?.syncDashboard() }
   popoverPreferences.changed = { [weak self] in self?.syncDashboard() }
+  if observeLid { do { lidObserver = try LidStateObserver { [weak self] in
+   Task { @MainActor [weak self] in self?.handleLidState(LidStateObserver.currentState()) }
+  } } catch { lidLockStatus = "合盖监听不可用：" + error.localizedDescription } }
   refresh()
   timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in Task { @MainActor in self?.refresh() } }
   observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.sleep() } })
@@ -201,14 +209,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     if calibration == .complete { config.lastCalibration = Date(); config.policy.mode = .automatic; config.calibrationCheckpoint = nil; save() }
     if engine.completedMode != nil { config.policy.mode = .automatic; save() }
    }
-   if config.hardwareEnabled {
-    do { _ = try HelperClient.request(config.policy.stopInSleep ? "sleepPolicyOn" : "sleepPolicyOff"); _ = try HelperClient.request(decision.action.rawValue); helperStatus = "服务已确认：" + decision.action.displayName; lastHardwareAction = decision.action; if decision.action == .forceDischarge { dischargeExitPending = true } }
-    catch { helperStatus = "控制失败"; self.error = error.localizedDescription; config.hardwareEnabled = false; try? config.save() }
-   } else { helperStatus = "监测模式 · 未改变充电状态" }
+   let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, clamshellDischarge: config.policy.clamshellDischarge)
+   applyHardwareDecision(plan)
    updateMagSafe()
-   let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true)
-   do { try sleepController.setPreventIdleSleep(plan.preventIdleSleep) } catch { self.error = error.localizedDescription }
+   do { try sleepController.setPreventIdleSleep(config.hardwareEnabled && plan.preventIdleSleep) } catch { self.error = error.localizedDescription }
    updateSleepOverride(plan)
+   handleLidState(LidStateObserver.currentState())
    if config.historyEnabled && (history.last.map { Date().timeIntervalSince($0.date) >= 60 } ?? true) {
     history.append(HistoryPoint(date: Date(), percent: r.percent, temperature: r.temperature, watts: watts, reason: decision.reason, temperatureSource: r.temperatureSource, systemWatts: r.systemPowerW, adapterWatts: r.adapterPowerW, limit: config.policy.limit, hardwarePercent: r.hardwarePercent, health: r.healthPercent, cycles: r.cycleCount))
     history = Array(history.suffix(10080)); try FileManager.default.createDirectory(at: Configuration.directory, withIntermediateDirectories: true)
@@ -225,6 +231,42 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain")); guard service != 0 else { return false }; defer { IOObjectRelease(service) }
   return IORegistryEntryCreateCFProperty(service, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool ?? false
  }
+ func applyHardwareDecision(_ plan: SleepProtectionPlan, request: (String) throws -> String = HelperClient.request) {
+  guard config.hardwareEnabled else { helperStatus = "监测模式 · 未改变充电状态"; return }
+  var attempted = false
+  do {
+   if plan.preventSystemAndLidSleep {
+    guard !sleepOverrideFailed else { throw HelperError.rejected("睡眠控制上次失败，请重新启用硬件控制后重试") }
+    if sleepOverrideCapability == nil { inspectSleepInterfaces(request: request) }
+    guard sleepOverrideCapability == true else { throw HelperError.rejected("此操作需要兼容的睡眠控制服务，请先更新服务") }
+   }
+   attempted = true
+   _ = try request(config.policy.stopInSleep && !plan.preventSystemAndLidSleep ? "sleepPolicyOn" : "sleepPolicyOff")
+   if decision.action == .forceDischarge { dischargeExitPending = true }
+   _ = try request(decision.action.rawValue)
+   helperStatus = "服务已确认：" + decision.action.displayName; lastHardwareAction = decision.action
+  } catch {
+   helperStatus = "控制失败"; self.error = error.localizedDescription
+   config.hardwareEnabled = false
+   if config.policy.mode == .calibration { calibrationPending = true }
+   if attempted || lastHardwareAction != .restore || sleepOverrideSessionActive {
+    do { _ = try request("restore"); lastHardwareAction = .restore; sleepOverrideSessionActive = false }
+    catch { self.error = (self.error ?? "") + "；恢复待重试：" + error.localizedDescription }
+   }
+   try? config.save()
+  }
+ }
+ func inspectLidLock(request: () throws -> Void = ScreenLockClient.inspect) {
+  do { try request(); lidLockStatus = "已检测到锁屏入口；" + (ScreenLockClient.consoleSessionActive ? "前台登录会话可用" : "当前前台登录会话不可用") + "；未请求锁屏，实际效果待验证" }
+  catch { lidLockStatus = error.localizedDescription }
+ }
+ func handleLidState(_ closed: Bool?, consoleActive: Bool = ScreenLockClient.consoleSessionActive, request: (() throws -> Void)? = nil) {
+  guard !quitting else { return }
+  let enabled = config.hardwareEnabled && config.policy.lockScreenWhenClosed == true
+  guard lidLockPolicy.shouldRequest(lidClosed: closed, enabled: enabled, sleepOverrideActive: sleepOverrideSessionActive && !sleepOverrideFailed, consoleSessionActive: consoleActive) else { return }
+  do { try (request ?? screenLockRequest)(); lidLockStatus = "已向系统发送锁屏请求；尚未确认锁定结果" }
+  catch { lidLockStatus = "锁屏请求失败：" + error.localizedDescription + "；重新开合盖后可再试" }
+ }
  func inspectSleepInterfaces(request: (String) throws -> String = HelperClient.request) {
   do {
    let result = try request("capabilities")
@@ -236,17 +278,24 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func updateSleepOverride(_ plan: SleepProtectionPlan, request: (String) throws -> String = HelperClient.request) {
   guard !quitting else { return }
   do {
-   if plan.preventSystemAndLidSleep {
+   if plan.preventSystemAndLidSleep && config.hardwareEnabled {
     guard !sleepOverrideFailed else { return }
-    if sleepOverrideCapability == nil { inspectSleepInterfaces() }
-    guard sleepOverrideCapability == true else { return }
-    sleepStatus = try request(plan.preventDisplaySleep ? "sleepOverrideDisplayOn" : "sleepOverrideOn")
+    if sleepOverrideCapability == nil { inspectSleepInterfaces(request: request) }
+    guard sleepOverrideCapability == true else { throw HelperError.rejected("所需睡眠控制接口或恢复协议不可用") }
     sleepOverrideSessionActive = true
+    sleepStatus = try request(plan.preventDisplaySleep ? "sleepOverrideDisplayOn" : "sleepOverrideOn")
    } else if sleepOverrideSessionActive {
     _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false
     sleepStatus = "合盖睡眠控制已释放"
    } else if !config.hardwareEnabled && sleepOverrideCapability == nil { sleepStatus = "监测模式 · 未修改睡眠设置" }
-  } catch { sleepOverrideFailed = true; sleepStatus = "睡眠控制失败：" + error.localizedDescription }
+  } catch {
+   sleepOverrideFailed = true; sleepStatus = "睡眠控制失败：" + error.localizedDescription
+   config.hardwareEnabled = false
+   if config.policy.mode == .calibration { calibrationPending = true }
+   do { _ = try request("restore"); sleepOverrideSessionActive = false; lastHardwareAction = .restore }
+   catch { sleepStatus += "；恢复待重试：" + error.localizedDescription }
+   try? sleepController.setPreventIdleSleep(false); try? config.save()
+  }
  }
  func enableHardware(_ enabled: Bool) {
   guard !quitting else { return }

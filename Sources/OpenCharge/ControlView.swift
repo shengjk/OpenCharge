@@ -33,14 +33,18 @@ struct ControlView: View {
    Toggle("使用硬件电量作为控制基准", isOn: Binding(get: { m.config.policy.useHardwarePercent ?? false }, set: { m.config.policy.useHardwarePercent = $0 }))
    Text("macOS \(m.title) · 硬件 \(m.reading?.hardwarePercent.map { String(format: "%.1f%%", $0) } ?? "不可用")").font(.caption).foregroundStyle(.secondary)
    Toggle("充到目标前阻止空闲睡眠", isOn: Binding(get: { m.config.policy.keepAwakeUntilLimit ?? false }, set: { m.config.policy.keepAwakeUntilLimit = $0 }))
-   Toggle("充到目标前阻止系统与合盖睡眠", isOn: Binding(get: { m.config.policy.keepAwakeWithLidClosed ?? false }, set: { m.config.policy.keepAwakeWithLidClosed = $0; if $0 { m.config.policy.stopInSleep = false } }))
+   Toggle("日常充到上限前阻止系统与合盖睡眠（可选）", isOn: Binding(get: { m.config.policy.keepAwakeWithLidClosed ?? false }, set: { m.config.policy.keepAwakeWithLidClosed = $0; if $0 { m.config.policy.stopInSleep = false } }))
    Toggle("阻止系统睡眠时允许显示器休眠", isOn: Binding(get: { m.config.policy.allowDisplaySleep ?? true }, set: { m.config.policy.allowDisplaySleep = $0 })).disabled(m.config.policy.keepAwakeWithLidClosed != true)
+   Toggle("阻止系统睡眠期间合盖锁屏", isOn: Binding(get: { m.config.policy.lockScreenWhenClosed ?? false }, set: { m.config.policy.lockScreenWhenClosed = $0 }))
+   Text(m.lidLockStatus).font(.caption).foregroundStyle(.secondary)
+   Button("检测锁屏接口（只读）") { m.inspectLidLock() }
+   Text("仅在完整睡眠控制已确认启用且当前用户处于前台时请求锁屏；每次合盖最多请求一次。私有接口不可用时不会模拟锁屏或隐藏窗口，系统锁定效果仍需实测。").font(.caption).foregroundStyle(.secondary)
    Text(m.sleepStatus).font(.caption).foregroundStyle(.secondary)
    Button("检测睡眠接口") { m.inspectSleepInterfaces() }
    Toggle("睡眠时停止充电", isOn: $m.config.policy.stopInSleep).disabled(m.config.policy.keepAwakeWithLidClosed == true)
    Toggle("退出应用后保持停充", isOn: $m.config.policy.stopOnQuit)
    Text("退出后停充是显式持久状态，可重新打开应用并关闭硬件控制来恢复。服务重启或机器关机后的恢复能力依硬件而定。").font(.caption).foregroundStyle(.secondary)
-   Text("空闲睡眠断言不阻止合盖或菜单睡眠。系统与合盖控制需要新版服务的私有接口，默认关闭，物理效果待实测；拔线、完成、退出或心跳超时会尝试释放。校准会保持空闲唤醒；选择合盖控制时校准期间也会请求保持显示器开启。").font(.caption).foregroundStyle(.secondary)
+   Text("空闲睡眠断言不阻止合盖或菜单睡眠。系统与合盖控制需要新版服务的私有接口，默认关闭，物理效果待实测；拔线、完成、退出或心跳超时会尝试释放。校准必须阻止系统睡眠并保持显示器开启；允许合盖主动放电时会提前请求系统睡眠保护。所需服务不可用或控制失败时会停止硬件控制并尝试恢复。").font(.caption).foregroundStyle(.secondary)
   }
   Card("操作与校准") {
    Picker("当前模式", selection: $m.config.policy.mode) { ForEach(ChargeMode.allCases, id: \.self) { Text(modeName($0)).tag($0) } }.pickerStyle(.segmented)

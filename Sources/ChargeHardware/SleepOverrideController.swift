@@ -25,7 +25,7 @@ public enum SleepOverrideError: Error, LocalizedError {
 public final class SleepOverrideController {
  private enum GlobalPhase: String, Codable { case setting, active, restoring }
  private struct Record: Codable {
-  var version: Int = 1
+  var version: Int = 2
   var boot: String
   var originalGlobal: Bool
   var globalPending: Bool
@@ -49,7 +49,7 @@ public final class SleepOverrideController {
   if let data = try store.load() {
    guard data.count <= 2048 else { throw SleepOverrideError.invalidRecord }
    let value = try JSONDecoder().decode(Record.self, from: data)
-   guard value.version == 1, UUID(uuidString: value.boot) != nil, !value.globalPending || !value.originalGlobal else { throw SleepOverrideError.invalidRecord }
+   guard (value.version == 1 || value.version == 2), UUID(uuidString: value.boot) != nil, !value.globalPending || !value.originalGlobal else { throw SleepOverrideError.invalidRecord }
    record = value
   }
   loaded = true
@@ -116,8 +116,8 @@ public final class SleepOverrideController {
     var needsWrite = value.globalPhase != .active
     if !needsWrite { needsWrite = try transport.readGlobal() }
     if needsWrite {
-     if value.globalPhase != .restoring {
-      var intent = value; intent.globalPhase = .restoring
+     if value.globalPhase != .restoring || value.version != 2 {
+      var intent = value; intent.version = 2; intent.globalPhase = .restoring
       try store.save(JSONEncoder().encode(intent)); record = intent
      }
      try transport.setGlobal(value.originalGlobal)
