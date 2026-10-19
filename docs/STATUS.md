@@ -1,10 +1,11 @@
-# Status — 0.3.11
+# Status — 0.3.12
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
 | Area | Implemented | Remaining validation or scope |
 | --- | --- | --- |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
+| Quit lifecycle | Deferred cleanup, stable OS power-source checks after owned discharge, error/timeout choices and monitoring after cancellation | Physical adapter/display transitions, logout/shutdown, user switching and forced process termination |
 | Automation | Recurrence and DST anchors, templates, history, CLI, URL scheme, eleven intents | System UI execution of setters; more calendar/session environments |
 | Menu-bar appearance | Four icon styles, observed battery fill, opt-in Low Power Mode tint and accessible state | Broader native appearance, multi-display and accessibility environments |
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |

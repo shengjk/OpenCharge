@@ -55,6 +55,18 @@ import ChargeHardware
   let model = ChargeModel(dashboardDefaults: defaults)
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)
+  var quitCommands: [String] = []
+  model.config.hardwareEnabled = true
+  try model.prepareForQuit(request: { quitCommands.append($0); return "fixture restored" })
+  precondition(quitCommands == ["restore"])
+  let quitReading = model.reading!.date
+  model.refresh(); precondition(model.reading!.date == quitReading, "quit preparation must stop policy refreshes")
+  model.cancelQuit(); precondition(!model.config.hardwareEnabled && model.reading!.date > quitReading)
+  model.config.hardwareEnabled = true; model.config.policy.stopOnQuit = true
+  try model.prepareForQuit(request: { quitCommands.append($0); return "fixture retained" })
+  precondition(quitCommands.last == "retainChargeInhibit")
+  model.cancelQuit(); model.config.policy.stopOnQuit = false; model.error = nil
+  print("Quit preparation policy/suspension/cancel checks passed; injected helper only")
   model.setDashboardFocused(true)
   precondition(!model.dashboard.paused && model.dashboard.limit == 80)
   model.setDashboardFocused(false)

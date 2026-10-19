@@ -85,6 +85,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var engine = ChargeEngine()
  private let sleepController = SleepController()
  private var lastHardwareAction: ChargeAction = .restore
+ private var dischargeExitPending = false
+ private var quitting = false
+ private var quitCleanupPrepared = false
+ var needsQuitPreparation: Bool { config.hardwareEnabled || dischargeExitPending || lastHardwareAction == .forceDischarge || magSafeSessionActive || sleepController.active }
+ var needsDischargeExitWait: Bool { dischargeExitPending }
  private var timer: Timer?
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
@@ -125,6 +130,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint); calibrationPending = false; refresh() }
  func setLowPower(_ enabled: Bool, source: String? = nil) {
+  guard !quitting else { return }
   let command = source == "battery" ? (enabled ? "lowPowerBatteryOn" : "lowPowerBatteryOff") : source == "ac" ? (enabled ? "lowPowerACOn" : "lowPowerACOff") : (enabled ? "lowPowerOn" : "lowPowerOff")
   do { lowPowerStatus = try HelperClient.request(command); config.policy.lowPowerMode = enabled; save() } catch { self.error = error.localizedDescription }
  }
@@ -135,7 +141,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func useMagSafePolicy() { magSafeSelection = nil; magSafePolicyFailed = false; updateMagSafe() }
  func updateMagSafe() {
-  guard !magSafePolicyFailed else { return }
+  guard !quitting, !magSafePolicyFailed else { return }
   let mode = config.magSafeMode ?? .system
   let wantsControl = magSafeSelection != nil || mode != .system || config.magSafeOffDuringSleep == true
   do {
@@ -156,6 +162,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
 
  func profile(_ limit: Double, _ sailing: Double, _ heat: Double) { config.policy.limit = limit; config.policy.sailingWidth = sailing; config.policy.maxTemperature = heat; config.policy.mode = .automatic; save(); refresh() }
  func refresh() {
+  guard !quitting else { return }
   defer { syncDashboard() }
   do {
    let r = try BatteryTelemetryReader.read(); reading = r
@@ -191,7 +198,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     if engine.completedMode != nil { config.policy.mode = .automatic; save() }
    }
    if config.hardwareEnabled {
-    do { _ = try HelperClient.request(config.policy.stopInSleep ? "sleepPolicyOn" : "sleepPolicyOff"); _ = try HelperClient.request(decision.action.rawValue); helperStatus = "服务已确认：" + decision.action.displayName; lastHardwareAction = decision.action }
+    do { _ = try HelperClient.request(config.policy.stopInSleep ? "sleepPolicyOn" : "sleepPolicyOff"); _ = try HelperClient.request(decision.action.rawValue); helperStatus = "服务已确认：" + decision.action.displayName; lastHardwareAction = decision.action; if decision.action == .forceDischarge { dischargeExitPending = true } }
     catch { helperStatus = "控制失败"; self.error = error.localizedDescription; config.hardwareEnabled = false; try? config.save() }
    } else { helperStatus = "监测模式 · 未改变充电状态" }
    updateMagSafe()
@@ -214,18 +221,39 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   return IORegistryEntryCreateCFProperty(service, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool ?? false
  }
  func enableHardware(_ enabled: Bool) {
+  guard !quitting else { return }
   if enabled { do {
    guard !calibrationPending else { throw HelperError.rejected("请先选择继续或取消上次校准") }
    helperStatus = try HelperClient.request("capabilities"); guard helperStatus.split(separator: ",").contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("chargeControl:") && !$0.contains("unavailable") }) else { throw HelperError.rejected(helperStatus) }; config.hardwareEnabled = true } catch { self.error = error.localizedDescription; config.hardwareEnabled = false } }
   else { do { helperStatus = try HelperClient.request("restore"); lastHardwareAction = .restore; config.hardwareEnabled = false } catch { self.error = "恢复请求失败；服务会在心跳超时后尝试恢复：\(error.localizedDescription)"; config.hardwareEnabled = false } }
   save(); refresh()
  }
- func sleep() { guard config.hardwareEnabled else { return }
+ func sleep() { guard !quitting, config.hardwareEnabled else { return }
   // The root observer also reconciles sleep and acknowledges it. Paused/discharging states stay paused.
   let inhibit = config.policy.stopInSleep || decision.action == .inhibitCharge || decision.action == .forceDischarge
   _ = try? HelperClient.request(inhibit ? "inhibitCharge" : "restore")
  }
- func cleanupOnQuit() { if magSafeSessionActive { _ = try? HelperClient.request("magSafeRestore") }; try? sleepController.setPreventIdleSleep(false); if config.hardwareEnabled { _ = try? HelperClient.request(config.policy.stopOnQuit ? "retainChargeInhibit" : "restore") } }
+ func prepareForQuit(request: (String) throws -> String = HelperClient.request) throws {
+  quitting = true
+  var failures: [String] = []
+  if magSafeSessionActive { do { _ = try request("magSafeRestore"); magSafeSessionActive = false } catch { failures.append(error.localizedDescription) } }
+  do { try sleepController.setPreventIdleSleep(false) } catch { failures.append(error.localizedDescription) }
+  if config.hardwareEnabled || lastHardwareAction == .forceDischarge {
+   do { _ = try request(config.policy.stopOnQuit ? "retainChargeInhibit" : "restore"); lastHardwareAction = config.policy.stopOnQuit ? .inhibitCharge : .restore }
+   catch { failures.append(error.localizedDescription) }
+  }
+  quitCleanupPrepared = failures.isEmpty
+  if !failures.isEmpty { throw HelperError.rejected(failures.joined(separator: "; ")) }
+ }
+ func cancelQuit() {
+  // Never resume a discharge/calibration automatically after a cancelled exit.
+  config.hardwareEnabled = false
+  if config.policy.mode == .calibration { calibrationPending = true }
+  quitting = false; quitCleanupPrepared = false
+  error = "已取消退出，充电控制已关闭；请确认电源状态后手动重新启用。"
+  save(); refresh()
+ }
+ func cleanupOnQuit() { if !quitCleanupPrepared { try? prepareForQuit() } }
  func quit() { NSApp.terminate(nil) }
 
  func handleURL(_ url: URL) {
@@ -250,6 +278,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   catch { self.error = error.localizedDescription }
  }
  func restoreConfiguration() {
+  guard !quitting else { return }
   let panel = NSOpenPanel(); panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false; panel.canChooseDirectories = false
   guard panel.runModal() == .OK, let url = panel.url else { return }
   do {
@@ -266,6 +295,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } catch { self.error = error.localizedDescription }
  }
  func removeHelperService() async {
+  guard !quitting else { return }
   do {
    guard !helperService.legacyInstalled else { throw HelperServiceError.ineligible("开发脚本服务需使用对应卸载脚本移除") }
    // SMAppService unregister terminates the daemon: restore while its journal is alive.

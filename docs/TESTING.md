@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 76 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 84 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -55,3 +55,12 @@ The live smoke selected public 0.3.10 and passed with its 1,540,160-byte arm64 Z
 
 
 Native 0.3.11 validation opened the update window from the application menu, confirmed its actual bundle version and a successful public check reporting local 0.3.11 ahead of published 0.3.10, and inspected the same state in settings. Automatic checks remained off. Two 5-second CPU-time-delta samples with the update window open measured 3.39% and 1.00% of one core; two with settings open measured 1.99% and 0.00%. The first window sample can include completing the check. These short observations on one Mac are a release gate, not a general benchmark. Native download-button behavior with a newer release, automatic scheduling over a real 12-hour interval and automatic installation were not verified. Deterministic checks and the universal build passed; installed-helper bytes were unchanged and hardware/system actions stayed disabled.
+
+
+0.3.12 adds eight pure discharge-exit methods covering stable external power, explicit physical unplugging, duplicate timestamps, long sampling gaps, transient unknown/battery readings, cleanup failure/retry, cancellation, timeout without automatic force, and invalid monotonic times. The production-model fixture injects helper responses and verifies restore versus retained inhibition, paused policy refreshes during quit, and monitoring after cancellation; it makes no real helper requests. `bash Scripts/build-quit-fixture.sh` builds a separate native harness whose helper and power inputs are entirely fake; it never creates ChargeModel or reads battery/SMC state. Native UI validation exercised cleanup failure → cancel, failure → retry → confirmed exit, timeout → window close → cancel, and timeout → explicit exit. Its event logs confirmed `reply(false)` keeps the app running and `reply(true)` reaches termination through the real AppKit deferred-termination loop. These checks do not establish real discharge/display recovery, logout/shutdown behavior or physical effects.
+
+
+Final 0.3.12 validation also confirmed that the choice window stops polling while awaiting a decision: two static 5-second CPU-time-delta samples in the fake-only native harness measured 0.00% of one core. Retrying restarted the timer and reached confirmed termination. The final dashboard fixture passed after that change, and the final native/universal builds passed strict signatures. CPU samples are short observations on one Mac, not a general benchmark.
+
+
+The actual 0.3.12 application also launched in monitoring mode, quit normally without a recovery dialog, and reopened with hardware/system actions still disabled. Two 5-second CPU-time-delta samples in its static settings window measured 2.99% and 0.00% of one core. The installed helper's bytes matched the existing baseline. This does not exercise the real active-control branch.

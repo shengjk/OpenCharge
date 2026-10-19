@@ -12,6 +12,7 @@ import ChargeHardware
 final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
  weak var model: ChargeModel?
  var menuBar: MenuBarController?
+ var quitFlow: QuitFlow?
  func applicationDidFinishLaunching(_ notification: Notification) {
   let model = OpenChargeRuntime.model; self.model = model
   let showDock = UserDefaults.standard.object(forKey: "showDockIcon") as? Bool ?? true
@@ -19,6 +20,14 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
   menuBar = MenuBarController(model: model)
   model.updates.start()
   if model.dashboardPreferences.showOnStartup { model.openDashboardWindow() }
+ }
+ func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+  if quitFlow != nil { return .terminateLater }
+  guard let model, model.needsQuitPreparation else { return .terminateNow }
+  let flow = QuitFlow(waitForPower: model.needsDischargeExitWait, prepare: { try model.prepareForQuit() }, cancelControl: { model.cancelQuit() }, reply: { [weak self] allowed in
+   self?.quitFlow = nil; sender.reply(toApplicationShouldTerminate: allowed)
+  })
+  quitFlow = flow; flow.start(); return .terminateLater
  }
  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { model?.openDashboardWindow(); return true }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.12
+
+- Added deferred native quit handling: finish session cleanup and, after owned active discharge, wait for stable OS power-source recovery before exiting.
+- Suspend policy refreshes and new in-app hardware actions during quit preparation; preserve the selected restore / retain-charge-inhibition policy.
+- Report cleanup errors and power-state timeouts with retry, cancel and explicit exit choices. Cancellation disables charge control and keeps the app open; interrupted calibration requires explicit continuation.
+- Added pure exit-policy tests, injected production-model checks and a native fake-only AppKit termination harness. Real discharge exit, display transitions and logout remain unverified.
+
 ## 0.3.11
 
 - Added an application-menu update window and settings card, manual checks and opt-in checks every 12 hours.
