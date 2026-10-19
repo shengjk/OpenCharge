@@ -2,6 +2,12 @@ import XCTest
 @testable import ChargeCore
 
 final class SleepProtectionTests: XCTestCase {
+ func testHelperRequiresExactInterfaceAndRecoveryProtocol() {
+  XCTAssertTrue(SleepProtectionPlan.supportsHelper("model:fixture, sleepOverride:interfacesDetected, sleepRecovery:phasesV1"))
+  for caps in ["sleepOverride:interfacesDetected", "sleepRecovery:phasesV1", "sleepOverride:interfacesDetected, sleepRecovery:phasesV10", "prefixsleepOverride:interfacesDetected, sleepRecovery:phasesV1"] {
+   XCTAssertFalse(SleepProtectionPlan.supportsHelper(caps))
+  }
+ }
  private func plan(enabled: Bool = true, connected: Bool = true, physical: Bool? = true, action: ChargeAction = .allowCharge, percent: Double = 50, target: Double = 80, calibration: Bool = false, idle: Bool = true, full: Bool = true, display: Bool = true) -> SleepProtectionPlan {
   .evaluate(controlEnabled: enabled, connected: connected, physicalAdapterConnected: physical, action: action, percent: percent, target: target, calibrating: calibration, idleUntilTarget: idle, systemUntilTarget: full, allowDisplaySleep: display)
  }

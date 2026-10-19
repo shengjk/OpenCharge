@@ -58,7 +58,7 @@ import ChargeHardware
   model.inspectSleepInterfaces(request: { _ in "chargeControl:fixture" })
   let unavailableSleepStatus = model.sleepStatus
   model.refresh(); precondition(model.sleepStatus == unavailableSleepStatus && model.sleepStatus.contains("未提供"), "read-only capability result must survive monitoring refresh")
-  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected" })
+  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
   let detectedSleepStatus = model.sleepStatus
   model.refresh(); precondition(model.sleepStatus == detectedSleepStatus && model.sleepStatus.contains("仍待"))
   precondition(!model.config.hardwareEnabled && model.config.policy.keepAwakeWithLidClosed != true)
@@ -66,7 +66,7 @@ import ChargeHardware
   var sleepAttempts = 0
   model.updateSleepOverride(sleepPlan, request: { _ in sleepAttempts += 1; throw CocoaError(.fileReadUnknown) })
   precondition(sleepAttempts == 1 && model.sleepStatus.contains("控制失败"))
-  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected" })
+  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
   model.updateSleepOverride(sleepPlan, request: { _ in sleepAttempts += 1; return "fixture only" })
   precondition(sleepAttempts == 1 && model.sleepStatus.contains("上次控制失败"), "read-only inspection must not resume failed writes")
   print("Sleep interface projection/persistence/read-only retry boundary checked with injected responses; no helper requests")

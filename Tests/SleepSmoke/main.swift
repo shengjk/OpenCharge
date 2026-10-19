@@ -119,6 +119,58 @@ struct FilePower {
    let f = FakePower(), s = MemoryStore(); s.data = bytes; let c = controller(f, s)
    rejects { try c.recover() }; precondition(f.events.isEmpty && s.data == bytes); scenarios += 1
   }
+  // Model a write that changes the API's cached value but fails to commit.
+  for recoveryBoot in [bootA, bootB] {
+   let store = MemoryStore()
+   var cached = false, committed = false, failRelease = false
+   let io = SleepOverrideTransport(captureGlobal: { cached }, readGlobal: { cached }, setGlobal: { value in
+    cached = value
+    if !value && failRelease { throw FakeError.requested }
+    committed = value
+   }, setLid: { _ in }, setDisplay: { _ in })
+   let c = SleepOverrideController(transport: io, store: store, bootSession: bootA)
+   try c.apply(preventDisplaySleep: false); failRelease = true
+   rejects { try c.restore() }
+   var retryFailed = false
+   do { try c.restore() } catch { retryFailed = true }
+   if !retryFailed || store.data == nil || !committed {
+    print("REGRESSION: cached false cleared recovery after a failed persistent restore; durable state:", committed, "record retained:", store.data != nil)
+    exit(2)
+   }
+   failRelease = false
+   let retry = SleepOverrideController(transport: io, store: store, bootSession: recoveryBoot)
+   try retry.recover(); precondition(!committed && !cached && store.data == nil); scenarios += 1
+  }
+  // A failed enable may commit while its readback still reports the old value.
+  do {
+   let store = MemoryStore(); var committed = false; var releases = 0
+   let io = SleepOverrideTransport(captureGlobal: { false }, readGlobal: { false }, setGlobal: { value in
+    committed = value; if value { throw FakeError.requested }; releases += 1
+   }, setLid: { _ in }, setDisplay: { _ in })
+   let c = SleepOverrideController(transport: io, store: store, bootSession: bootA)
+   rejects { try c.apply(preventDisplaySleep: false) }
+   precondition(!committed && releases == 1 && store.data == nil); scenarios += 1
+  }
+  // Legacy records lack phases: a false cache is not proof of durable restoration.
+  do {
+   let s = MemoryStore(); s.data = try JSONSerialization.data(withJSONObject: ["version": 1, "boot": bootA, "originalGlobal": false, "globalPending": true, "lidPending": false])
+   var committed = true
+   let io = SleepOverrideTransport(captureGlobal: { false }, readGlobal: { false }, setGlobal: { committed = $0 }, setLid: { _ in }, setDisplay: { _ in })
+   try SleepOverrideController(transport: io, store: s, bootSession: bootB).recover()
+   precondition(!committed && s.data == nil); scenarios += 1
+  }
+  do {
+   let f = FakePower(), s = MemoryStore(), c = controller(f, s); try c.apply(preventDisplaySleep: false)
+   s.failSaves = [s.saves + 2]; rejects { try c.restore() }
+   precondition(!f.events.contains("global:false") && f.global && s.data != nil)
+   s.failSaves = []; try c.restore(); precondition(!f.global && s.data == nil); scenarios += 1
+  }
+  do {
+   let f = FakePower(), s = MemoryStore()
+   s.data = try JSONSerialization.data(withJSONObject: ["version": 1, "boot": bootA, "originalGlobal": false, "globalPending": true, "lidPending": false, "globalPhase": "unknown"])
+   let before = s.data; rejects { try controller(f, s).recover() }
+   precondition(f.events.isEmpty && s.data == before); scenarios += 1
+  }
   let temp = FileManager.default.temporaryDirectory.appendingPathComponent("OpenCharge-sleep-fixture-" + UUID().uuidString)
   try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: false); defer { try? FileManager.default.removeItem(at: temp) }
   do {

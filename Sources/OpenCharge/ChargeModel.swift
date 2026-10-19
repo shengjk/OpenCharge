@@ -228,8 +228,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func inspectSleepInterfaces(request: (String) throws -> String = HelperClient.request) {
   do {
    let result = try request("capabilities")
-   sleepOverrideCapability = result.contains("sleepOverride:interfacesDetected")
-   sleepStatus = sleepOverrideCapability == true ? "已检测到私有接口；物理效果仍待实机验证" : "已安装服务未提供合盖睡眠接口，需要支持此功能的新服务"
+   sleepOverrideCapability = SleepProtectionPlan.supportsHelper(result)
+   sleepStatus = sleepOverrideCapability == true ? "已检测到私有接口；物理效果仍待实机验证" : "已安装服务未提供所需睡眠接口或恢复协议，请更新服务"
    if sleepOverrideFailed { sleepStatus += "；上次控制失败，需重新启用硬件控制后再试" }
   } catch { sleepOverrideCapability = false; sleepStatus = error.localizedDescription }
  }
@@ -253,7 +253,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if enabled { do {
    sleepOverrideFailed = false
    guard !calibrationPending else { throw HelperError.rejected("请先选择继续或取消上次校准") }
-   helperStatus = try HelperClient.request("capabilities"); sleepOverrideCapability = helperStatus.contains("sleepOverride:interfacesDetected"); guard helperStatus.split(separator: ",").contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("chargeControl:") && !$0.contains("unavailable") }) else { throw HelperError.rejected(helperStatus) }; config.hardwareEnabled = true } catch { self.error = error.localizedDescription; config.hardwareEnabled = false } }
+   helperStatus = try HelperClient.request("capabilities"); sleepOverrideCapability = SleepProtectionPlan.supportsHelper(helperStatus); guard helperStatus.split(separator: ",").contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("chargeControl:") && !$0.contains("unavailable") }) else { throw HelperError.rejected(helperStatus) }; config.hardwareEnabled = true } catch { self.error = error.localizedDescription; config.hardwareEnabled = false } }
   else { do { helperStatus = try HelperClient.request("restore"); lastHardwareAction = .restore; config.hardwareEnabled = false } catch { self.error = "恢复请求失败；服务会在心跳超时后尝试恢复：\(error.localizedDescription)"; config.hardwareEnabled = false } }
   save(); refresh()
  }

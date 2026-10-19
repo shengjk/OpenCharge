@@ -23,12 +23,15 @@ public enum SleepOverrideError: Error, LocalizedError {
 }
 /// Serialized by the helper's main queue. SleepDisabled persists across boot; lid state does not.
 public final class SleepOverrideController {
+ private enum GlobalPhase: String, Codable { case setting, active, restoring }
  private struct Record: Codable {
   var version: Int = 1
   var boot: String
   var originalGlobal: Bool
   var globalPending: Bool
   var lidPending: Bool
+  // Missing in version 1 records from older helpers; treat that state as uncertain.
+  var globalPhase: GlobalPhase? = nil
  }
  private let transport: SleepOverrideTransport
  private let store: ChargeRecoveryStore
@@ -62,6 +65,7 @@ public final class SleepOverrideController {
   if !active {
    let previous = try transport.captureGlobal()
    var intent = Record(boot: boot, originalGlobal: previous, globalPending: !previous, lidPending: false)
+   if !previous { intent.globalPhase = .setting }
    do {
     if !previous {
      try store.save(JSONEncoder().encode(intent)); record = intent
@@ -70,6 +74,7 @@ public final class SleepOverrideController {
     }
     // Journal the lid intent only after the global step, before its own write.
     intent.lidPending = true
+    if intent.globalPending { intent.globalPhase = .active }
     try store.save(JSONEncoder().encode(intent)); record = intent
     try transport.setLid(true)
     active = true
@@ -106,8 +111,18 @@ public final class SleepOverrideController {
   }
   if let value = record, value.globalPending {
    do {
-    // An external false value is already released; never re-enable it during cleanup.
-    if try transport.readGlobal() { try transport.setGlobal(value.originalGlobal); guard try transport.readGlobal() == value.originalGlobal else { throw SleepOverrideError.unavailable("global restore readback") } }
+    // A failed setter may have changed only its cache. Uncertain operations must
+    // receive a successful compensating write before their journal can be removed.
+    var needsWrite = value.globalPhase != .active
+    if !needsWrite { needsWrite = try transport.readGlobal() }
+    if needsWrite {
+     if value.globalPhase != .restoring {
+      var intent = value; intent.globalPhase = .restoring
+      try store.save(JSONEncoder().encode(intent)); record = intent
+     }
+     try transport.setGlobal(value.originalGlobal)
+     guard try transport.readGlobal() == value.originalGlobal else { throw SleepOverrideError.unavailable("global restore readback") }
+    }
     record?.globalPending = false; try persist()
    } catch { failures.append(error.localizedDescription) }
   }

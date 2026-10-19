@@ -52,7 +52,7 @@ func capabilities() -> String {
  catch { values.append("lowPower:unavailable") }
  if let status = try? magSafe?.status() { values.append("magSafe:" + status) }
  else { values.append("magSafe:unavailable") }
- if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected") } else { values.append("sleepOverride:unavailable") }
+ if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
  return values.joined(separator: ", ")
 }
 let path = HelperClient.socketPath
