@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+mkdir -p "$PROJECT_DIR/.build/module-cache" "$PROJECT_DIR/.build/smc-tests"
+export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
+TEST_ARCH="${OPENCHARGE_TEST_ARCH:-$(uname -m)}"
+case "$TEST_ARCH" in arm64|x86_64) ;; *) echo "Unsupported test architecture" >&2; exit 1 ;; esac
+swiftc -target "$TEST_ARCH-apple-macosx13.0" "$PROJECT_DIR/Sources/ChargeHardware/BatteryReader.swift" "$PROJECT_DIR/Sources/ChargeHardware/TelemetryMath.swift" "$PROJECT_DIR/Sources/ChargeHardware/SMCChargeController.swift" "$PROJECT_DIR/Sources/ChargeHardware/ChargeRecoveryStore.swift" "$PROJECT_DIR/Tests/HardwareSmoke/SMCChargeTests.swift" -o "$PROJECT_DIR/.build/smc-tests/check-$TEST_ARCH"
+/usr/bin/arch "-$TEST_ARCH" "$PROJECT_DIR/.build/smc-tests/check-$TEST_ARCH"
+swiftc -target "$TEST_ARCH-apple-macosx13.0" "$PROJECT_DIR/Sources/ChargeHardware/BatteryReader.swift" "$PROJECT_DIR/Sources/ChargeHardware/TelemetryMath.swift" "$PROJECT_DIR/Sources/ChargeHardware/SMCChargeController.swift" "$PROJECT_DIR/Sources/ChargeHardware/ChargeRecoveryStore.swift" "$PROJECT_DIR/Tests/HardwareSmoke/ChargeRecoveryTests.swift" -o "$PROJECT_DIR/.build/smc-tests/recovery-$TEST_ARCH"
+/usr/bin/arch "-$TEST_ARCH" "$PROJECT_DIR/.build/smc-tests/recovery-$TEST_ARCH"

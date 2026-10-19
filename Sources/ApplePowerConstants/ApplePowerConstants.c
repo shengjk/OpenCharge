@@ -1,0 +1,6 @@
+#include "ApplePowerConstants.h"
+#include <IOKit/IOMessage.h>
+// Swift cannot import these function-like C macros; use the selected SDK definitions.
+uint32_t opencharge_can_system_sleep(void) { return kIOMessageCanSystemSleep; }
+uint32_t opencharge_system_will_sleep(void) { return kIOMessageSystemWillSleep; }
+uint32_t opencharge_system_has_powered_on(void) { return kIOMessageSystemHasPoweredOn; }
