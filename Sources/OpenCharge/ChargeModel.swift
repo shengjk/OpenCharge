@@ -14,6 +14,7 @@ struct HistoryPoint: Codable, Identifiable {
 }
 enum PopoverConsumer: Hashable { case preview, statusItem }
 @MainActor final class ChargeModel: ObservableObject {
+ let updates: AppUpdates
  let helperService = HelperService()
  let energyMonitor = EnergyMonitor()
  var openStatusPopoverEditor: (() -> Void)?
@@ -89,6 +90,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
  init(dashboardDefaults: UserDefaults = .standard) {
+  updates = AppUpdates(defaults: dashboardDefaults)
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
   do { config = try Configuration.load() } catch { config = Configuration(); self.error = "配置文件无法读取：\(error.localizedDescription)" }

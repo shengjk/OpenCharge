@@ -17,6 +17,7 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
   let showDock = UserDefaults.standard.object(forKey: "showDockIcon") as? Bool ?? true
   NSApp.setActivationPolicy(showDock ? .regular : .accessory)
   menuBar = MenuBarController(model: model)
+  model.updates.start()
   if model.dashboardPreferences.showOnStartup { model.openDashboardWindow() }
  }
  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -58,6 +59,7 @@ struct AppSettingsView: View {
   Settings {
    AppSettingsView(model: model)
   }.commands {
+   CommandGroup(after: .appInfo) { Button("检查更新…") { model.updates.showAndCheck() } }
    CommandMenu("窗口") {
     Button("打开控制台") { model.openDashboardWindow() }.keyboardShortcut("1")
     Button("预览菜单栏弹窗") { model.openPopoverPreview() }.keyboardShortcut("2")

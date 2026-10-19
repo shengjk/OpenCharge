@@ -1,4 +1,4 @@
-# Status — 0.3.10
+# Status — 0.3.11
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -12,7 +12,8 @@ This is a development release. Implemented policy, OS integration and physical h
 | Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |
 | Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
-| Distribution | Native and universal builds, local signatures, CI definition | Notarized releases, updater and broader model matrix |
+| Software updates | Manual / opt-in scheduled checks, preview channel, bounded verified ZIP download with quarantine metadata | Signed automatic installation, notarization and broader network environments |
+| Distribution | Native and universal builds, local signatures, CI definition | Notarized releases and broader model matrix |
 
 Unsupported or incomplete: BCLM-only firmware control, forced clamshell wake, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
 

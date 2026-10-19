@@ -67,6 +67,7 @@ struct SettingsView: View {
    if let loginError { Text(loginError).font(.caption).foregroundStyle(.orange) }
    Text("所有记录保存在本机，不上传遥测。当前系统：\(ProcessInfo.processInfo.operatingSystemVersionString)").font(.caption).foregroundStyle(.secondary)
   }
+  UpdateView(updates: m.updates)
   Card("本地诊断") {
    Button("导出诊断文件…") { m.exportDiagnostics() }
    Text("包含应用与系统版本、机型、当前电池读数、策略摘要和服务状态。不包含序列号、用户名、路径、定时任务日期或历史明细；文件保存在你选择的位置，不自动上传。").font(.caption).foregroundStyle(.secondary)

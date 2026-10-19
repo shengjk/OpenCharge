@@ -29,7 +29,7 @@ open dist/OpenCharge.app
 
 ## 当前状态
 
-0.3.10 为开发版本。策略、隔离测试和只读能力已有验证；真实充放电、灯光效果、睡眠恢复和更多机型仍待实机验收。通用构建支持 arm64/x86_64，不代表所有机型固件均已验证。完整范围见[功能状态](docs/STATUS.md)。
+0.3.11 为开发版本。策略、隔离测试和只读能力已有验证；真实充放电、灯光效果、睡眠恢复和更多机型仍待实机验收。通用构建支持 arm64/x86_64，不代表所有机型固件均已验证。完整范围见[功能状态](docs/STATUS.md)。
 
 ```sh
 bash Scripts/check.sh
@@ -40,6 +40,8 @@ bash Scripts/build-universal.sh
 
 ## 文档与贡献
 
-[使用指南](docs/USAGE.md) · [架构](docs/ARCHITECTURE.md) · [验证](docs/TESTING.md) · [整理决策](docs/DECISIONS.zh-CN.md) · [更新记录](CHANGELOG.md)
+[软件更新](docs/UPDATES.md) · [使用指南](docs/USAGE.md) · [架构](docs/ARCHITECTURE.md) · [验证](docs/TESTING.md) · [整理决策](docs/DECISIONS.zh-CN.md) · [更新记录](CHANGELOG.md)
 
 数据目录为 `~/Library/Application Support/OpenCharge/`。导出由用户主动选择，不自动上传。[安全与隐私](SECURITY.md)。MIT 许可；第三方声明保留在 `docs/licenses/`。
+
+更新检查与校验下载见[软件更新说明](docs/UPDATES.md)。自动检查默认关闭；检查会连接 GitHub，不发送电池数据或本机标识，下载需明确点击。

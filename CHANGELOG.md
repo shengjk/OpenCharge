@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.11
+
+- Added an application-menu update window and settings card, manual checks and opt-in checks every 12 hours.
+- Select the highest compatible published SemVer release, with optional development previews and architecture-specific packages.
+- Download ZIPs only on request; enforce HTTPS host, size and pagination limits, verify published SHA-256 / available API digest, and preserve macOS quarantine metadata.
+- Keep application and privileged-service replacement manual; automatic checking defaults off and sends no battery readings or device identifiers.
+- Added deterministic release-selection and download-validation fixtures plus an optional anonymous public-network smoke test.
+
 ## 0.3.10
 
 - Prevented status-item image reassignment when the observed label and semantic appearance are unchanged.

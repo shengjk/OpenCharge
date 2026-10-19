@@ -10,7 +10,8 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 - Recurring schedules, departure estimates, presets, decision history and JSON configuration backups.
 - Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings.
 - Eleven App Intents, four App Shortcuts, CLI and an `opencharge://` URL scheme.
-- Local history and explicit diagnostic exports; no account, analytics or cloud service.
+- Local history and explicit diagnostic exports; no account, analytics or cloud storage.
+- Optional GitHub release checks and user-requested ZIP downloads with SHA-256 verification.
 
 ## Quick start
 
@@ -28,7 +29,7 @@ New installations start in monitoring mode. Hardware control requires a separate
 
 ## What works and what remains
 
-Version 0.3.10 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
+Version 0.3.11 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
 
 ## Build and verify
 
@@ -56,7 +57,7 @@ The app, CLI and daemon are built together with SwiftPM. `dist/`, `dist-universa
 
 ## Security and privacy
 
-Data stays in `~/Library/Application Support/OpenCharge/`. The helper exposes fixed commands over a restricted local socket; it does not accept arbitrary SMC keys or shell commands. Charge and LED recovery use separate bounded same-boot ownership journals and remain best effort; physical crash recovery is unverified. Read [SECURITY.md](SECURITY.md) for boundaries and reporting.
+Battery data stays in `~/Library/Application Support/OpenCharge/`. Update preferences use local UserDefaults; explicitly downloaded ZIPs use the user cache. Update checks contact GitHub without battery readings or device identifiers and automatic checking is off by default. See [software updates](docs/UPDATES.md). The helper exposes fixed commands over a restricted local socket; it does not accept arbitrary SMC keys or shell commands. Charge and LED recovery use separate bounded same-boot ownership journals and remain best effort; physical crash recovery is unverified. Read [SECURITY.md](SECURITY.md) for boundaries and reporting.
 
 ## License
 
