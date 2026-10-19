@@ -1,0 +1,23 @@
+.build/
+dist/
+.DS_Store
+.swiftpm/
+*.xcuserstate
+
+.previous-builds/
+dist-universal/
+
+# Local runtime data and exports
+configuration.json
+history.json
+opencharge-settings*.json
+opencharge-diagnostics*.json
+*.log
+.env
+.env.*
+!.env.example
+*.p12
+*.mobileprovision
+
+# Local IDE configuration
+.idea/

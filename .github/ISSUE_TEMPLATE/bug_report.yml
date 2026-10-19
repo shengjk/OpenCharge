@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible OpenCharge problem
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OpenCharge version, macOS version, architecture and model identifier
+      description: Do not include serial numbers or personal paths.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Relevant status or sanitized diagnostics
+      description: State whether this involved monitoring or explicitly enabled hardware control.
