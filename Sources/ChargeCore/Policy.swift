@@ -77,7 +77,7 @@ public struct ChargeEngine: Sendable {
   // must not be mistaken for unplugging and immediately undone. Prefer raw presence when available.
   let adapterPresent = sample.physicalAdapterConnected ?? (sample.connected || sample.ownAdapterInhibited)
   guard adapterPresent else {
-   if p.mode == .topUp { completedMode = .topUp }
+   if p.mode == .topUp || p.mode == .discharge { completedMode = p.mode }
    return result(.restore, "未连接电源，恢复系统控制")
   }
   if p.mode == .paused { return result(.inhibitCharge, "已手动暂停充电") }
@@ -88,6 +88,26 @@ public struct ChargeEngine: Sendable {
   }
   if sailingPaused && p.sailing && p.mode == .automatic && sample.percent < target && sample.percent > max(20, target - p.sailingWidth) {
    return result(.inhibitCharge, "航行模式：电量处于保持区间", target, sailingHold: true)
+  }
+  let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
+  let ordinaryDischargeRequested = p.mode != .calibration && (p.mode == .discharge || (p.automaticDischarge && sample.percent > target))
+  if ordinaryDischargeRequested {
+   if sample.percent <= dischargeFloor {
+    if p.mode == .discharge { completedMode = .discharge }
+   } else {
+    // Charging-temperature windows must not block an explicit discharge or
+    // survive it as a stale charging pause when control returns to charging.
+    heatPaused = false; nextThermalCheck = nil
+    if sample.percent <= target {
+     if p.mode == .discharge { completedMode = .discharge }
+     return result(.inhibitCharge, "已放电至目标", target)
+    }
+    return result(.forceDischarge, "主动放电至目标", target)
+   }
+  }
+  if p.mode == .automatic && target < 100 && !ordinaryDischargeRequested && sample.percent >= target {
+   sailingPaused = true
+   return result(.inhibitCharge, "达到充电上限", target)
   }
   let thermal = p.thermalBehavior ?? .fiveMinuteWindows
   if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; previousThermalBehavior = thermal }
@@ -106,11 +126,11 @@ public struct ChargeEngine: Sendable {
    }
    if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? "热保护：等待降温至阈值以下 2°C" : "热保护：五分钟暂停窗口", target, thermalHold: true) }
   } else { heatPaused = false; nextThermalCheck = nil }
-  let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
-  if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || (p.mode != .calibration && (p.mode == .discharge || p.automaticDischarge))) {
+  if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || ordinaryDischargeRequested) {
    if p.mode == .calibration { calibration = .refilling }
    if p.mode == .discharge { completedMode = .discharge }
-   return result(.allowCharge, "低电量保底：停止放电并充电")
+   let charge = sample.percent < target || p.mode == .calibration
+   return result(charge ? .allowCharge : .inhibitCharge, charge ? "低电量保底：停止放电并充电" : "低电量保底：停止主动放电", target)
   }
   if p.mode == .calibration {
    if calibration == .idle { calibration = .filling }
@@ -133,10 +153,6 @@ public struct ChargeEngine: Sendable {
     return result(sample.percent < limit ? .allowCharge : .inhibitCharge, "校准完成，日常上限控制")
    case .idle: break
    }
-  }
-  if p.mode == .discharge || (p.automaticDischarge && sample.percent > target) {
-   if sample.percent <= target { if p.mode == .discharge { completedMode = .discharge }; return result(.inhibitCharge, "已放电至目标", target) }
-   return result(.forceDischarge, "主动放电至目标", target)
   }
   if sample.percent >= target { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }
   sailingPaused = false

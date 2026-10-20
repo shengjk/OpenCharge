@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.20
+
+- Resolve ordinary manual/automatic discharge and target completion before the charging-temperature gate, including unavailable temperature readings. Keep required lid protection and the optional calibration-temperature enhancement.
+- End manual discharge on confirmed unplugging, while preserving an acknowledged input-cut fallback.
+- Clear stale charging-temperature windows when entering discharge, and stop completed daily limits below 100% before classifying a thermal wait.
+- When the discharge reserve is above a lower target, hold charging off instead of requesting charge pulses at the reserve; preserve manual completion even when temperature prevents recharge.
+- Add policy and injected production-model regressions for temperature/discharge priority, reserve conflicts, completion and calibration isolation.
+
 ## 0.3.19
 
 - Restore user-selected idle behavior during ordinary discharge: open-lid discharge no longer forces the idle assertion introduced in 0.3.18. Required closed-lid and calibration protection is retained.

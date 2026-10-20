@@ -80,6 +80,73 @@ final class PolicyTests: XCTestCase {
    XCTAssertEqual(engine.decide(sample(15, closed: true), policy: p).action, .allowCharge)
   }
  }
+ func testOrdinaryDischargeDoesNotWaitForChargingTemperature() {
+  let temperatures: [Double?] = [40, nil, .infinity]
+  for mode in [ChargeMode.discharge, .automatic] {
+   for temperature in temperatures {
+    var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = mode; p.automaticDischarge = true
+    let decision = engine.decide(sample(90, temperature: temperature), policy: p)
+    XCTAssertEqual(decision.action, .forceDischarge); XCTAssertEqual(decision.thermalHold, false)
+   }
+  }
+ }
+ func testHotManualDischargeCompletesAtTarget() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge
+  let decision = engine.decide(sample(80, temperature: 40), policy: p)
+  XCTAssertEqual(decision.action, .inhibitCharge); XCTAssertEqual(engine.completedMode, .discharge)
+  XCTAssertEqual(decision.thermalHold, false)
+ }
+ func testConfirmedUnplugEndsManualDischarge() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge
+  _ = engine.decide(sample(90), policy: p)
+  let unplugged = ChargeSample(percent: 90, temperature: nil, connected: false, physicalAdapterConnected: false, ownAdapterInhibited: true)
+  XCTAssertEqual(engine.decide(unplugged, policy: p).action, .restore)
+  XCTAssertEqual(engine.completedMode, .discharge)
+  p.mode = .automatic
+  XCTAssertEqual(engine.decide(sample(90), policy: p).action, .inhibitCharge)
+ }
+ func testOwnedInputCutDoesNotInventManualUnplugCompletion() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge
+  let cut = ChargeSample(percent: 90, temperature: nil, connected: false, physicalAdapterConnected: nil, ownAdapterInhibited: true)
+  XCTAssertEqual(engine.decide(cut, policy: p).action, .forceDischarge)
+  XCTAssertNil(engine.completedMode)
+ }
+ func testReserveAboveTargetDoesNotRequestChargePulses() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.limit = 20; p.reserve = 40
+  p.automaticDischarge = true; p.heatProtection = false
+  for value in [40.0, 39, 40] { XCTAssertEqual(engine.decide(sample(value), policy: p).action, .inhibitCharge) }
+  XCTAssertEqual(engine.decide(sample(41), policy: p).action, .forceDischarge)
+  p.mode = .discharge
+  XCTAssertEqual(engine.decide(sample(40), policy: p).action, .inhibitCharge)
+  XCTAssertEqual(engine.completedMode, .discharge)
+  p.heatProtection = true
+  XCTAssertEqual(engine.decide(sample(40, temperature: 40), policy: p).action, .inhibitCharge)
+  XCTAssertEqual(engine.completedMode, .discharge)
+ }
+ func testDischargeLeavesNoStaleChargingTemperatureWindow() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.sailing = false
+  XCTAssertEqual(engine.decide(sample(50, temperature: 40), policy: p).thermalHold, true)
+  p.mode = .discharge; p.limit = 40
+  XCTAssertEqual(engine.decide(sample(50, temperature: 40, seconds: 1), policy: p).action, .forceDischarge)
+  p.mode = .automatic; p.limit = 80
+  XCTAssertEqual(engine.decide(sample(50, temperature: 30, seconds: 2), policy: p).action, .allowCharge)
+ }
+ func testCalibrationTemperatureEnhancementStillAppliesToDraining() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .calibration
+  _ = engine.decide(sample(100), policy: p)
+  XCTAssertEqual(engine.decide(sample(90, temperature: 40), policy: p).action, .forceDischarge)
+  p.protectDuringCalibration = true
+  let protected = engine.decide(sample(90, temperature: 40), policy: p)
+  XCTAssertEqual(protected.action, .inhibitCharge); XCTAssertEqual(protected.thermalHold, true)
+  XCTAssertEqual(engine.calibration, .draining)
+ }
+ func testOrdinaryAutomaticLimitCompletionPrecedesHeatWait() {
+  for automaticDischarge in [false, true] {
+   var engine = ChargeEngine(); var p = ChargePolicy(); p.automaticDischarge = automaticDischarge
+   let complete = engine.decide(sample(80, temperature: 40), policy: p)
+   XCTAssertEqual(complete.action, .inhibitCharge); XCTAssertEqual(complete.thermalHold, false)
+  }
+ }
  func testThermalPauseKeepsTopUpAndDepartureTargets() {
   var topUp = ChargePolicy(); topUp.mode = .topUp
   var engine = ChargeEngine()

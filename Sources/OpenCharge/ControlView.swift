@@ -24,6 +24,7 @@ struct ControlView: View {
    Text("电量自然下降至下限再充电，避免频繁补充。").font(.caption).foregroundStyle(.secondary)
    Divider(); Toggle("热保护", isOn: $m.config.policy.heatProtection)
    HStack { Text("暂停充电温度"); Spacer(); Stepper("\(Int(m.config.policy.maxTemperature))°C", value: $m.config.policy.maxTemperature, in: 25...45) }.disabled(!m.config.policy.heatProtection)
+   Text("热保护用于普通充电，不拦截主动放电；校准温控由下方增强选项单独决定。").font(.caption).foregroundStyle(.secondary)
    Picker("温控恢复规则", selection: Binding(get: { m.config.policy.thermalBehavior ?? .fiveMinuteWindows }, set: { m.config.policy.thermalBehavior = $0 })) { Text("五分钟窗口").tag(ThermalBehavior.fiveMinuteWindows); Text("降温 2°C").tag(ThermalBehavior.degreeHysteresis) }
    Toggle("校准期间也启用温控（可选增强）", isOn: Binding(get: { m.config.policy.protectDuringCalibration ?? false }, set: { m.config.policy.protectDuringCalibration = $0 }))
    Toggle("高于上限时自动放电", isOn: $m.config.policy.automaticDischarge)
@@ -52,6 +53,7 @@ struct ControlView: View {
    Text("校准阶段：\(m.calibration.displayName)").font(.caption).foregroundStyle(.secondary)
    Text("校准顺序：充满 → 放电至 10% → 充满 → 保持一小时 → 恢复日常目标；默认校准期间暂停应用温控，可启用增强保护；可随时切回自动模式。").font(.caption).foregroundStyle(.secondary)
    Stepper("主动放电保底：\(Int(m.config.policy.reserve))%", value: $m.config.policy.reserve, in: 10...40)
+   Text("保底仅用于普通放电。电量已高于目标时保持停充，避免在保底与目标之间反复充放电。").font(.caption).foregroundStyle(.secondary)
   }
   Card("出行准备 · 新功能") {
    Toggle("启用出行充电计划", isOn: Binding(get: { m.config.policy.departure != nil }, set: { m.config.policy.departure = $0 ? Date().addingTimeInterval(7200) : nil }))

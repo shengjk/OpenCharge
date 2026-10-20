@@ -56,6 +56,7 @@ import ChargeHardware
   try sleepOrderingChecks(defaults: defaults)
   try lidDischargeChecks(defaults: defaults)
   try thermalProtectionChecks(defaults: defaults)
+  try dischargeThermalChecks(defaults: defaults)
   let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("fixture must never invoke an uninjected lock") })
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)
