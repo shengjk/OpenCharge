@@ -112,3 +112,8 @@ The final 0.3.16 native package passed the same system-Shortcuts scenario in mon
 Final native/universal packages passed strict signature and embedded-helper checks. The final native Control-page CPU-time delta samples were 2.19% and 0.00% of one core over two five-second intervals on one Mac, not a general benchmark. The full local suite passed 95 core methods, 39 sleep scenarios (eight abrupt subprocesses), 49 charge-recovery and 47 LED-recovery scenarios plus existing integrations; the final affected dashboard fixture also passed after the opt-in persistence correction.
 
 The final callback fixture additionally resumed an injected holding checkpoint with control disabled, issued the real set-mode calibration intent, and sampled the next policy evaluation. It verified the engine no longer remained in holding, so clearing the displayed phase alone cannot satisfy the regression; a repeated reload preserved the new phase. The resumed checkpoint is a fixture, not a real charging cycle.
+
+
+## 0.3.17 required-protection ordering
+
+The isolated dashboard harness calls the production `applyHardwareDecision` method with injected helper responses. The pre-fix code reproduced a charge/discharge command before the required protection request had succeeded. Both actions now require the sleep-override acknowledgement first. Failed protection sends only its attempted override and fixed restoration; successful protection precedes the sleep-entry policy and charge command. A later charge-command failure restores the session, while normal completion retains cleanup ownership until release. All helper calls in these cases are injected; no real power setter, sleep assertion or physical charge/discharge cycle is exercised.

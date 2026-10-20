@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.17
+
+- Require an acknowledged system/lid sleep override before sending charge or discharge commands for a protected session. Capability detection alone no longer permits the charge action.
+- If protection fails, disable control and attempt restoration before any new charge action; preserve cleanup after a later charge-command failure.
+- Add injected production-model regression coverage for both charge and discharge ordering. No physical power operation was performed.
+
 ## 0.3.16
 
 - Reset the live calibration engine, displayed phase and interrupted flag when an external start request clears its checkpoint.

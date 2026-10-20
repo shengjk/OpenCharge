@@ -231,7 +231,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    applyHardwareDecision(plan)
    updateMagSafe()
    do { try sleepController.setPreventIdleSleep(config.hardwareEnabled && plan.preventIdleSleep) } catch { self.error = error.localizedDescription }
-   updateSleepOverride(plan)
+   if !plan.preventSystemAndLidSleep { updateSleepOverride(plan) }
    handleLidState(LidStateObserver.currentState())
    if config.historyEnabled && (history.last.map { Date().timeIntervalSince($0.date) >= 60 } ?? true) {
     history.append(HistoryPoint(date: Date(), percent: r.percent, temperature: r.temperature, watts: watts, reason: decision.reason, temperatureSource: r.temperatureSource, systemWatts: r.systemPowerW, adapterWatts: r.adapterPowerW, limit: config.policy.limit, hardwarePercent: r.hardwarePercent, health: r.healthPercent, cycles: r.cycleCount))
@@ -257,6 +257,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     guard !sleepOverrideFailed else { throw HelperError.rejected("睡眠控制上次失败，请重新启用硬件控制后重试") }
     if sleepOverrideCapability == nil { inspectSleepInterfaces(request: request) }
     guard sleepOverrideCapability == true else { throw HelperError.rejected("此操作需要兼容的睡眠控制服务，请先更新服务") }
+    // Capability discovery alone does not establish protection. Wait for the
+    // actual request to succeed before changing charging or adapter input.
+    updateSleepOverride(plan, request: request)
+    guard config.hardwareEnabled else { helperStatus = "控制失败"; return }
    }
    attempted = true
    _ = try request(config.policy.stopInSleep && !plan.preventSystemAndLidSleep ? "sleepPolicyOn" : "sleepPolicyOff")

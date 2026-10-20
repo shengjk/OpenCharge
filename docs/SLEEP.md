@@ -15,6 +15,10 @@ Sleep overrides are not retained on quit, even when charge inhibition is retaine
 Fake/file tests and source inspection cannot prove real lid/display behavior, asynchronous powerd effects, kernel compatibility, actual reboot recovery or multi-controller isolation. Current development packages remain ad-hoc signed and not notarized. See [status](STATUS.md) and [verification](TESTING.md).
 
 
+## Ordering required protection
+
+For a session requiring full system/lid protection, the app checks helper capabilities and waits for the fixed sleep-override request to succeed before changing the sleep-entry charging policy or issuing a charge/discharge command. A capability response by itself does not establish protection. If enabling protection fails, control is disabled and fixed restoration is attempted; the charge action is skipped. If a subsequent charge command fails, the existing cleanup path also restores the protected session. Sessions no longer requiring protection release it after applying the ordinary charge decision. The periodic refresh sends one enabling request, not a second duplicate request after the charge command.
+
 ## Optional lid locking
 
 A separate, default-off option requests a lock when the lid is closed during an acknowledged full sleep override in the current user's active console session. It can be used during required calibration protection as well as optional until-limit protection. Each observed closed interval allows at most one attempt, including failures; reopening the lid rearms it. Missing lid state does not invent an open event. Enabling the option or starting a protected session while already closed can issue the first request. Read-only interface inspection does not rearm it.

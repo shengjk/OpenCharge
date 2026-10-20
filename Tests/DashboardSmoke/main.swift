@@ -53,6 +53,7 @@ import ChargeHardware
   var config = Configuration(); config.policy.limit = 80; config.historyEnabled = false
   try config.save()
   try await automationReloadChecks(defaults: defaults)
+  try sleepOrderingChecks(defaults: defaults)
   let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("fixture must never invoke an uninjected lock") })
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)
@@ -80,7 +81,7 @@ import ChargeHardware
   var protectedCommands: [String] = []
   model.decision = Decision(.allowCharge, "fixture", limit: 80)
   model.applyHardwareDecision(sleepPlan, request: { protectedCommands.append($0); return "fixture acknowledgement" })
-  precondition(protectedCommands == ["sleepPolicyOff", "allowCharge"], "required full protection must suppress the conflicting sleep-entry policy")
+  precondition(protectedCommands == ["sleepOverrideOn", "sleepPolicyOff", "allowCharge"], "required full protection must succeed before suppressing sleep-entry policy and charging")
   model.config.policy.stopInSleep = false
   model.updateSleepOverride(sleepPlan, request: { _ in "fixture acknowledgement" })
   model.handleLidState(true, consoleActive: false, request: { lockRequests += 1 }); precondition(lockRequests == 0)
