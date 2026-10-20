@@ -86,11 +86,16 @@ public struct ChargeEngine: Sendable {
    let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
    if departure.timeIntervalSince(sample.date) <= hours * 3600 { target = p.departureTarget }
   }
-  if sailingPaused && p.sailing && p.mode == .automatic && sample.percent < target && sample.percent > max(20, target - p.sailingWidth) {
+  // Ordinary target decisions compare whole percentages from single-precision
+  // readings. Sailing's lower boundary remains a fractional comparison.
+  let wholePercent = Int(Float(sample.percent))
+  let wholeTarget = Int(Float(target))
+  let sailingFloor = max(Float(20), Float(target) - Float(p.sailingWidth))
+  if sailingPaused && p.sailing && p.mode == .automatic && wholePercent < wholeTarget && Float(sample.percent) > sailingFloor {
    return result(.inhibitCharge, "航行模式：电量处于保持区间", target, sailingHold: true)
   }
   let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
-  let ordinaryDischargeRequested = p.mode != .calibration && (p.mode == .discharge || (p.automaticDischarge && sample.percent > target))
+  let ordinaryDischargeRequested = p.mode != .calibration && (p.mode == .discharge || (p.automaticDischarge && wholePercent > wholeTarget))
   if ordinaryDischargeRequested {
    if sample.percent <= dischargeFloor {
     if p.mode == .discharge { completedMode = .discharge }
@@ -98,14 +103,14 @@ public struct ChargeEngine: Sendable {
     // Charging-temperature windows must not block an explicit discharge or
     // survive it as a stale charging pause when control returns to charging.
     heatPaused = false; nextThermalCheck = nil
-    if sample.percent <= target {
+    if wholePercent <= wholeTarget {
      if p.mode == .discharge { completedMode = .discharge }
      return result(.inhibitCharge, "已放电至目标", target)
     }
     return result(.forceDischarge, "主动放电至目标", target)
    }
   }
-  if p.mode == .automatic && target < 100 && !ordinaryDischargeRequested && sample.percent >= target {
+  if p.mode == .automatic && wholeTarget < 100 && !ordinaryDischargeRequested && wholePercent >= wholeTarget {
    sailingPaused = true
    return result(.inhibitCharge, "达到充电上限", target)
   }
@@ -129,7 +134,7 @@ public struct ChargeEngine: Sendable {
   if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || ordinaryDischargeRequested) {
    if p.mode == .calibration { calibration = .refilling }
    if p.mode == .discharge { completedMode = .discharge }
-   let charge = sample.percent < target || p.mode == .calibration
+   let charge = wholePercent < wholeTarget || p.mode == .calibration
    return result(charge ? .allowCharge : .inhibitCharge, charge ? "低电量保底：停止放电并充电" : "低电量保底：停止主动放电", target)
   }
   if p.mode == .calibration {
@@ -154,7 +159,8 @@ public struct ChargeEngine: Sendable {
    case .idle: break
    }
   }
-  if sample.percent >= target { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }
+  let reachedTarget = p.mode == .automatic || p.mode == .discharge ? wholePercent >= wholeTarget : sample.percent >= target
+  if reachedTarget { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }
   sailingPaused = false
   return result(.allowCharge, target != limit ? "临时目标充电" : "低于目标，允许充电", target)
  }

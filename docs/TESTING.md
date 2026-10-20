@@ -132,3 +132,8 @@ Corrects the 0.3.18 default that forced public idle inhibition during ordinary d
 ## 0.3.20 ordinary discharge and charging-temperature priority
 
 Core cases cover ordinary manual/automatic discharge with high, missing and nonfinite temperature readings; hot target completion; stale charging-window removal; daily target completion below 100%; and reserve/target conflicts without charge pulses. The optional calibration-temperature enhancement still pauses calibration draining when selected. The dashboard fixture derives actual engine decisions from a hot sample, then injects all helper and idle operations for manual/automatic and open/closed cases. Required closed-lid protection remains before the discharge command. Additional unplug cases end manual discharge on explicit physical disconnection and preserve it during an acknowledged own input cut with unavailable raw presence. These are software regressions, not physical high-temperature discharge or cable tests.
+
+
+## 0.3.21 fractional percentage boundaries
+
+Core cases cover manual discharge completion and automatic-discharge entry at whole percentage boundaries, fractional configured daily limits, single-precision values near the next integer, fractional Sailing restart thresholds, and isolation from reserve and calibration comparisons. The production-model fixture follows closed-lid discharge from 90% to 80.6% with an 80% target; it verifies charging is inhibited before selected idle and full sleep protection are released. Helper, idle and lock operations are injected. No physical threshold, charge or lid behavior is established by these software checks.

@@ -36,3 +36,38 @@ import ChargeCore
  }
  print("Charging temperature does not block ordinary discharge; actual policy decisions retain required lid preflight; all actuators injected")
 }
+
+@MainActor func fractionalDischargeChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load()
+ defer { try? original.save() }
+ var fixture = original; fixture.hardwareEnabled = false; fixture.systemActionsEnabled = false
+ fixture.policy = ChargePolicy(); fixture.calibrationCheckpoint = nil
+ try fixture.save()
+ for mode in [ChargeMode.discharge, .automatic] {
+  let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+   screenLockRequest: { preconditionFailure("no locks in fractional discharge fixture") })
+  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
+  var policy = fixture.policy; policy.mode = mode; policy.automaticDischarge = mode == .automatic
+  model.config.policy = policy; model.config.hardwareEnabled = true
+  var engine = ChargeEngine()
+  for percent in [90.0, 80.6] {
+   let decision = engine.decide(ChargeSample(percent: percent, temperature: 40, lidClosed: true), policy: policy)
+   model.decision = decision
+   let running = percent == 90
+   precondition(decision.action == (running ? .forceDischarge : .inhibitCharge))
+   if !running { precondition(engine.completedMode == (mode == .discharge ? .discharge : nil)) }
+   let plan = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true,
+    action: decision.action, percent: percent, target: decision.effectiveLimit, calibrating: false,
+    idleUntilTarget: true, systemUntilTarget: true, allowDisplaySleep: true, lidClosed: true,
+    thermalHold: decision.thermalHold == true)
+   var events: [String] = []
+   model.applyHardwareDecision(plan, request: { events.append($0); return "fixture acknowledgement" },
+    setIdleSleep: { events.append("idle:\($0)") })
+   if !plan.preventSystemAndLidSleep { model.updateSleepOverride(plan, request: { events.append($0); return "fixture release" }) }
+   let expected = running ? ["idle:true", "sleepOverrideOn", "sleepPolicyOff", "forceDischarge"] : ["sleepPolicyOff", "inhibitCharge", "idle:false", "sleepOverrideRestore"]
+   precondition(events == expected && model.config.hardwareEnabled)
+  }
+  model.config.hardwareEnabled = false
+ }
+ print("Fractional discharge completes in its target percentage bin and releases selected lid/idle protection; all actuators injected")
+}

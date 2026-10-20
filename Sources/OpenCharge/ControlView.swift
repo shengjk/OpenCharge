@@ -31,6 +31,7 @@ struct ControlView: View {
   }
   Card("电量基准与睡眠") {
    Toggle("使用硬件电量作为控制基准", isOn: Binding(get: { m.config.policy.useHardwarePercent ?? false }, set: { m.config.policy.useHardwarePercent = $0 }))
+   Text("普通充电上限和放电目标按整数电量判断；航行下限保留小数精度。").font(.caption).foregroundStyle(.secondary)
    Text("macOS \(m.title) · 硬件 \(m.reading?.hardwarePercent.map { String(format: "%.1f%%", $0) } ?? "不可用")").font(.caption).foregroundStyle(.secondary)
    Toggle("充到目标前阻止空闲睡眠", isOn: Binding(get: { m.config.policy.keepAwakeUntilLimit ?? false }, set: { m.config.policy.keepAwakeUntilLimit = $0 }))
    Toggle("日常充到上限前阻止系统与合盖睡眠（可选）", isOn: Binding(get: { m.config.policy.keepAwakeWithLidClosed ?? false }, set: { m.config.policy.keepAwakeWithLidClosed = $0; if $0 { m.config.policy.stopInSleep = false } }))

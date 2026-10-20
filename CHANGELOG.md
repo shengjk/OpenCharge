@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.21
+
+- Compare ordinary daily charge/discharge targets in whole percentage bins using single-precision input values, including fractional hardware readings and fractional configured limits.
+- Preserve fractional Sailing lower boundaries and the independent reserve/calibration behavior.
+- Add boundary regressions and injected production-model completion checks that release selected sleep protection after stopping discharge at 80.6% for an 80% target.
+
 ## 0.3.20
 
 - Resolve ordinary manual/automatic discharge and target completion before the charging-temperature gate, including unavailable temperature readings. Keep required lid protection and the optional calibration-temperature enhancement.
