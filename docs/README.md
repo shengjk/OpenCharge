@@ -16,5 +16,4 @@
 - [Architecture](ARCHITECTURE.md)
 - [Verification](TESTING.md)
 - [Hardware protocols](HARDWARE.md) and [service management](SERVICE-MANAGEMENT.md)
-- [Decisions / 整理决策](DECISIONS.zh-CN.md)
 - [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md)

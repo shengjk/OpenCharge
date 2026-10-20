@@ -41,7 +41,7 @@ bash Scripts/build-universal.sh
 
 ## 文档与贡献
 
-[软件更新](docs/UPDATES.md) · [使用指南](docs/USAGE.md) · [架构](docs/ARCHITECTURE.md) · [验证](docs/TESTING.md) · [整理决策](docs/DECISIONS.zh-CN.md) · [更新记录](CHANGELOG.md)
+[软件更新](docs/UPDATES.md) · [使用指南](docs/USAGE.md) · [架构](docs/ARCHITECTURE.md) · [验证](docs/TESTING.md) · [更新记录](CHANGELOG.md)
 
 数据目录为 `~/Library/Application Support/OpenCharge/`。导出由用户主动选择，不自动上传。[安全与隐私](SECURITY.md)。MIT 许可；第三方声明保留在 `docs/licenses/`。
 
