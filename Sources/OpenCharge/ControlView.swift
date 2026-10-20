@@ -43,7 +43,7 @@ struct ControlView: View {
    Toggle("睡眠时停止充电", isOn: $m.config.policy.stopInSleep).disabled(m.config.policy.keepAwakeWithLidClosed == true)
    Toggle("退出应用后保持停充", isOn: $m.config.policy.stopOnQuit)
    Text("退出后停充是显式持久状态，可重新打开应用并关闭硬件控制来恢复。服务重启或机器关机后的恢复能力依硬件而定。").font(.caption).foregroundStyle(.secondary)
-   Text("主动放电期间自动阻止空闲睡眠，合盖时另需系统睡眠保护，无须单独开启合盖放电。校准必须阻止系统睡眠并保持显示器开启。日常充到上限前的系统睡眠选项独立生效。所需保护必须在充放电命令前确认；接口不可用或控制失败时停止硬件控制并尝试恢复。物理效果仍待实测；拔线、完成、退出或心跳超时会尝试释放。").font(.caption).foregroundStyle(.secondary)
+   Text("普通充放电的空闲睡眠由上方选项控制。合盖主动放电需要系统睡眠保护；校准全程需要系统保护并保持显示器开启。启用充到上限保护后，温控暂停仍保留保护，航行保持和手动暂停则释放。所需保护必须在充放电命令前确认；接口不可用或控制失败时停止硬件控制并尝试恢复。物理效果仍待实测；拔线、完成、退出或心跳超时会尝试释放。").font(.caption).foregroundStyle(.secondary)
   }
   Card("操作与校准") {
    Picker("当前模式", selection: $m.config.policy.mode) { ForEach(ChargeMode.allCases, id: \.self) { Text(modeName($0)).tag($0) } }.pickerStyle(.segmented)

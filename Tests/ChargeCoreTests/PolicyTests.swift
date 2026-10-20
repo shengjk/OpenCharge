@@ -80,6 +80,36 @@ final class PolicyTests: XCTestCase {
    XCTAssertEqual(engine.decide(sample(15, closed: true), policy: p).action, .allowCharge)
   }
  }
+ func testThermalPauseKeepsTopUpAndDepartureTargets() {
+  var topUp = ChargePolicy(); topUp.mode = .topUp
+  var engine = ChargeEngine()
+  XCTAssertEqual(engine.decide(sample(90, temperature: 40), policy: topUp).effectiveLimit, 100)
+  var departure = ChargePolicy(); departure.departure = epoch.addingTimeInterval(3600)
+  var planned = ChargeEngine()
+  XCTAssertEqual(planned.decide(sample(50, temperature: 40), policy: departure).effectiveLimit, 100)
+ }
+ func testSailingHoldKeepsPriorityOverHeatWait() {
+  var engine = ChargeEngine(); var policy = ChargePolicy(); policy.sailingWidth = 10
+  let decision = engine.decide(sample(77, temperature: 40), policy: policy)
+  XCTAssertEqual(decision.action, .inhibitCharge)
+  XCTAssertEqual(decision.sailingHold, true)
+  XCTAssertEqual(decision.thermalHold, false)
+ }
+ func testThermalWaitAndManualPauseAreDistinct() {
+  var engine = ChargeEngine(); var p = ChargePolicy()
+  let hot = engine.decide(sample(50, temperature: 40), policy: p)
+  XCTAssertEqual(hot.thermalHold, true)
+  p.mode = .paused
+  let paused = engine.decide(sample(50, temperature: nil), policy: p)
+  XCTAssertEqual(paused.action, .inhibitCharge); XCTAssertEqual(paused.thermalHold, false)
+ }
+ func testHeatAndSailingUseInclusiveTwentyPercentFloor() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.limit = 24; p.sailingWidth = 5
+  let boundary = engine.decide(sample(20, temperature: 40), policy: p)
+  XCTAssertEqual(boundary.action, .allowCharge); XCTAssertEqual(boundary.sailingHold, false); XCTAssertEqual(boundary.thermalHold, false)
+  var hot = ChargeEngine(); p.sailing = false
+  XCTAssertEqual(hot.decide(sample(20.1, temperature: 40), policy: p).thermalHold, true)
+ }
  func testTopUpBypassesSailingAndUsesFullTarget() {
   var engine = ChargeEngine(); var p = ChargePolicy()
   _ = engine.decide(sample(80), policy: p); p.mode = .topUp

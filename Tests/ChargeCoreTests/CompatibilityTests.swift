@@ -1,6 +1,11 @@
 import XCTest
 @testable import ChargeCore
 final class CompatibilityTests: XCTestCase {
+ func testLegacyDecisionWithoutThermalFlagStillDecodes() {
+  let data = Data(#"{"action":"inhibitCharge","reason":"fixture","effectiveLimit":80,"sailingHold":false}"#.utf8)
+  let decision = try? JSONDecoder().decode(Decision.self, from: data)
+  XCTAssertEqual(decision?.action, .inhibitCharge); XCTAssertNil(decision?.thermalHold)
+ }
  private let epoch = Date(timeIntervalSince1970: 1_700_000_000)
  private var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(secondsFromGMT: 0)!; return c }
  private func date(_ y: Int, _ m: Int, _ d: Int) -> Date { calendar.date(from: DateComponents(year: y, month: m, day: d, hour: 9))! }

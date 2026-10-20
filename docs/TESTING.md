@@ -122,3 +122,8 @@ The isolated dashboard harness calls the production `applyHardwareDecision` meth
 ## 0.3.18 discharge and lid transitions
 
 Core checks cover manual/automatic closed-lid discharge without an extra opt-in, legacy true/false flag decoding without arming hardware, idle protection with optional settings off, open/closed/unknown lid states, display choices, completion, explicit unplugging and acknowledged input cuts. The dashboard harness injects all helper and idle-assertion operations. It checks idle-creation failure before any power request, closed → open → closed protection ordering, completion before release, immediate lid-edge callback delivery, duplicate/unknown observations and quit suppression. No real assertion, helper setter, physical lid transition or discharge cycle is exercised by these fixtures. Native monitoring-only validation is separate from these injected cases.
+
+
+## 0.3.19 temperature waits and selected sleep protection
+
+Corrects the 0.3.18 default that forced public idle inhibition during ordinary discharge. The updated lid fixtures require an explicit idle selection while retaining full closed-lid protection. Core cases distinguish confirmed thermal waiting from Sailing and manual pause, retain Top Up/departure targets, cover the inclusive 20% heat exemption and Sailing floor, and decode older decisions without the optional thermal flag. A production-model fixture follows a hot pause through cooling and target completion: the selected full override is acknowledged before each power command and released after completion. All helper and idle-assertion operations are injected; no physical temperature/sleep/charge behavior is established by these checks.

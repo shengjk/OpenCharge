@@ -21,9 +21,9 @@ final class SleepProtectionTests: XCTestCase {
   XCTAssertTrue(p.preventIdleSleep); XCTAssertTrue(p.preventSystemAndLidSleep)
   XCTAssertFalse(plan(connected: false, physical: false, action: .forceDischarge).preventSystemAndLidSleep)
  }
- func testOrdinaryDischargeRequiresIdleProtectionWithOptionalSettingsOff() {
+ func testOrdinaryOpenLidDischargeLeavesIdleProtectionOptional() {
   let p = plan(action: .forceDischarge, idle: false, full: false)
-  XCTAssertTrue(p.preventIdleSleep)
+  XCTAssertFalse(p.preventIdleSleep)
   XCTAssertFalse(p.preventSystemAndLidSleep)
  }
  func testOwnedInputCutKeepsProtectionUnlessExplicitlyUnplugged() {
@@ -31,7 +31,7 @@ final class SleepProtectionTests: XCTestCase {
    let p = SleepProtectionPlan.evaluate(controlEnabled: true, connected: false, physicalAdapterConnected: physical,
     action: .forceDischarge, percent: 90, target: 80, calibrating: false,
     idleUntilTarget: false, systemUntilTarget: false, allowDisplaySleep: true, lidClosed: true, ownAdapterInhibited: true)
-   XCTAssertEqual(p.preventIdleSleep, physical != false)
+   XCTAssertFalse(p.preventIdleSleep)
    XCTAssertEqual(p.preventSystemAndLidSleep, physical != false)
   }
  }
@@ -57,7 +57,7 @@ final class SleepProtectionTests: XCTestCase {
  }
  func testClamshellDischargeNeedsFullProtectionWithoutOptionalLimitSetting() {
   let p = plan(connected: false, action: .forceDischarge, percent: 90, idle: false, full: false, lid: true)
-  XCTAssertTrue(p.preventIdleSleep); XCTAssertTrue(p.preventSystemAndLidSleep); XCTAssertFalse(p.preventDisplaySleep)
+  XCTAssertFalse(p.preventIdleSleep); XCTAssertTrue(p.preventSystemAndLidSleep); XCTAssertFalse(p.preventDisplaySleep)
   XCTAssertFalse(plan(action: .forceDischarge, full: false).preventSystemAndLidSleep)
  }
  func testDischargeLidAndDisplayTransitionsReleaseAtCompletion() {
@@ -65,13 +65,29 @@ final class SleepProtectionTests: XCTestCase {
   for lid in lids {
    for allowDisplay in [false, true] {
     let p = plan(action: .forceDischarge, idle: false, full: false, display: allowDisplay, lid: lid)
-    XCTAssertTrue(p.preventIdleSleep)
+    XCTAssertFalse(p.preventIdleSleep)
     XCTAssertEqual(p.preventSystemAndLidSleep, lid != false)
     XCTAssertEqual(p.preventDisplaySleep, lid != false && !allowDisplay)
     for released in [plan(enabled: false, action: .forceDischarge, lid: lid), plan(physical: false, action: .forceDischarge, lid: lid), plan(action: .inhibitCharge, lid: lid), plan(action: .restore, lid: lid)] {
      XCTAssertFalse(released.preventIdleSleep); XCTAssertFalse(released.preventSystemAndLidSleep); XCTAssertFalse(released.preventDisplaySleep)
     }
    }
+  }
+ }
+ func testConfirmedThermalWaitKeepsOnlySelectedUntilTargetProtection() {
+  for idle in [false, true] {
+   for full in [false, true] {
+    let p = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true,
+     action: .inhibitCharge, percent: 50, target: 80, calibrating: false,
+     idleUntilTarget: idle, systemUntilTarget: full, allowDisplaySleep: true, thermalHold: true)
+    XCTAssertEqual(p.preventIdleSleep, idle); XCTAssertEqual(p.preventSystemAndLidSleep, full)
+   }
+  }
+  for percent in [80.0, 90, .nan] {
+   let p = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true,
+    action: .inhibitCharge, percent: percent, target: 80, calibrating: false,
+    idleUntilTarget: true, systemUntilTarget: true, allowDisplaySleep: true, thermalHold: true)
+   XCTAssertFalse(p.preventIdleSleep); XCTAssertFalse(p.preventSystemAndLidSleep)
   }
  }
  func testMutuallyExclusiveSleepPolicyAndImportedOverride() {

@@ -45,6 +45,7 @@ public struct ChargeSample: Codable, Sendable {
 }
 public struct Decision: Codable, Sendable {
  public var sailingHold: Bool? = nil
+ public var thermalHold: Bool? = nil
  public var action: ChargeAction; public var reason: String; public var effectiveLimit: Double
  public init(_ action: ChargeAction, _ reason: String, limit: Double) { self.action = action; self.reason = reason; effectiveLimit = limit }
 }
@@ -68,7 +69,7 @@ public struct ChargeEngine: Sendable {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
-  func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false) -> Decision { var value = Decision(a, r, limit: l ?? limit); value.sailingHold = sailingHold; return value }
+  func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false) -> Decision { var value = Decision(a, r, limit: l ?? limit); value.sailingHold = sailingHold; value.thermalHold = thermalHold; return value }
   if p.mode != .calibration { calibration = .idle; holdingSince = nil }
   if p.mode != previousMode { sailingPaused = true; previousMode = p.mode }
   guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, "无效电池读数，恢复系统控制") }
@@ -79,12 +80,21 @@ public struct ChargeEngine: Sendable {
    if p.mode == .topUp { completedMode = .topUp }
    return result(.restore, "未连接电源，恢复系统控制")
   }
+  if p.mode == .paused { return result(.inhibitCharge, "已手动暂停充电") }
+  var target = p.mode == .topUp ? 100.0 : limit
+  if let departure = p.departure, departure > sample.date {
+   let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
+   if departure.timeIntervalSince(sample.date) <= hours * 3600 { target = p.departureTarget }
+  }
+  if sailingPaused && p.sailing && p.mode == .automatic && sample.percent < target && sample.percent > max(20, target - p.sailingWidth) {
+   return result(.inhibitCharge, "航行模式：电量处于保持区间", target, sailingHold: true)
+  }
   let thermal = p.thermalBehavior ?? .fiveMinuteWindows
   if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; previousThermalBehavior = thermal }
-  // 1.35 release behavior: heat protection cannot prevent charging below 20%.
-  let thermalActive = p.heatProtection && sample.percent >= 20 && (p.mode != .calibration || p.protectDuringCalibration == true)
+  // The low-charge boundary includes 20% itself.
+  let thermalActive = p.heatProtection && sample.percent > 20 && (p.mode != .calibration || p.protectDuringCalibration == true)
   if thermalActive {
-   guard let t = sample.temperature, t.isFinite else { return result(.inhibitCharge, "温度不可用，等待可靠读数") }
+   guard let t = sample.temperature, t.isFinite else { return result(.inhibitCharge, "温度不可用，等待可靠读数", target) }
    switch thermal {
    case .degreeHysteresis:
     if t >= p.maxTemperature { heatPaused = true }
@@ -94,9 +104,8 @@ public struct ChargeEngine: Sendable {
      if sample.date >= check { heatPaused = t >= p.maxTemperature; nextThermalCheck = sample.date.addingTimeInterval(300) }
     } else if t >= p.maxTemperature { heatPaused = true; nextThermalCheck = sample.date.addingTimeInterval(300) }
    }
-   if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? "热保护：等待降温至阈值以下 2°C" : "热保护：五分钟暂停窗口") }
+   if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? "热保护：等待降温至阈值以下 2°C" : "热保护：五分钟暂停窗口", target, thermalHold: true) }
   } else { heatPaused = false; nextThermalCheck = nil }
-  if p.mode == .paused { return result(.inhibitCharge, "已手动暂停充电") }
   let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
   if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || (p.mode != .calibration && (p.mode == .discharge || p.automaticDischarge))) {
    if p.mode == .calibration { calibration = .refilling }
@@ -125,17 +134,11 @@ public struct ChargeEngine: Sendable {
    case .idle: break
    }
   }
-  var target = p.mode == .topUp ? 100.0 : limit
-  if let departure = p.departure, departure > sample.date {
-   let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
-   if departure.timeIntervalSince(sample.date) <= hours * 3600 { target = p.departureTarget }
-  }
   if p.mode == .discharge || (p.automaticDischarge && sample.percent > target) {
    if sample.percent <= target { if p.mode == .discharge { completedMode = .discharge }; return result(.inhibitCharge, "已放电至目标", target) }
    return result(.forceDischarge, "主动放电至目标", target)
   }
   if sample.percent >= target { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }
-  if sample.percent >= 20 && sailingPaused && p.sailing && p.mode == .automatic && sample.percent > target - p.sailingWidth { return result(.inhibitCharge, "航行模式：电量处于保持区间", target, sailingHold: true) }
   sailingPaused = false
   return result(.allowCharge, target != limit ? "临时目标充电" : "低于目标，允许充电", target)
  }

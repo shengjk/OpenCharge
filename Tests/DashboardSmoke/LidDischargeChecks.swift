@@ -12,10 +12,10 @@ import ChargeCore
   ChargeModel(dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("no locks in lid/discharge fixture") })
  }
- func plan(_ action: ChargeAction, lid: Bool?) -> SleepProtectionPlan {
+ func plan(_ action: ChargeAction, lid: Bool?, idle: Bool = false) -> SleepProtectionPlan {
   .evaluate(controlEnabled: true, connected: false, physicalAdapterConnected: true,
    action: action, percent: 90, target: 80, calibrating: false,
-   idleUntilTarget: false, systemUntilTarget: false, allowDisplaySleep: true, lidClosed: lid)
+   idleUntilTarget: idle, systemUntilTarget: false, allowDisplaySleep: true, lidClosed: lid)
  }
  let observer = model(); var refreshes = 0
  observer.handleLidStateNotification(false, refresh: { refreshes += 1 })
@@ -37,11 +37,11 @@ import ChargeCore
  let failed = model(); failed.config.hardwareEnabled = true
  failed.decision = Decision(.forceDischarge, "fixture", limit: 80)
  var failedCommands: [String] = []; var failedIdle: [Bool] = []
- failed.applyHardwareDecision(plan(.forceDischarge, lid: false), request: { failedCommands.append($0); return "fixture" }, setIdleSleep: {
+ failed.applyHardwareDecision(plan(.forceDischarge, lid: false, idle: true), request: { failedCommands.append($0); return "fixture" }, setIdleSleep: {
   failedIdle.append($0); if $0 { throw CocoaError(.fileWriteUnknown) }
  })
  precondition(failedCommands.isEmpty && failedIdle == [true, false] && !failed.config.hardwareEnabled,
-  "a failed mandatory idle assertion must stop before any discharge command")
+  "a failed requested idle assertion must stop before any discharge command")
 
  let active = model()
  active.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
@@ -54,7 +54,7 @@ import ChargeCore
   if !protection.preventSystemAndLidSleep {
    active.updateSleepOverride(protection, request: { events.append($0); return "fixture release" })
   }
-  let expected = lid ? ["idle:true", "sleepOverrideOn", "sleepPolicyOff", "forceDischarge"] : ["idle:true", "sleepPolicyOff", "forceDischarge", "sleepOverrideRestore"]
+  let expected = lid ? ["sleepOverrideOn", "sleepPolicyOff", "forceDischarge", "idle:false"] : ["sleepPolicyOff", "forceDischarge", "idle:false", "sleepOverrideRestore"]
   precondition(events == expected)
  }
  events = []; active.decision = Decision(.inhibitCharge, "fixture complete", limit: 80)
@@ -63,5 +63,5 @@ import ChargeCore
  active.updateSleepOverride(complete, request: { events.append($0); return "fixture release" })
  precondition(events == ["sleepPolicyOff", "inhibitCharge", "idle:false", "sleepOverrideRestore"])
  active.config.hardwareEnabled = false
- print("Discharge lid-edge refresh, required idle failure, open/closed protection and completion ordering passed; all actuators injected")
+ print("Discharge lid-edge refresh, selected idle failure, open/closed protection and completion ordering passed; all actuators injected")
 }

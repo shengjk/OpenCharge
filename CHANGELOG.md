@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.19
+
+- Restore user-selected idle behavior during ordinary discharge: open-lid discharge no longer forces the idle assertion introduced in 0.3.18. Required closed-lid and calibration protection is retained.
+- Keep selected until-target sleep protection during confirmed thermal waits, using a typed decision flag; release it for Sailing holds and manual pauses.
+- Preserve Top Up and departure targets while temperature protection pauses charging. Apply the inclusive 20% heat-protection exemption and 20% Sailing floor.
+- Add policy, legacy-decision and injected production-model regressions for thermal wait, cooling, target completion and optional idle behavior.
+
 ## 0.3.18
 
 - Remove the separate clamshell-discharge gate. Manual and automatic discharge now select required protection from lid state while preserving the hardware-control opt-in.
