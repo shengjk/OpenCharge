@@ -13,7 +13,7 @@ public final class SleepController {
  public init(create: Create? = nil, release: Release? = nil) {
   self.create = create ?? {
    var id: IOPMAssertionID = 0
-   let result = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleSystemSleep as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn), "OpenCharge charging to target" as CFString, &id)
+   let result = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleSystemSleep as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn), "OpenCharge active charge control" as CFString, &id)
    guard result == kIOReturnSuccess else { throw HardwareError.driver(result, 0) }
    return id
   }

@@ -117,3 +117,8 @@ The final callback fixture additionally resumed an injected holding checkpoint w
 ## 0.3.17 required-protection ordering
 
 The isolated dashboard harness calls the production `applyHardwareDecision` method with injected helper responses. The pre-fix code reproduced a charge/discharge command before the required protection request had succeeded. Both actions now require the sleep-override acknowledgement first. Failed protection sends only its attempted override and fixed restoration; successful protection precedes the sleep-entry policy and charge command. A later charge-command failure restores the session, while normal completion retains cleanup ownership until release. All helper calls in these cases are injected; no real power setter, sleep assertion or physical charge/discharge cycle is exercised.
+
+
+## 0.3.18 discharge and lid transitions
+
+Core checks cover manual/automatic closed-lid discharge without an extra opt-in, legacy true/false flag decoding without arming hardware, idle protection with optional settings off, open/closed/unknown lid states, display choices, completion, explicit unplugging and acknowledged input cuts. The dashboard harness injects all helper and idle-assertion operations. It checks idle-creation failure before any power request, closed → open → closed protection ordering, completion before release, immediate lid-edge callback delivery, duplicate/unknown observations and quit suppression. No real assertion, helper setter, physical lid transition or discharge cycle is exercised by these fixtures. Native monitoring-only validation is separate from these injected cases.

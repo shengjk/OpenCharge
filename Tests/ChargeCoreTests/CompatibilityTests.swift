@@ -53,6 +53,21 @@ final class CompatibilityTests: XCTestCase {
   XCTAssertEqual(config?.policy.limit, 80)
   XCTAssertNil(config?.policy.thermalBehavior); XCTAssertNil(config?.policy.protectDuringCalibration); XCTAssertNil(config?.policy.lowPowerMode)
  }
+ func testRetiredClamshellFlagDecodesWithoutChangingHardwareOptIn() {
+  for flag in [false, true] {
+   do {
+    var original = Configuration(); original.policy.mode = .discharge; original.hardwareEnabled = false
+    var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as! [String: Any]
+    var policy = object["policy"] as! [String: Any]; policy["clamshellDischarge"] = flag; object["policy"] = policy
+    let migrated = try JSONDecoder().decode(Configuration.self, from: JSONSerialization.data(withJSONObject: object))
+    XCTAssertFalse(migrated.hardwareEnabled)
+    var engine = ChargeEngine()
+    XCTAssertEqual(engine.decide(ChargeSample(percent: 90, temperature: 30, lidClosed: true), policy: migrated.policy).action, .forceDischarge)
+    let encoded = try JSONSerialization.jsonObject(with: JSONEncoder().encode(migrated)) as! [String: Any]
+    XCTAssertNil((encoded["policy"] as! [String: Any])["clamshellDischarge"])
+   } catch { XCTFail(error.localizedDescription) }
+  }
+ }
  func testMissedTaskCanAdvanceWithoutExecuting() {
   var task = ChargeSchedule(); var p = ChargePolicy(); task.date = epoch; task.repeatRule = .daily; task.action = .topUp
   XCTAssertFalse(task.consume(now: epoch.addingTimeInterval(60), policy: &p, calendar: calendar, runMissedTasks: false))

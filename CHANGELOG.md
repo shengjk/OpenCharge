@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.18
+
+- Remove the separate clamshell-discharge gate. Manual and automatic discharge now select required protection from lid state while preserving the hardware-control opt-in.
+- Require idle protection during active discharge, full protection with a closed or unreadable lid, and acknowledge required protection before power commands. Keep explicit unplugging authoritative over an owned input cut.
+- Refresh enabled control immediately on lid edges and release full protection on reopening when the optional until-limit setting is off. Keep idle protection until discharge completes.
+- Make the display-sleep preference available independently of the optional until-limit setting. Add legacy-configuration, policy-transition and injected production-model regressions. Physical lid/discharge behavior remains unverified.
+
 ## 0.3.17
 
 - Require an acknowledged system/lid sleep override before sending charge or discharge commands for a protected session. Capability detection alone no longer permits the charge action.

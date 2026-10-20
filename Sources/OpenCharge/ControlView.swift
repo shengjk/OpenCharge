@@ -27,14 +27,13 @@ struct ControlView: View {
    Picker("温控恢复规则", selection: Binding(get: { m.config.policy.thermalBehavior ?? .fiveMinuteWindows }, set: { m.config.policy.thermalBehavior = $0 })) { Text("五分钟窗口").tag(ThermalBehavior.fiveMinuteWindows); Text("降温 2°C").tag(ThermalBehavior.degreeHysteresis) }
    Toggle("校准期间也启用温控（可选增强）", isOn: Binding(get: { m.config.policy.protectDuringCalibration ?? false }, set: { m.config.policy.protectDuringCalibration = $0 }))
    Toggle("高于上限时自动放电", isOn: $m.config.policy.automaticDischarge)
-   Toggle("允许合盖主动放电（依硬件支持）", isOn: $m.config.policy.clamshellDischarge)
   }
   Card("电量基准与睡眠") {
    Toggle("使用硬件电量作为控制基准", isOn: Binding(get: { m.config.policy.useHardwarePercent ?? false }, set: { m.config.policy.useHardwarePercent = $0 }))
    Text("macOS \(m.title) · 硬件 \(m.reading?.hardwarePercent.map { String(format: "%.1f%%", $0) } ?? "不可用")").font(.caption).foregroundStyle(.secondary)
    Toggle("充到目标前阻止空闲睡眠", isOn: Binding(get: { m.config.policy.keepAwakeUntilLimit ?? false }, set: { m.config.policy.keepAwakeUntilLimit = $0 }))
    Toggle("日常充到上限前阻止系统与合盖睡眠（可选）", isOn: Binding(get: { m.config.policy.keepAwakeWithLidClosed ?? false }, set: { m.config.policy.keepAwakeWithLidClosed = $0; if $0 { m.config.policy.stopInSleep = false } }))
-   Toggle("阻止系统睡眠时允许显示器休眠", isOn: Binding(get: { m.config.policy.allowDisplaySleep ?? true }, set: { m.config.policy.allowDisplaySleep = $0 })).disabled(m.config.policy.keepAwakeWithLidClosed != true)
+   Toggle("阻止系统睡眠时允许显示器休眠", isOn: Binding(get: { m.config.policy.allowDisplaySleep ?? true }, set: { m.config.policy.allowDisplaySleep = $0 }))
    Toggle("阻止系统睡眠期间合盖锁屏", isOn: Binding(get: { m.config.policy.lockScreenWhenClosed ?? false }, set: { m.config.policy.lockScreenWhenClosed = $0 }))
    Text(m.lidLockStatus).font(.caption).foregroundStyle(.secondary)
    Button("检测锁屏接口（只读）") { m.inspectLidLock() }
@@ -44,7 +43,7 @@ struct ControlView: View {
    Toggle("睡眠时停止充电", isOn: $m.config.policy.stopInSleep).disabled(m.config.policy.keepAwakeWithLidClosed == true)
    Toggle("退出应用后保持停充", isOn: $m.config.policy.stopOnQuit)
    Text("退出后停充是显式持久状态，可重新打开应用并关闭硬件控制来恢复。服务重启或机器关机后的恢复能力依硬件而定。").font(.caption).foregroundStyle(.secondary)
-   Text("空闲睡眠断言不阻止合盖或菜单睡眠。系统与合盖控制需要新版服务的私有接口，默认关闭，物理效果待实测；拔线、完成、退出或心跳超时会尝试释放。校准必须阻止系统睡眠并保持显示器开启；允许合盖主动放电时会提前请求系统睡眠保护。所需服务不可用或控制失败时会停止硬件控制并尝试恢复。").font(.caption).foregroundStyle(.secondary)
+   Text("主动放电期间自动阻止空闲睡眠，合盖时另需系统睡眠保护，无须单独开启合盖放电。校准必须阻止系统睡眠并保持显示器开启。日常充到上限前的系统睡眠选项独立生效。所需保护必须在充放电命令前确认；接口不可用或控制失败时停止硬件控制并尝试恢复。物理效果仍待实测；拔线、完成、退出或心跳超时会尝试释放。").font(.caption).foregroundStyle(.secondary)
   }
   Card("操作与校准") {
    Picker("当前模式", selection: $m.config.policy.mode) { ForEach(ChargeMode.allCases, id: \.self) { Text(modeName($0)).tag($0) } }.pickerStyle(.segmented)

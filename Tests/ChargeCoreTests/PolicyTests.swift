@@ -71,11 +71,14 @@ final class PolicyTests: XCTestCase {
   XCTAssertEqual(engine.decide(sample(80), policy: p).action, .inhibitCharge)
   XCTAssertEqual(engine.decide(sample(15), policy: p).action, .allowCharge)
  }
- func testAutomaticDischargeAndClamshellGate() {
-  var engine = ChargeEngine(); var p = ChargePolicy(); p.automaticDischarge = true
-  XCTAssertEqual(engine.decide(sample(90, closed: true), policy: p).action, .inhibitCharge)
-  p.clamshellDischarge = true
-  XCTAssertEqual(engine.decide(sample(90, closed: true), policy: p).action, .forceDischarge)
+ func testManualAndAutomaticDischargeDoNotNeedSeparateClamshellOptIn() {
+  for mode in [ChargeMode.automatic, .discharge] {
+   var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = mode; p.automaticDischarge = true
+   XCTAssertEqual(engine.decide(sample(90, closed: false), policy: p).action, .forceDischarge)
+   XCTAssertEqual(engine.decide(sample(90, closed: true), policy: p).action, .forceDischarge)
+   XCTAssertEqual(engine.decide(sample(80, closed: true), policy: p).action, .inhibitCharge)
+   XCTAssertEqual(engine.decide(sample(15, closed: true), policy: p).action, .allowCharge)
+  }
  }
  func testTopUpBypassesSailingAndUsesFullTarget() {
   var engine = ChargeEngine(); var p = ChargePolicy()
@@ -184,7 +187,7 @@ final class PolicyTests: XCTestCase {
  func testConfigurationRoundTripsInMemoryWithoutUserDirectoryAccess() {
   do {
    var config = Configuration(); config.policy.limit = 73; config.policy.mode = .discharge
-   config.policy.departure = epoch; config.policy.clamshellDischarge = true
+   config.policy.departure = epoch
    config.notifications = true; config.hardwareEnabled = true; config.historyEnabled = false
    var schedule = ChargeSchedule(); schedule.date = epoch; schedule.repeatRule = .monthly
    schedule.anchorDay = 31; schedule.action = .limit; schedule.value = 73

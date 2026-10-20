@@ -21,7 +21,7 @@ import ChargeCore
    commands.append(command)
    if command == "sleepOverrideDisplayOn" { throw CocoaError(.fileWriteUnknown) }
    return "fixture acknowledgement"
-  })
+  }, setIdleSleep: { _ in })
   if commands.contains(action.rawValue) {
    print("REGRESSION: charge command was sent before required sleep protection succeeded")
    exit(2)
@@ -38,7 +38,7 @@ import ChargeCore
     successful.append(command)
     if failureAfterProtection && command == action.rawValue { throw CocoaError(.fileWriteUnknown) }
     return "fixture acknowledgement"
-   })
+   }, setIdleSleep: { _ in })
    precondition(successful == ["sleepOverrideDisplayOn", "sleepPolicyOff", action.rawValue] + (failureAfterProtection ? ["restore"] : []))
    precondition(protected.config.hardwareEnabled != failureAfterProtection)
    protected.config.hardwareEnabled = false

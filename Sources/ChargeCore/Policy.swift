@@ -23,7 +23,6 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var lockScreenWhenClosed: Bool? = nil
  public var stopInSleep = false
  public var stopOnQuit = false
- public var clamshellDischarge = false
  public var departure: Date? = nil
  public var departureTarget = 100.0
  public var estimatedPercentPerHour = 30.0
@@ -133,7 +132,6 @@ public struct ChargeEngine: Sendable {
   }
   if p.mode == .discharge || (p.automaticDischarge && sample.percent > target) {
    if sample.percent <= target { if p.mode == .discharge { completedMode = .discharge }; return result(.inhibitCharge, "已放电至目标", target) }
-   if sample.lidClosed && !p.clamshellDischarge { return result(.inhibitCharge, "合盖时暂停主动放电", target) }
    return result(.forceDischarge, "主动放电至目标", target)
   }
   if sample.percent >= target { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }
