@@ -112,7 +112,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if config.policy.mode == .calibration, let checkpoint = config.calibrationCheckpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { calibrationPending = true; calibration = checkpoint.stage; config.hardwareEnabled = false }
   if let data = try? Data(contentsOf: historyURL), let points = try? JSONDecoder().decode([HistoryPoint].self, from: data) { history = Array(points.suffix(10080)) }
   DistributedNotificationCenter.default().addObserver(forName: Notification.Name("org.opencharge.configurationChanged"), object: nil, queue: .main) { [weak self] _ in Task { @MainActor in
-   guard let self else { return }; do { let enabled = self.config.hardwareEnabled; let previousLED = self.config.magSafeMode; self.config = try Configuration.load(); self.config.hardwareEnabled = enabled; if previousLED != self.config.magSafeMode { self.magSafeSelection = nil; self.magSafePolicyFailed = false }; if self.config.policy.mode != .calibration { self.calibrationPending = false } } catch { self.error = error.localizedDescription }
+   self?.reloadExternalConfiguration()
   } }
   dashboardPreferences.changed = { [weak self] in self?.syncDashboard() }
   popoverPreferences.changed = { [weak self] in self?.syncDashboard() }
@@ -132,6 +132,24 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  var title: String { if let r = reading { return "\(Int(r.percent))%" }; return "—" }
  var watts: Double? { guard let r = reading, let i = r.currentMA, let v = r.voltageMV else { return nil }; return i * v / 1_000_000 }
+ func reloadExternalConfiguration() {
+  do {
+   let incoming = try Configuration.load()
+   let startsFreshCalibration = incoming.policy.mode == .calibration && incoming.calibrationCheckpoint == nil &&
+    (config.policy.mode != .calibration || config.calibrationCheckpoint != nil || calibrationPending)
+   let enabled = config.hardwareEnabled; let previousLED = config.magSafeMode
+   let correctSavedOptIn = incoming.hardwareEnabled != enabled
+   config = incoming; config.hardwareEnabled = enabled
+   if startsFreshCalibration {
+    engine = ChargeEngine(); calibration = .idle; calibrationPending = false
+   }
+   if previousLED != config.magSafeMode { magSafeSelection = nil; magSafePolicyFailed = false }
+   if config.policy.mode != .calibration { calibrationPending = false }
+   // An interrupted run may have disabled control only in memory. Keep that
+   // opt-in on disk too, so a fresh intent cannot rearm it on a later relaunch.
+   if correctSavedOptIn { try config.save() }
+  } catch { self.error = error.localizedDescription }
+ }
  func save() { do { try config.save() } catch { self.error = error.localizedDescription } }
  func changeMode(_ mode: ChargeMode) {
   if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = "请连接电源后开始此操作"; return }

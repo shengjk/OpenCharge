@@ -1,4 +1,4 @@
-# Status — 0.3.15
+# Status — 0.3.16
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 

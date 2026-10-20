@@ -9,6 +9,13 @@ bash Scripts/test-appintents.sh
 
 Packaging extracts constant values from `Intents.swift`, invokes an installed `appintentsmetadataprocessor`, validates declarations/parameters, then signs the bundle. Metadata is under `Contents/Resources/Metadata.appintents`. Set `OPENCHARGE_APPINTENTS_PROCESSOR` and optionally `OPENCHARGE_XCODE_BUILD_VERSION` for another existing installation. Required mode fails if a processor is unavailable; no toolchain/license settings are changed.
 
-The isolated native harness tests invalid/valid limits, mode mappings, calibration constraints and LED configuration. Eleven actions were discovered in the local Shortcuts UI; four getters ran successfully. Setter execution through the system UI and physical effects remain unverified.
+The isolated native harness tests invalid/valid limits, mode mappings, calibration constraints and LED configuration. Eleven actions were discovered in the local Shortcuts UI; four getters ran successfully. The limit setter also ran through the system UI with hardware control off: 80 → 79 → 80 was reflected in the live app and persisted configuration. Physical effects remain unverified.
 
 References: [App Shortcuts](https://developer.apple.com/documentation/appintents/app-shortcuts), [AppShortcutsProvider](https://developer.apple.com/documentation/appintents/appshortcutsprovider).
+
+
+A fresh calibration request clears the saved checkpoint. The running app reload now distinguishes this transition from an ordinary checkpoint-bearing configuration update: it resets the live engine, displayed phase and interrupted flag, while preserving the current hardware-control opt-in. If incoming data disagrees with that opt-in, the preserved value is also written back, rather than leaving a stale enabled flag for a later relaunch. A write failure is reported. Ordinary updates keep an interrupted calibration pending. Duplicate reloads do not restart the new cycle; malformed files keep the last valid configuration. This addresses state synchronization, not completion of a real calibration cycle.
+
+The dashboard fixture invokes the actual calibration intent against a private configuration, then explicitly calls the production reload callback because its isolated data-directory mode suppresses distributed notifications. It is a test of the callback's behavior, not notification delivery. The earlier native limit-setter check separately exercised delivery. No fixture helper or lock action is invoked.
+
+Native 0.3.16 verification also exercised the new-calibration request while hardware control was off: the live interrupted prompt cleared, the new logical phase began, and the test then restored ordinary automatic monitoring. No physical cycle or power action was performed.

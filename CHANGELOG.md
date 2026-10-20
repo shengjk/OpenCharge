@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.16
+
+- Reset the live calibration engine, displayed phase and interrupted flag when an external start request clears its checkpoint.
+- Preserve interruption for ordinary checkpoint-bearing updates and keep the running hardware-control opt-in, including correcting a stale saved flag.
+- Retain the last valid configuration on reload errors. Added actual-Intent/production-callback regression checks in an isolated configuration.
+
+## 0.3.15
+
+- Make calibration sleep protection independent of the optional until-limit setting and allow closed-lid calibration draining/returning.
+- Preflight required sleep support and stop/restore on failed protection. Add default-off foreground lid-lock requests with one attempt per closure.
+- Use schema-2 sleep journals and migrate legacy uncertain operations before compensation; older schema-1-only helpers refuse the new format.
+
+## 0.3.14
+
+- Journal setting, active and restoring phases so a failed persistent setter cannot clear recovery solely from cached false readback.
+- Require exact sleep-interface and recovery-protocol capability fields. Added stale-cache, legacy-record and save-barrier fixtures.
+
 ## 0.3.13
 
 - Added opt-in system/lid sleep control through fixed helper commands and dynamically resolved power-management interfaces; disabled by default.

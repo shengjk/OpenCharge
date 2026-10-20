@@ -3,7 +3,7 @@ import ChargeCore
 import ChargeHardware
 
 @main struct DashboardSmoke {
- @MainActor static func main() throws {
+ @MainActor static func main() async throws {
   try menuBarAppearanceChecks()
   try updateChecks()
   let labelReading = BatteryReading(percent: 80.9, connected: true, charging: false, hardwarePercent: 77.4)
@@ -52,6 +52,7 @@ import ChargeHardware
   preferences.layout = DashboardLayout(widgets: [.battery, .specifications], specifications: [.voltage, .current])
   var config = Configuration(); config.policy.limit = 80; config.historyEnabled = false
   try config.save()
+  try await automationReloadChecks(defaults: defaults)
   let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("fixture must never invoke an uninjected lock") })
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)
