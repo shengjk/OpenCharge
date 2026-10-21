@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.28
+
+- Separate Top Up from the ordinary charging temperature pause in fresh configurations; add an independent optional Top Up thermal guard. Older saved policies retain their previous temperature behavior until explicitly changed.
+- Preserve thermal-exit Pause at full charge when protection is disabled, including subsequent updates and later recharge.
+- Cover legacy/new preference round trips, backup restore, mode isolation and production protection ordering with injected actuators.
+
 ## 0.3.27
 
 - Evaluate an established ordinary five-minute thermal wait before Sailing and integer target projection; compare its target at control precision.

@@ -238,7 +238,7 @@ final class PolicyTests: XCTestCase {
   }
  }
  func testThermalPauseKeepsTopUpAndDepartureTargets() {
-  var topUp = ChargePolicy(); topUp.mode = .topUp
+  var topUp = ChargePolicy(); topUp.mode = .topUp; topUp.protectDuringTopUp = true
   var engine = ChargeEngine()
   XCTAssertEqual(engine.decide(sample(90, temperature: 40), policy: topUp).effectiveLimit, 100)
   var departure = ChargePolicy(); departure.departure = epoch.addingTimeInterval(3600)

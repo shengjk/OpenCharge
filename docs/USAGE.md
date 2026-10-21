@@ -30,3 +30,9 @@ Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command
 ## Menu-bar appearance
 
 Settings → Appearance offers dynamic status, monochrome battery, colored battery and OpenCharge icon styles. Icon-only hides the percentage without changing style; numeric-only modes omit the icon. Optional yellow icon tint reads the system's actual Low Power Mode and never changes it. This option defaults off. Battery fill uses observed OS percentage, while unknown values remain unknown.
+
+## Top Up and temperature
+
+A fresh configuration keeps Top Up separate from the ordinary charging-temperature pause. To apply that pause while charging to full, enable **充至满电期间也启用温控（可选增强）** in Charge Control. The main thermal-protection switch must also be on. Calibration uses its own independent option.
+
+Older saved policies keep the previous Top Up temperature behavior; the new checkbox shows the effective preference, and an explicit change is saved. Backup and restore preserve that choice. These are application policy rules, not a guarantee of physical charging under any temperature or hardware condition.

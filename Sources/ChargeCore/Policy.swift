@@ -13,6 +13,9 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var maxTemperature = 35.0
  public var thermalBehavior: ThermalBehavior? = nil
  public var protectDuringCalibration: Bool? = nil
+ // Missing in older saved policies: retain their previous Top Up temperature guard.
+ public var protectDuringTopUp: Bool? = false
+ public var topUpThermalProtection: Bool { protectDuringTopUp ?? true }
  public var lowPowerMode: Bool? = nil
  public var useHardwarePercent: Bool? = nil
  public var mode: ChargeMode = .automatic
@@ -123,7 +126,7 @@ public struct ChargeEngine: Sendable {
   }
   if continuingThermalWindow && p.mode == .automatic {
    if !p.heatProtection {
-    heatPaused = false; nextThermalCheck = nil
+    heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = true
     return result(.inhibitCharge, "已退出热保护暂停", target, phase: .pause)
    }
    if Float(sample.percent) < 15 {
@@ -178,7 +181,7 @@ public struct ChargeEngine: Sendable {
   // Entry and emergency exit are separate boundaries. An existing five-minute
   // pause survives the 20% entry exemption until the battery falls below 15%.
   let thermalPercentEligible = sample.percent > 20 || (continuingThermalWindow && p.mode != .calibration && Float(sample.percent) >= 15)
-  let thermalActive = p.heatProtection && thermalPercentEligible && (p.mode != .calibration || p.protectDuringCalibration == true)
+  let thermalActive = p.heatProtection && thermalPercentEligible && (p.mode != .calibration || p.protectDuringCalibration == true) && (p.mode != .topUp || p.topUpThermalProtection)
   if thermalActive {
    guard let t = sample.temperature, t.isFinite else { return result(.inhibitCharge, "温度不可用，等待可靠读数", target) }
    switch thermal {

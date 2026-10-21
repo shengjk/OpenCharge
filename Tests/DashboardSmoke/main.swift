@@ -57,6 +57,7 @@ import ChargeHardware
   try sleepOrderingChecks(defaults: defaults)
   try lidDischargeChecks(defaults: defaults)
   try thermalProtectionChecks(defaults: defaults)
+  try thermalExitChecks(defaults: defaults)
   try dischargeThermalChecks(defaults: defaults)
   try fractionalDischargeChecks(defaults: defaults)
   try fullChargeChecks(defaults: defaults)
