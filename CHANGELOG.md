@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.34
+
+- Configure menu-bar right-click to toggle the popover, open Settings, toggle charging, or toggle Low Power Mode. Left click and Command-3 always toggle the popover.
+- Toggle charging between conditional current-percentage Pause and ordinary charging with a 100% daily target. Preserve selected telemetry and interrupted calibration, and clear runtime Sailing holds when starting full-target charging.
+- Require the system-actions opt-in and available service support before the Low Power Mode shortcut; invert actual system activity instead of a saved preference.
+- Add isolated routing, preference, policy and IPC checks. Global settings locking and physical hardware effects remain incomplete or unverified.
+
 ## 0.3.33
 
 - Apply scheduled Pause at the current selected control percentage only in eligible policy phases. Retain the original policy when the phase or reading is unsuitable, and record the skip while consuming the scheduled occurrence.

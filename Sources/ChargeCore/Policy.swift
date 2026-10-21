@@ -93,6 +93,13 @@ public struct ChargeEngine: Sendable {
   case .calibration: phase = .calibration
   }
  }
+ public mutating func startChargingAtFullTarget() {
+  modeChanged(to: .automatic)
+  calibration = .idle; holdingSince = nil
+  heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false
+  sailingPaused = false; targetChangeHold = false; targetChangePending = false
+  previousLimit = 100; previousMode = .automatic; phase = .charging
+ }
  public var checkpoint: CalibrationCheckpoint { CalibrationCheckpoint(stage: calibration, holdingSince: holdingSince) }
  public mutating func decide(_ sample: ChargeSample, policy raw: ChargePolicy) -> Decision {
   completedMode = nil

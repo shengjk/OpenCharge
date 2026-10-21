@@ -19,6 +19,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  let energyMonitor = EnergyMonitor()
  var openStatusPopoverEditor: (() -> Void)?
  let popoverPreferences: PopoverPreferences
+ let menuBarActions: MenuBarActionPreferences
+ @Published var dashboardPage: Page? = .overview
  @Published private(set) var popoverVisible = false
  private var visiblePopovers = Set<PopoverConsumer>()
  func setPopoverVisible(_ visible: Bool, consumer: PopoverConsumer = .preview) {
@@ -59,6 +61,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   dashboardWindowController?.window?.makeKeyAndOrderFront(nil)
   NSApp.activate(ignoringOtherApps: true)
  }
+ func selectSettingsPage() { dashboardPage = .settings }
+ func openSettingsPage() { selectSettingsPage(); openDashboardWindow() }
  func setDashboardFocused(_ focused: Bool) { dashboardFocused = focused; syncDashboard() }
  func syncDashboard() {
   let active = DashboardRefreshPolicy.shouldUpdate(windowFocused: dashboardFocused, backgroundUpdates: dashboardPreferences.backgroundUpdates)
@@ -112,6 +116,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   updates = AppUpdates(defaults: dashboardDefaults)
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
+  menuBarActions = MenuBarActionPreferences(defaults: dashboardDefaults)
   do { config = try Configuration.load() } catch { config = Configuration(); self.error = "配置文件无法读取：\(error.localizedDescription)" }
   engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
   appliedChargeLimitChangeID = config.chargeLimitChangeID
@@ -165,6 +170,42 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func save() { do { try config.save() } catch { self.error = error.localizedDescription } }
  func toggleTopUp() { changeMode(automationPhase == .topUp ? .paused : .topUp) }
  func toggleDischarge() { changeMode(automationPhase == .discharging ? .paused : .discharge) }
+ func toggleChargingFromMenu() {
+  guard !quitting else { return }
+  guard !calibrationPending else { error = "校准已中断，请先选择继续或取消"; return }
+  do {
+   let sample = try readBattery()
+   let percent = config.policy.useHardwarePercent == true ? sample.hardwarePercent : sample.percent
+   guard let percent else { throw MenuBarChargeToggleError.unavailablePercentage }
+   var policy = config.policy
+   let result = try MenuBarChargeToggleRequest.apply(phase: automationPhase, percent: percent, policy: &policy)
+   config.setChargeLimit(policy.limit); config.policy = policy; config.calibrationCheckpoint = nil
+   switch result {
+   case .pausedAtCurrent: engine.modeChanged(to: .paused)
+   case .chargingToFull:
+    engine.startChargingAtFullTarget(); appliedChargeLimitChangeID = config.chargeLimitChangeID
+   }
+   save(); refresh()
+  } catch { self.error = error.localizedDescription }
+ }
+ func toggleLowPowerFromMenu(request: (String) throws -> String = HelperClient.request,
+                             isActive: () -> Bool = { ProcessInfo.processInfo.isLowPowerModeEnabled }) {
+  guard !quitting else { return }
+  guard config.systemActionsEnabled == true else { error = "请先允许菜单栏快捷操作改变系统模式"; return }
+  do {
+   let status = try request("lowPowerStatus")
+   let fields = status.split(separator: " ")
+   guard fields.count == 2, fields[0].hasPrefix("battery="), fields[1].hasPrefix("ac="),
+         ["0", "1", "unknown"].contains(String(fields[0].dropFirst(8))),
+         ["0", "1", "unknown"].contains(String(fields[1].dropFirst(3))),
+         fields[0] != "battery=unknown" || fields[1] != "ac=unknown" else {
+    throw HelperError.rejected("低电量模式能力不可用")
+   }
+   let enabled = !isActive()
+   lowPowerStatus = try request(enabled ? "lowPowerOn" : "lowPowerOff")
+   config.policy.lowPowerMode = enabled; save()
+  } catch { self.error = error.localizedDescription }
+ }
  func changeMode(_ mode: ChargeMode) {
   if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = "请连接电源后开始此操作"; return }
   if mode == .topUp && config.policy.mode == .calibration { error = "请先结束校准，再开始充至满电"; return }

@@ -62,6 +62,7 @@ import ChargeHardware
   try sailingCheckpointChecks(defaults: defaults)
   try temporaryActionChecks(defaults: defaults)
   try scheduledPauseChecks(defaults: defaults)
+  try menuBarActionChecks(defaults: defaults)
   try dischargeThermalChecks(defaults: defaults)
   try fractionalDischargeChecks(defaults: defaults)
   try fullChargeChecks(defaults: defaults)

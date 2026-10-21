@@ -22,7 +22,8 @@ import ChargeHardware
   popover.delegate = self
   popover.contentViewController = NSHostingController(rootView: MenuView(consumer: .statusItem, dismiss: { [weak self] in self?.close() }).environmentObject(model))
   item.button?.target = self
-  item.button?.action = #selector(togglePopover(_:))
+  item.button?.action = #selector(handleStatusClick(_:))
+  item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
   model.$reading.combineLatest(model.$decision, model.$config).receive(on: RunLoop.main).sink { [weak self] _ in
    MainActor.assumeIsolated { self?.updateLabel() }
   }.store(in: &subscriptions)
@@ -66,6 +67,16 @@ import ChargeHardware
   if popover.isShown { popover.performClose(sender); return }
   showPopover()
  }
+ @objc private func handleStatusClick(_ sender: Any?) {
+  let click: StatusItemClick = NSApp.currentEvent?.type == .rightMouseUp ? .secondary : .primary
+  routeClick(click, sender: sender)
+ }
+ private func routeClick(_ click: StatusItemClick, sender: Any? = nil) {
+  StatusItemActionRouter.route(click, preference: model.menuBarActions.rightClick,
+   togglePopover: { self.togglePopover(sender) }, closePopover: { self.close() },
+   openSettings: { self.model.openSettingsPage() }, toggleCharging: { self.model.toggleChargingFromMenu() },
+   toggleLowPower: { self.model.toggleLowPowerFromMenu() })
+ }
  func openEditor() {
   model.popoverPreferences.setEditing(true, consumer: .statusItem)
   if popover.isShown { popover.contentViewController?.view.window?.makeKey(); return }
@@ -78,7 +89,7 @@ import ChargeHardware
   popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
   popover.contentViewController?.view.window?.makeKey()
  }
- func clickStatusItem() { item.button?.performClick(nil) }
+ func clickStatusItem() { routeClick(.programmatic) }
 
  func popoverDidShow(_ notification: Notification) {
   if let window = popover.contentViewController?.view.window {

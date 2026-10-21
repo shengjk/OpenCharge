@@ -37,7 +37,7 @@ struct SettingsView: View {
    Text("需要服务及可识别的 ACLC 硬件键。手动颜色优先于自动指示；睡眠熄灯优先于手动颜色。应用运行时续期，退出或 45 秒无心跳后尝试恢复原值。灯光效果依赖适配器，尚未完成实机验收。").font(.caption).foregroundStyle(.secondary)
   }
   Card("低电量模式") {
-   Toggle("允许定时任务改变系统模式", isOn: Binding(get: { m.config.systemActionsEnabled ?? false }, set: { enabled in
+   Toggle("允许定时任务与菜单栏快捷操作改变系统模式", isOn: Binding(get: { m.config.systemActionsEnabled ?? false }, set: { enabled in
     if enabled { do { m.lowPowerStatus = try HelperClient.request("lowPowerStatus"); m.config.systemActionsEnabled = true } catch { m.error = error.localizedDescription; m.config.systemActionsEnabled = false } }
     else { m.config.systemActionsEnabled = false }
     m.save()
@@ -49,6 +49,7 @@ struct SettingsView: View {
    Text("需要硬件服务。此项是持久系统偏好，仅明确操作或定时任务会改变；退出应用不会自动重置。").font(.caption).foregroundStyle(.secondary)
   }
   Card("外观") {
+   MenuBarActionSettingsView(preferences: m.menuBarActions)
    Picker("主题", selection: $appearance) { Text("跟随系统").tag("system"); Text("浅色").tag("light"); Text("深色").tag("dark") }
    Picker("菜单栏显示", selection: $menuDisplay) { Text("动态状态与电量").tag("status"); Text("仅图标").tag("icon"); Text("macOS 电量").tag("percentage"); Text("硬件电量").tag("hardware") }
    Picker("菜单栏图标样式", selection: $menuIconStyle) { ForEach(MenuIconStyle.allCases) { Text($0.title).tag($0) } }
@@ -82,6 +83,16 @@ struct SettingsView: View {
    Text("睡眠由系统通知协调；可选退出后保持停充。合盖强制保持唤醒及实际睡眠充电效果仍待硬件验证。")
    Text("OpenCharge \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development") · MIT · 本地运行 · 无账户 · 无遥测").font(.caption).foregroundStyle(.secondary)
   }.font(.callout)
+ }
+}
+
+struct MenuBarActionSettingsView: View {
+ @ObservedObject var preferences: MenuBarActionPreferences
+ var body: some View {
+  Picker("菜单栏右键", selection: $preferences.rightClick) {
+   ForEach(MenuBarRightClickAction.allCases) { Text($0.title).tag($0) }
+  }
+  Text("左键与 ⌘3 始终切换弹窗。充电切换会将日常上限设为当前电量或 100%；低电量模式需要上方系统模式许可与服务支持。").font(.caption).foregroundStyle(.secondary)
  }
 }
 

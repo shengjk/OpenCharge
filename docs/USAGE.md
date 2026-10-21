@@ -25,7 +25,7 @@ For isolated development, set `OPENCHARGE_DATA_DIR` to an absolute temporary dir
 
 ## Window shortcuts
 
-Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command-3 activates the actual menu-bar status button, Command-4 opens the real popup directly in edit mode, and Command-comma opens settings. Closing windows keeps monitoring active; use Quit to stop the application.
+Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command-3 toggles the actual menu-bar popover, Command-4 opens the real popup directly in edit mode, and Command-comma opens settings. Closing windows keeps monitoring active; use Quit to stop the application.
 
 ## Menu-bar appearance
 
@@ -42,3 +42,11 @@ The dashboard Top Up button and the popover Top Up/Discharge buttons toggle thei
 Scheduled **Pause Charging** is conditional. Charging, Top Up, Discharging and active Calibration accept it; Heat Protection accepts it only when the daily limit is 100%. It sets the daily limit to the current selected control percentage (20–100%) and enters current-limit Pause. Ordinary control resumes when the reading drops into a lower whole-percentage bin. Sailing, existing Pause and other unsuitable phases leave the policy unchanged. Missing or invalid selected hardware telemetry never falls back to macOS percentage. An interrupted calibration remains pending.
 
 A skipped Pause still consumes that occurrence and records its reason. Same-refresh tasks follow their list order and see earlier strategy changes. An accepted Pause ends the old active calibration before a later calibration task starts a fresh run. History describes accepted strategy changes, including changes overwritten by later tasks; it does not confirm a hardware effect. Dashboard Pause and the generic paused mode remain indefinite.
+
+## Menu-bar right-click
+
+Settings → Appearance offers four right-click actions: show/hide the popover (default), open Settings, toggle charging, and toggle Low Power Mode. Left click and Command-3 always show/hide the popover, regardless of this preference. Opening Settings closes an existing popover and selects the dashboard Settings page.
+
+The charging toggle pauses at the selected current percentage when the policy is Charging or Top Up, or Heat Protection with a 100% daily limit, and the percentage is at least 20%. Otherwise it selects ordinary Automatic charging with a 100% daily target, distinct from temporary Top Up. It cancels a departure plan. Missing or invalid selected telemetry leaves the policy unchanged; interrupted calibration still requires a continuation or cancellation choice. Saving a policy does not enable hardware control.
+
+The Low Power Mode shortcut requires the system-actions permission in Settings and a responding helper with at least one supported power source. It toggles the current system activity and applies the existing helper command to supported sources. Capability failures do not save a successful selection. This project does not yet implement a global settings lock.
