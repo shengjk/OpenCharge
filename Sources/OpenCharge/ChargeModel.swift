@@ -227,15 +227,43 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   defer { syncDashboard() }
   do {
    let r = try readBattery(); reading = r
-
+   let lid = LidStateObserver.currentState()
+   if let lid { observedLidState = lid }
+   let controlPercent = config.policy.useHardwarePercent == true ? r.hardwarePercent : r.percent
+   let scheduleSample = controlPercent.map { ChargeSample(percent: $0, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge) }
+   // Project on a copy: eligibility must reflect this sample and earlier tasks,
+   // without advancing production calibration/thermal state an extra time.
+   var scheduleEngine = engine
+   if config.chargeLimitChangeID != appliedChargeLimitChangeID && config.chargeLimitChangeID != nil { scheduleEngine.chargeLimitChanged() }
+   var scheduledPhase: PolicyPhase?
+   var needsScheduleProjection = true
    var scheduledPolicy = config.policy
    var changed = false
+   var scheduledLimitChanged = false
    var runs: [ScheduleExecution] = []
+   let now = Date()
    for i in config.schedules.indices {
     let task = config.schedules[i]
-    if config.schedules[i].consume(now: Date(), policy: &scheduledPolicy, runMissedTasks: config.runMissedTasks ?? true) {
+    if config.schedules[i].consume(now: now, runMissedTasks: config.runMissedTasks ?? true) {
      changed = true
-     var result = "策略已更新"
+     if needsScheduleProjection {
+      scheduledPhase = nil
+      if !calibrationPending, let sample = scheduleSample, sample.percent.isFinite, (0...100).contains(sample.percent) {
+       scheduledPhase = scheduleEngine.decide(sample, policy: scheduledPolicy).phase
+      }
+      needsScheduleProjection = false
+     }
+     let previousPolicy = scheduledPolicy
+     let outcome = task.apply(policy: &scheduledPolicy, pauseContext: ScheduledPauseContext(phase: scheduledPhase, percent: controlPercent, calibrationInterrupted: calibrationPending))
+     if case .pausedAtCurrent = outcome {
+      engine.modeChanged(to: .paused)
+      config.calibrationCheckpoint = nil; calibrationPending = false
+     }
+     if scheduledPolicy != previousPolicy {
+      needsScheduleProjection = true
+      if scheduledPolicy.limit != previousPolicy.limit { scheduledLimitChanged = true; scheduleEngine.chargeLimitChanged() }
+     }
+     var result = outcome.historyMessage
      if task.action == .lowPowerOn || task.action == .lowPowerOff {
       if config.systemActionsEnabled == true {
        do { lowPowerStatus = try HelperClient.request(task.action == .lowPowerOn ? "lowPowerOn" : "lowPowerOff"); result = "系统模式已读回：" + lowPowerStatus }
@@ -246,9 +274,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     }
     if config.schedules[i].date != task.date || config.schedules[i].enabled != task.enabled { changed = true }
    }
-   if changed { config.policy = scheduledPolicy; config.scheduleHistory = Array(((config.scheduleHistory ?? []) + runs).suffix(1000)); save() }
-   let lid = LidStateObserver.currentState()
-   if let lid { observedLidState = lid }
+   if changed {
+    config.policy = scheduledPolicy
+    if scheduledLimitChanged { config.sailingCheckpoint = true; config.chargeLimitChangeID = UUID() }
+    config.scheduleHistory = Array(((config.scheduleHistory ?? []) + runs).suffix(1000)); save()
+   }
    if calibrationPending { decision = Decision(.restore, "校准已中断：请选择继续或取消", limit: config.policy.limit) }
    else {
     let reference: Double

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.33
+
+- Apply scheduled Pause at the current selected control percentage only in eligible policy phases. Retain the original policy when the phase or reading is unsuitable, and record the skip while consuming the scheduled occurrence.
+- Project current and same-batch policy states on an engine copy; preserve an interrupted calibration until explicit continuation or cancellation.
+- End an active calibration immediately when a scheduled Pause is accepted, including when a later task starts a new calibration in the same refresh. Keep Sailing history and record intermediate daily-limit changes.
+- Distinguish accepted strategy updates from confirmed hardware effects in execution history; explicit schedule mode requests clear the current-limit Pause flag.
+
 ## 0.3.32
 
 - Let the Top Up and Discharge buttons stop their active operation and enter persistent Pause without changing the daily charge limit. Show the corresponding Stop label while the operation is active.

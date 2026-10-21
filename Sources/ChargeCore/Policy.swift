@@ -80,6 +80,19 @@ public struct ChargeEngine: Sendable {
   sailingCheckpoint = true; sailingPaused = true; targetChangeHold = true; targetChangePending = true
   heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false
  }
+ public mutating func modeChanged(to mode: ChargeMode) {
+  if mode != .automatic { targetChangeHold = false; targetChangePending = false }
+  if mode != .calibration { calibration = .idle; holdingSince = nil }
+  guard mode != previousMode else { return }
+  sailingPaused = true; previousMode = mode
+  heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false
+  switch mode {
+  case .automatic, .paused: phase = .pause
+  case .topUp: phase = .topUp
+  case .discharge: phase = .discharging
+  case .calibration: phase = .calibration
+  }
+ }
  public var checkpoint: CalibrationCheckpoint { CalibrationCheckpoint(stage: calibration, holdingSince: holdingSince) }
  public mutating func decide(_ sample: ChargeSample, policy raw: ChargePolicy) -> Decision {
   completedMode = nil
@@ -114,14 +127,7 @@ public struct ChargeEngine: Sendable {
   if p.mode != .automatic { targetChangeHold = false; targetChangePending = false }
   if p.mode != .calibration { calibration = .idle; holdingSince = nil }
   if p.mode != previousMode {
-   sailingPaused = true; previousMode = p.mode
-   heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false
-   switch p.mode {
-   case .automatic, .paused: reportedPhase = .pause
-   case .topUp: reportedPhase = .topUp
-   case .discharge: reportedPhase = .discharging
-   case .calibration: reportedPhase = .calibration
-   }
+   modeChanged(to: p.mode); reportedPhase = phase
   }
   guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, "无效电池读数，恢复系统控制") }
   // Cutting adapter input can make the OS report battery power. An acknowledged own cut
@@ -283,7 +289,12 @@ public struct ChargeSchedule: Codable, Identifiable {
  public var anchorSecond: Int? = nil
  public var id = UUID(); public var enabled = true; public var date = Date(); public var action: ScheduleAction = .topUp; public var value = 80.0; public var repeatRule: RepeatRule = .once
  public init() {}
- public mutating func consume(now: Date, policy: inout ChargePolicy, calendar: Calendar = .current, runMissedTasks: Bool = true) -> Bool {
+ public mutating func consume(now: Date, policy: inout ChargePolicy, calendar: Calendar = .current, runMissedTasks: Bool = true, pauseContext: ScheduledPauseContext? = nil) -> Bool {
+  let due = consume(now: now, calendar: calendar, runMissedTasks: runMissedTasks)
+  if due { _ = apply(policy: &policy, pauseContext: pauseContext) }
+  return due
+ }
+ public mutating func consume(now: Date, calendar: Calendar = .current, runMissedTasks: Bool = true) -> Bool {
   guard enabled else { return false }
   if anchorDay == nil || !(1...31).contains(anchorDay!) { anchorDay = calendar.component(.day, from: date) }
   if anchorMonth == nil || !(1...12).contains(anchorMonth!) { anchorMonth = calendar.component(.month, from: date) }
@@ -305,14 +316,6 @@ public struct ChargeSchedule: Codable, Identifiable {
   }
   guard date <= now else { return false }
   let shouldExecute = runMissedTasks || now.timeIntervalSince(date) <= 15
-  if shouldExecute {
-  switch action { case .limit: policy.limit = value; policy.mode = .automatic
-   case .topUp: policy.mode = .topUp; case .pause: policy.mode = .paused; policy.pauseAtCurrent = nil
-   case .discharge: policy.limit = value; policy.mode = .discharge
-   case .calibrate: policy.mode = .calibration; case .automatic: policy.mode = .automatic
-   case .lowPowerOn: policy.lowPowerMode = true; case .lowPowerOff: policy.lowPowerMode = false }
-  policy.normalize()
-  }
   if repeatRule == .once { enabled = false; return shouldExecute }
   // Jump near now for long daily/weekly backlogs, retaining the original interval phase.
   // Execute at most once; the loop then resolves the current date and weekend boundary.

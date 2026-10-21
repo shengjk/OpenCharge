@@ -399,7 +399,7 @@ final class PolicyTests: XCTestCase {
     schedule.date = date(2026,10,15); schedule.repeatRule = rule
     schedule.action = action; schedule.value = 65
     let now = schedule.date
-    XCTAssertTrue(schedule.consume(now: now, policy: &p, calendar: calendar), "\(rule)/\(action)")
+    XCTAssertTrue(schedule.consume(now: now, policy: &p, calendar: calendar, pauseContext: ScheduledPauseContext(phase: .charging, percent: 65)), "\(rule)/\(action)")
     switch action {
     case .limit: XCTAssertEqual(p.mode, .automatic); XCTAssertEqual(p.limit, 65)
     case .topUp: XCTAssertEqual(p.mode, .topUp)

@@ -17,6 +17,7 @@ struct ScheduleView: View {
    Toggle("唤醒后补执行错过的任务", isOn: Binding(get: { m.config.runMissedTasks ?? true }, set: { m.config.runMissedTasks = $0; m.save() }))
    DatePicker("运行时间", selection: $draft.date)
    Picker("操作", selection: $draft.action) { ForEach(ScheduleAction.allCases, id: \.self) { Text($0.displayName).tag($0) } }
+   if draft.action == .pause { Text("执行时按选定控制电量设置上限并暂停；电量低于 20%、读数不可用或当前状态不适用时跳过，并记录原因。已中断的校准仍需手动继续或取消。").font(.caption).foregroundStyle(.secondary) }
    if draft.action == .limit || draft.action == .discharge { Stepper("目标 \(Int(draft.value))%", value: $draft.value, in: 20...100) }
    Picker("重复", selection: $draft.repeatRule) { ForEach(RepeatRule.allCases, id: \.self) { Text($0.displayName).tag($0) } }
    HStack {
