@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.30
+
+- Move power-flow arrows with system layer animation while keeping telemetry labels and power-width paths outside frame updates. Preserve the two-second cycle and charging/discharging directions in the dashboard and compact popover.
+- Keep Reduce Motion, focus pause, hide/detach cleanup and resize behavior; live telemetry does not restart unchanged animation geometry.
+- Add private layer lifecycle checks and native visible-animation performance validation.
+
 ## 0.3.29
 
 - Persist the daily Sailing checkpoint and restore charging versus holding history across app restarts; preserve older configurations without the new field.

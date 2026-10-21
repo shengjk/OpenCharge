@@ -182,3 +182,8 @@ Native Charge Control on the validation Mac exposed the independent Top Up therm
 ## 0.3.29 Sailing restart checkpoints
 
 Core cases cover absent/charging/holding history, cold engine reconstruction, fractional runtime versus whole checkpoint boundaries, minimum-target branch ordering, Top Up and optional temperature-state isolation, daily versus departure targets, invalid readings, unplugged samples, changed daily limits and portable JSON/backup handling. Production-model fixtures inject battery readings at startup, preserve the checkpoint through external configuration reloads and calibration reconstruction, and check that stable refreshes do not rewrite the configuration. The CLI fixture verifies same-limit preservation, changed-limit reset and no-write explanation. All model fixtures retain monitoring-only hardware/system settings. These software checks do not establish physical charging, cable detection, full restart recovery after OS shutdown or every mode/setting transition.
+
+
+## 0.3.30 power-flow animation lifecycle
+
+A private, never-shown layer fixture checks missing/idle channel suppression, direction reversal, reactivation, the two-second cycle, stable animation timing during telemetry updates, compact and resized geometry, focus pause, Reduce Motion, hiding and detachment. Native full-size diagrams were compared visually in monitoring mode and their arrows observed at different positions. On the test host with a focused visible two-channel diagram, 0.3.29 consumed about 24–28% of one CPU core in two five-second samples; the layer candidate measured 0–1.6%. This measures the app process, not total GPU/window-server energy or a universal performance guarantee. Existing policy and hardware-fixture checks remain separate.

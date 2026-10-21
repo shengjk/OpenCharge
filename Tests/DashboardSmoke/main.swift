@@ -4,6 +4,7 @@ import ChargeHardware
 
 @main struct DashboardSmoke {
  @MainActor static func main() async throws {
+  powerFlowAnimationChecks()
   try menuBarAppearanceChecks()
   try updateChecks()
   let labelReading = BatteryReading(percent: 80.9, connected: true, charging: false, hardwarePercent: 77.4)
