@@ -1,6 +1,30 @@
 import XCTest
 @testable import ChargeCore
 final class MagSafePolicyTests: XCTestCase {
+ func testSharedAppAndCLINativeEncodingPreflightIsReadOnly() {
+  for command in ["magSafeGreen", "magSafeBlinkOrange"] {
+   var reads = 0
+   do { try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { reads += 1; return "magSafe:legacy" }); XCTFail("legacy service accepted") }
+   catch MagSafeEncodingError.outdatedService {} catch { XCTFail(error.localizedDescription) }
+   XCTAssertEqual(reads, 1)
+   do { try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { "magSafe:unavailable" }); XCTFail("missing hardware accepted") }
+   catch MagSafeEncodingError.unavailableInterface {} catch { XCTFail(error.localizedDescription) }
+   do { try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { "magSafeEncoding:aclcNativeV2" }) } catch { XCTFail(error.localizedDescription) }
+  }
+  var reads = 0
+  do { try MagSafePolicy.validateNativeEncoding(command: "magSafeRestore", capabilities: { reads += 1; return "legacy" }) } catch { XCTFail(error.localizedDescription) }
+  XCTAssertEqual(reads, 0)
+ }
+
+ func testNativeEncodingRequiresExactCapabilityAndBlinkChoiceIsFixed() {
+  XCTAssertTrue(MagSafePolicy.supportsNativeEncoding("magSafe:ACLC, magSafeEncoding:aclcNativeV2"))
+  for caps in ["magSafe:ACLC", "prefixmagSafeEncoding:aclcNativeV2", "magSafeEncoding:aclcNativeV20"] {
+   XCTAssertFalse(MagSafePolicy.supportsNativeEncoding(caps))
+  }
+  XCTAssertEqual(MagSafePolicy.command(mode: .orangeBlinking, connected: true, charging: false, action: .restore,
+   controlEnabled: false, blinkDischarge: false, percent: 80, target: 80), "magSafeBlinkOrange")
+ }
+
  func testFullChargeFlagUsesGreenOnlyWithControlAndOutsideCalibration() {
   for enabled in [false, true] {
    XCTAssertEqual(MagSafePolicy.command(mode: .chargeState, connected: true, charging: true,

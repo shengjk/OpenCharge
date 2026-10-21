@@ -23,7 +23,7 @@ struct SetChargeModeIntent: AppIntent {
  static var openAppWhenRun = true
  @Parameter(title: "模式") var mode: AutomationMode
  func perform() async throws -> some IntentResult {
-  var config = try Configuration.load(); config.policy.mode = ChargeMode(rawValue: mode.rawValue)!; if mode == .calibration { config.calibrationCheckpoint = nil }; try config.save(); return .result()
+  var config = try Configuration.load(); config.policy.mode = ChargeMode(rawValue: mode.rawValue)!; config.policy.pauseAtCurrent = nil; if mode == .calibration { config.calibrationCheckpoint = nil }; try config.save(); return .result()
  }
 }
 struct GetBatteryPercentageIntent: AppIntent {
@@ -60,10 +60,22 @@ struct StartChargingIntent: AppIntent {
  static var openAppWhenRun = true
  func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .topUp; try c.save(); return .result() }
 }
+@MainActor enum PauseIntentTelemetry {
+ static var read: () throws -> BatteryReading = { try BatteryTelemetryReader.read() }
+}
 struct StopChargingIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 暂停充电"
  static var openAppWhenRun = true
- func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .paused; try c.save(); return .result() }
+ func perform() async throws -> some IntentResult {
+  try await MainActor.run {
+   var config = try Configuration.load()
+   let percent = try PauseIntentTelemetry.read().controlPercentage(useHardware: config.policy.useHardwarePercent == true)
+   try PauseChargeRequest.apply(percent: percent, policy: &config.policy)
+   config.calibrationCheckpoint = nil
+   try config.save()
+  }
+  return .result()
+ }
 }
 struct StartDischargeIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 开始放电"
@@ -78,9 +90,9 @@ struct StartCalibrationIntent: AppIntent {
 
 
 enum AutomationLEDColor: String, AppEnum {
- case system, off, green, orange
+ case system, off, green, orange, orangeBlinking
  static var typeDisplayRepresentation: TypeDisplayRepresentation = "MagSafe 灯光"
- static var caseDisplayRepresentations: [AutomationLEDColor: DisplayRepresentation] = [.system: "系统灯光", .off: "熄灭", .green: "绿色", .orange: "橙色"]
+ static var caseDisplayRepresentations: [AutomationLEDColor: DisplayRepresentation] = [.system: "系统灯光", .off: "熄灭", .green: "绿色", .orange: "橙色", .orangeBlinking: "橙色闪烁"]
 }
 struct SetMagSafeLEDIntent: AppIntent {
  static var title: LocalizedStringResource = "设置 OpenCharge MagSafe 灯光"

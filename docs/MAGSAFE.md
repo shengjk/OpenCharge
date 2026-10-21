@@ -1,19 +1,19 @@
 # MagSafe LED control
 
-OpenCharge supports fixed off/green/orange requests, captured-state restoration and optional automatic indication, discharge blinking and sleep suppression. The [MIT battery project](https://github.com/actuallymentor/battery/blob/main/battery.sh) documents ACLC values 01/03/04. OpenCharge preserves captured opaque values rather than guessing a reset byte.
+Fixed ACLC requests use off (1), green (2), orange (4), and native orange blinking (6). Values 0 and legacy 3 remain readable and recoverable; value 3 is not written by new green requests. Captured values are restored rather than guessing a reset byte. A readable key is not proof of a physical adapter or LED effect.
 
-The capability is independent of charge control. One-byte ACLC values must be in 0...4; a readable key is not proof of a physical adapter or LED effect. The root service accepts only fixed actions. LED ownership has a separate 45-awake-second lease; external changes relinquish ownership and failed restore remains retryable. The helper supplies a separate boot-scoped LED write-ahead journal; physical crash/reboot recovery remains unverified.
+The root service accepts only fixed actions. Green and native-blink control require the exact `magSafeEncoding:aclcNativeV2` capability. The app and CLI share the check before any LED session setters for those requests; a legacy service receives only a capability read and a visible update-required result. The app does not install or restart a service automatically.
 
-Automatic indication distinguishes charging, Sailing hold and thermal pause. Sleep suppression overrides manual colors, which override automatic mode. Discharge blink uses a monotonic one-second on/off phase. The native intent saves desired settings; it does not claim a physical change.
+LED control is independent of charge control. Ownership has a separate 45-awake-second lease; external changes relinquish ownership and failed restore remains retryable. Automatic indication distinguishes charging, Sailing hold and temperature pause. Manual colors override automatic indication. Sleep-off selection takes priority; otherwise native blink is held at orange on sleep entry and restored on wake. Heartbeats do not alternate colors or restart the native pattern.
 
-`Scripts/test-magsafe.sh` uses injected access for format, ownership, readback, rollback, retry and session policy checks. Physical colors, sleep behavior and generation-specific protocols remain unverified. The local validation machine has no MagSafe port.
+The native LED intent saves desired settings. Physical colors, blink cadence, sleep behavior and generation-specific support remain unverified. The local validation machine has no MagSafe port.
 
-## Same-boot LED recovery — 0.3.8
+## Same-boot recovery
 
-The helper stores captured ACLC ownership in `magsafe-recovery.json`, alongside the independent charge record under `/var/db/org.opencharge.charged/`. Both stores share one root-private directory descriptor and lifetime lock; filenames are fixed and cannot be supplied by IPC. The same bounded read, owner/permission/link checks and synchronized atomic replacement apply.
+The helper stores captured ACLC ownership in `magsafe-recovery.json`, alongside the independent charge record under `/var/db/org.opencharge.charged/`. Both stores share one root-private directory descriptor and lifetime lock. Filenames are fixed and cannot be supplied by IPC; bounded reads, owner/permission/link checks and synchronized atomic replacement apply.
 
-The LED schema permits one captured byte in 0...4, fixed color targets (1/3/4), a bounded previous value and a valid boot UUID. Same-boot startup restoration attempts the captured value before new LED control; no blinking pattern is resumed automatically. Different-boot records are cleared without hardware writes. Corrupt records and failed recovery block LED changes; failed runtime blink/sleep/wake updates enter restoration instead of continuing to toggle.
+Schema 1 accepts captured/previous values 0, 1, 2, 3, 4 and 6. Owned expected targets accept 1, 2, 3, 4 and 6 so earlier journals containing target 3 remain recoverable. A valid boot UUID is required. Same-boot startup restoration attempts the captured value before new LED control; no pattern resumes automatically. Different-boot records are cleared without hardware writes. Corrupt records and failed recovery block new LED changes.
 
-Every new ownership/state pair is persisted before the write. Once the disk record covers both alternating blink values, later alternations reuse it. A 1000-tick fixture checks that an initial captured value of 2 requires only two record saves before restoration. Changing ownership or introducing a new color requires a new record. External values outside the owned expected/previous states are preserved. Missing registers, readback and record-removal failures remain retryable.
+Ownership is persisted before each new write. Repeated native-blink heartbeats reuse the existing record; a 1000-tick fixture requires only one save before restoration. External values outside owned expected/previous states are preserved. Missing registers, readback and record-removal failures remain retryable.
 
-Tests terminate subprocesses using file-backed fake ACLC values, including after a cached blink transition. These are not physical LED, SIGKILL or reboot tests. No installed helper is updated or restarted by the tests.
+`Scripts/test-magsafe.sh` uses fake ACLC values and file-backed terminated subprocesses, including native-pattern and legacy-journal recovery. These checks do not establish physical LED, real SIGKILL or reboot recovery. No installed helper is updated or restarted by the tests.

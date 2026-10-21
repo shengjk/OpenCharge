@@ -33,7 +33,7 @@ struct SettingsView: View {
    Toggle("主动放电时橙色闪烁", isOn: Binding(get: { m.config.magSafeBlinkDischarge ?? true }, set: { m.config.magSafeBlinkDischarge = $0; m.save(); m.useMagSafePolicy() }))
    Toggle("睡眠期间熄灭灯光", isOn: Binding(get: { m.config.magSafeOffDuringSleep ?? false }, set: { m.config.magSafeOffDuringSleep = $0; m.save(); m.useMagSafePolicy() }))
    Text(m.magSafeStatus).font(.callout).foregroundStyle(.secondary)
-   HStack { Button("读取状态") { m.inspectMagSafe() }; Button("绿色") { m.setMagSafe(.green) }; Button("橙色") { m.setMagSafe(.orange) }; Button("熄灭") { m.setMagSafe(.off) }; Button("恢复原值") { m.setMagSafe(nil) }; Button("使用自动策略") { m.useMagSafePolicy() } }
+   HStack { Button("读取状态") { m.inspectMagSafe() }; Button("绿色") { m.setMagSafe(.green) }; Button("橙色") { m.setMagSafe(.orange) }; Button("闪烁橙色") { m.setMagSafe(.orangeBlinking) }; Button("熄灭") { m.setMagSafe(.off) }; Button("恢复原值") { m.setMagSafe(nil) }; Button("使用自动策略") { m.useMagSafePolicy() } }
    Text("需要服务及可识别的 ACLC 硬件键。手动颜色优先于自动指示；睡眠熄灯优先于手动颜色。应用运行时续期，退出或 45 秒无心跳后尝试恢复原值。灯光效果依赖适配器，尚未完成实机验收。").font(.caption).foregroundStyle(.secondary)
   }
   Card("低电量模式") {

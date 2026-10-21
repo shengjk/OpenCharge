@@ -50,7 +50,7 @@ func capabilities() -> String {
  var values = controller?.capabilities() ?? ["chargeControl:unavailable", "SMC:\(smcFailure ?? "unknown")"]
  do { values.append("lowPower:\(try powerModes.status().description)") }
  catch { values.append("lowPower:unavailable") }
- if let status = try? magSafe?.status() { values.append("magSafe:" + status) }
+ if let status = try? magSafe?.status() { values.append("magSafe:" + status); values.append("magSafeEncoding:aclcNativeV2") }
  else { values.append("magSafe:unavailable") }
  if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
  return values.joined(separator: ", ")

@@ -15,7 +15,7 @@ private final class LEDMemoryRecovery: ChargeRecoveryStore {
 @main struct MagSafeRecoveryTests {
  static let boot = "11111111-1111-1111-1111-111111111111"
  static func rejects(_ body: () throws -> Void) { do { try body(); preconditionFailure("unexpected success") } catch {} }
- static func record(original: [Int] = [2], expected: [Int] = [3], previous: [Int]? = [2], version: Int = 1, identity: String = boot) throws -> Data {
+ static func record(original: [Int] = [0], expected: [Int] = [2], previous: [Int]? = [0], version: Int = 1, identity: String = boot) throws -> Data {
   var object: [String: Any] = ["version": version, "bootSession": identity, "original": original, "expected": expected]
   if let previous { object["previous"] = previous }
   return try JSONSerialization.data(withJSONObject: object)
@@ -38,7 +38,7 @@ private final class LEDMemoryRecovery: ChargeRecoveryStore {
    try session.tick(now: 1); try session.tick(now: 2)
    _exit(73)
   }
-  try controller.set(initial == 3 ? .orange : .green)
+  try controller.set(initial == 2 ? .orange : .green)
   try controller.set(initial == 1 ? .orange : .off)
   try controller.restore()
   preconditionFailure("LED crash boundary not reached")
@@ -51,7 +51,7 @@ private final class LEDMemoryRecovery: ChargeRecoveryStore {
   try FileManager.default.createDirectory(at: base, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
   defer { try? FileManager.default.removeItem(at: base) }
   var scenarios = 0
-  for original in UInt8(0)...4 {
+  for original: UInt8 in [0, 1, 2, 3, 4, 6] {
    for stage in ["before-first", "after-first", "after-second", "during-restore", "blink-cache"] {
     let folder = base.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
@@ -69,7 +69,7 @@ private final class LEDMemoryRecovery: ChargeRecoveryStore {
    }
   }
   let store = LEDMemoryRecovery()
-  var state: [UInt8]? = [2], writes = 0
+  var state: [UInt8]? = [0], writes = 0
   var failWrite = false
   func controller(identity: String = boot) -> MagSafeController {
    MagSafeController(read: { state }, write: {
@@ -79,36 +79,40 @@ private final class LEDMemoryRecovery: ChargeRecoveryStore {
   }
   let first = controller(); _ = try first.status(); precondition(store.loads == 0)
   try first.set(.green)
-  let pending = controller(); rejects { try pending.set(.orange) }; precondition(state == [3])
-  try pending.restore(); precondition(state == [2] && store.data == nil); scenarios += 1
+  let pending = controller(); rejects { try pending.set(.orange) }; precondition(state == [2])
+  try pending.restore(); precondition(state == [0] && store.data == nil); scenarios += 1
   store.data = try record(); state = [1]; writes = 0
   try controller().restore(); precondition(state == [1] && writes == 0 && store.data == nil); scenarios += 1
-  store.data = try record(identity: "22222222-2222-2222-2222-222222222222"); state = [3]
-  try controller().restore(); precondition(state == [3] && writes == 0 && store.data == nil); scenarios += 1
-  for invalid in [Data("broken".utf8), try record(version: 2), try record(original: []), try record(original: [5]), try record(expected: [0]), try record(expected: [2]), try record(expected: [3,4]), try record(previous: [9]), try record(identity: "invalid"), Data(repeating: 32, count: 8193)] {
+  store.data = try record(identity: "22222222-2222-2222-2222-222222222222"); state = [2]
+  try controller().restore(); precondition(state == [2] && writes == 0 && store.data == nil); scenarios += 1
+  for invalid in [Data("broken".utf8), try record(version: 2), try record(original: []), try record(original: [5]), try record(expected: [0]), try record(expected: [5]), try record(expected: [3,4]), try record(previous: [9]), try record(identity: "invalid"), Data(repeating: 32, count: 8193)] {
    store.data = invalid; rejects { try controller().restore() }; precondition(writes == 0 && store.data == invalid); scenarios += 1
   }
-  store.data = nil; state = [2]; store.failSave = true
-  rejects { try controller().set(.orange) }; precondition(writes == 0 && state == [2]); store.failSave = false; scenarios += 1
+  store.data = nil; state = [0]; store.failSave = true
+  rejects { try controller().set(.orange) }; precondition(writes == 0 && state == [0]); store.failSave = false; scenarios += 1
   store.data = try record(); state = nil
   let missing = controller(); rejects { try missing.restore() }; precondition(store.data != nil)
-  state = [3]; try missing.restore(); precondition(state == [2] && store.data == nil); scenarios += 1
-  store.data = try record(); state = [3]; failWrite = true
-  let retry = controller(); rejects { try retry.restore() }; precondition(store.data != nil && state == [3])
-  failWrite = false; try retry.restore(); precondition(state == [2] && store.data == nil); scenarios += 1
-  store.data = try record(); state = [3]; store.failSave = true
-  rejects { try controller().restore() }; precondition(state == [2] && store.data != nil)
+  state = [2]; try missing.restore(); precondition(state == [0] && store.data == nil); scenarios += 1
+  store.data = try record(); state = [2]; failWrite = true
+  let retry = controller(); rejects { try retry.restore() }; precondition(store.data != nil && state == [2])
+  failWrite = false; try retry.restore(); precondition(state == [0] && store.data == nil); scenarios += 1
+  store.data = try record(); state = [2]; store.failSave = true
+  rejects { try controller().restore() }; precondition(state == [0] && store.data != nil)
   writes = 0; store.failSave = false; try controller().restore(); precondition(writes == 0 && store.data == nil); scenarios += 1
-  state = [3]; let noOp = controller(); let savesBefore = store.saves
+  state = [2]; let noOp = controller(); let savesBefore = store.saves
   try noOp.set(.green); try noOp.restore(); precondition(writes == 0 && store.saves == savesBefore && store.data == nil); scenarios += 1
-  state = [2]; let external = controller(); try external.set(.green); state = [4]
+  state = [0]; let external = controller(); try external.set(.green); state = [4]
   try external.set(.orange); precondition(store.data == nil && state == [4]); scenarios += 1
-  state = [2]; store.saves = 0
+  state = [0]; store.saves = 0
   let blinking = MagSafeSession(controller: controller())
   try blinking.select(.blinkOrange, now: 0)
   for tick in 1...1000 { try blinking.tick(now: Double(tick)) }
-  precondition(store.saves == 2, "steady blinking must not fsync every tick")
-  try controller().restore(); precondition(state == [2] && store.data == nil); scenarios += 1
+  precondition(store.saves == 1, "native blinking must not fsync every tick")
+  try controller().restore(); precondition(state == [0] && store.data == nil); scenarios += 1
+  for expected in [3, 6] {
+   store.data = try record(original: [0], expected: [expected], previous: [0]); state = [UInt8(expected)]
+   try controller().restore(); precondition(state == [0] && store.data == nil); scenarios += 1
+  }
   let files = try ChargeRecoveryFileStore(directory: base.appendingPathComponent("shared").path, owner: geteuid())
   let sentinel = Data("charge record remains independent".utf8)
   try files.save(sentinel)
@@ -120,6 +124,6 @@ private final class LEDMemoryRecovery: ChargeRecoveryStore {
   try FileManager.default.createSymbolicLink(atPath: ledPath.path, withDestinationPath: base.appendingPathComponent("unrelated").path)
   rejects { _ = try ledFiles.load() }; rejects { try ledFiles.save(nil) }
   let untouchedCharge = try files.load(); precondition(untouchedCharge == sentinel); scenarios += 1
-  print("PASS LED recovery: \(scenarios) scenarios including 25 terminated subprocesses; fake ACLC only")
+  print("PASS LED recovery: \(scenarios) scenarios including 30 terminated subprocesses; fake ACLC only")
  }
 }

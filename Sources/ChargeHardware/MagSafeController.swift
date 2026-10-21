@@ -1,7 +1,8 @@
 import Foundation
 
-public enum MagSafeColor: String, CaseIterable, Codable { case off, green, orange
- var byte: UInt8 { switch self { case .off: return 1; case .green: return 3; case .orange: return 4 } }
+public enum MagSafeColor: String, CaseIterable, Codable { case off, green, orange, orangeBlinking
+ public var command: String { switch self { case .off: return "magSafeOff"; case .green: return "magSafeGreen"; case .orange: return "magSafeOrange"; case .orangeBlinking: return "magSafeBlinkOrange" } }
+ var byte: UInt8 { switch self { case .off: return 1; case .green: return 2; case .orange: return 4; case .orangeBlinking: return 6 } }
 }
 
 /// ACLC has no documented automatic/reset value. Restore the captured value instead.
@@ -35,9 +36,9 @@ public final class MagSafeController {
   if let data = try recoveryStore.load() {
    guard data.count <= 8192 else { throw HardwareError.invalidData("LED recovery record too large") }
    let record = try JSONDecoder().decode(RecoveryRecord.self, from: data)
-   func valid(_ bytes: [UInt8]) -> Bool { bytes.count == 1 && bytes[0] <= 4 }
+   func valid(_ bytes: [UInt8]) -> Bool { bytes.count == 1 && [0,1,2,3,4,6].contains(bytes[0]) }
    guard record.version == 1, UUID(uuidString: record.bootSession) != nil,
-         valid(record.original), record.expected.count == 1, [1,3,4].contains(record.expected[0]),
+         valid(record.original), record.expected.count == 1, [1,2,3,4,6].contains(record.expected[0]),
          record.previous.map(valid) ?? true else { throw HardwareError.invalidData("Invalid LED recovery record") }
    if UUID(uuidString: record.bootSession) == UUID(uuidString: bootSession) {
     original = record.original; expected = record.expected; previous = record.previous
@@ -56,12 +57,12 @@ public final class MagSafeController {
   persistedOriginal = original; persistedStates = states
  }
  private func value() throws -> [UInt8] {
-  guard let bytes = try read(), bytes.count == 1, bytes[0] <= 4 else { throw HardwareError.unsupported("MagSafe ACLC unavailable or unrecognized") }
+  guard let bytes = try read(), bytes.count == 1, [0,1,2,3,4,6].contains(bytes[0]) else { throw HardwareError.unsupported("MagSafe ACLC unavailable or unrecognized") }
   return bytes
  }
  public func status() throws -> String {
   let bytes = try value()
-  let name = bytes == [1] ? "off" : bytes == [3] ? "green" : bytes == [4] ? "orange" : "system/unknown"
+  let name = bytes == [1] ? "off" : bytes == [2] ? "green" : bytes == [4] ? "orange" : bytes == [6] ? "orange-blinking" : "system/legacy/unknown"
   return "ACLC=\(bytes[0]); color=\(name); ownership=\(original != nil && (bytes == expected || bytes == previous) ? "OpenCharge" : "external")"
  }
  public func set(_ color: MagSafeColor) throws {

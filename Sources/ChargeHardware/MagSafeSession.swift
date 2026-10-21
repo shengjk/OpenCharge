@@ -2,23 +2,26 @@ import Foundation
 
 public enum MagSafePattern: String { case system, off, green, orange, blinkOrange }
 
-/// Called exclusively on the helper's serial queue. Time is monotonic uptime.
+/// Called exclusively on the helper's serial queue. Firmware owns the blink cadence.
 public final class MagSafeSession {
  private let controller: MagSafeController
  private var pattern = MagSafePattern.system
- private var anchor: TimeInterval = 0
  private var sleeping = false
  private var offDuringSleep = false
  public init(controller: MagSafeController) { self.controller = controller }
  public func select(_ next: MagSafePattern, now: TimeInterval) throws {
-  if pattern != next { pattern = next; anchor = now }
+  pattern = next
   try tick(now: now)
  }
  public func setOffDuringSleep(_ enabled: Bool, now: TimeInterval) throws {
   offDuringSleep = enabled; try tick(now: now)
  }
- public func sleep(now: TimeInterval) throws { sleeping = true; try tick(now: now) }
- public func wake(now: TimeInterval) throws { sleeping = false; anchor = now; try tick(now: now) }
+ public func sleep(now: TimeInterval) throws {
+  sleeping = true
+  if pattern == .blinkOrange && !offDuringSleep { try controller.set(.orange) }
+  try tick(now: now)
+ }
+ public func wake(now: TimeInterval) throws { sleeping = false; try tick(now: now) }
  public func tick(now: TimeInterval) throws {
   if sleeping {
    if offDuringSleep { try controller.set(.off) }
@@ -31,8 +34,7 @@ public final class MagSafeSession {
   case .green: try controller.set(.green)
   case .orange: try controller.set(.orange)
   case .blinkOrange:
-   let elapsed = max(0, now - anchor)
-   try controller.set(Int(elapsed.truncatingRemainder(dividingBy: 2)) == 0 ? .orange : .off)
+   try controller.set(.orangeBlinking)
   }
  }
  public func restore() throws {

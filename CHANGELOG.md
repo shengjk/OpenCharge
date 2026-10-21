@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.23
+
+- Correct fixed MagSafe green to ACLC 2 and use the native orange-blink pattern 6; retain legacy value 3 for readback and recovery.
+- Expose orange blinking in settings and the LED shortcut. Require the exact native-encoding capability before green/blink setters, so older services receive only read-only inspection.
+- Preserve captured-state recovery for native patterns and legacy journals; suppress native blink during sleep and restore the selected pattern on wake.
+- Make the dedicated Pause Charging shortcut set the current selected control percentage as its limit, reject invalid/below-20% readings, cancel temporary targets, and resume ordinary policy after the percentage falls. Explicit manual pause remains indefinite.
+- Add fixed-value, native-pattern, same-boot recovery, pause and injected service-compatibility checks.
+
 ## 0.3.22
 
 - Keep ordinary 100% targets and Top Up available for system-managed top-off instead of forcing charge inhibition at full. Top Up remains active until unplugged or explicitly changed.

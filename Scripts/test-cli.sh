@@ -25,7 +25,7 @@ subprocess.run([executable,'schedule-remove',identifier],check=True)
 assert json.loads((root/'configuration.json').read_text())['schedules']==[]
 result=subprocess.run([executable,'low-power','on'],capture_output=True,text=True)
 assert result.returncode!=0 and '--confirm' in result.stderr
-for arguments in (['magsafe','green'], ['magsafe','blue','--confirm'], ['magsafe','restore']):
+for arguments in (['magsafe','green'], ['magsafe','orange-blinking'], ['magsafe','blue','--confirm'], ['magsafe','restore']):
  result=subprocess.run([executable]+arguments,capture_output=True,text=True)
  assert result.returncode!=0 and 'requires' in result.stderr
 print('CLI isolated configuration checks passed; no hardware commands executed')

@@ -142,3 +142,10 @@ Core cases cover manual discharge completion and automatic-discharge entry at wh
 ## 0.3.22 full-charge top-off
 
 Core cases cover ordinary 100% and Top Up continuing to allow charging at full, fractional control precision, recharge after a small drop, unplug completion, temperature/manual-pause priority, legacy decisions without the new optional flag, calibration isolation and active-policy MagSafe indication. The injected production-model fixture follows 90% to 100% to 99.5%, verifying protection before charging, release at full, and protection reacquisition below full. Menu-bar checks distinguish full top-off from observed monitoring, missing readings and unplugged state. All helper, idle and lock operations are injected; no physical charging, sleep or LED effect is established.
+
+
+## 0.3.23 pause and native LED encoding
+
+Pause fixtures inject OS and hardware percentages, exercise below-20%/nonfinite/missing-reading rejection without mutation, cancellation of calibration and temporary targets, and the transition from a current-limit pause into Sailing and charging. A full-percentage pause remains distinct from full-charge top-off. Explicit manual-mode selection clears resumable-pause behavior.
+
+LED fixtures use fixed 1/2/4/6 values, retain read/recovery compatibility for legacy 3, suppress native blink on sleep entry, and avoid repeated heartbeat writes. Recovery includes 54 scenarios with 30 terminated file-backed subprocesses and explicit legacy/native journal cases. A shared app/CLI capability preflight and production-model injected IPC verify the exact capability read precedes every green/blink setter; legacy services receive no LED setter. Tests do not update or restart the installed helper. Physical colors, cadence, sleep and charging remain unverified.

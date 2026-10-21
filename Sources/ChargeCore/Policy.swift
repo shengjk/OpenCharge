@@ -16,6 +16,7 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var lowPowerMode: Bool? = nil
  public var useHardwarePercent: Bool? = nil
  public var mode: ChargeMode = .automatic
+ public var pauseAtCurrent: Bool? = nil
  public var reserve = 15.0
  public var keepAwakeUntilLimit: Bool? = nil
  public var keepAwakeWithLidClosed: Bool? = nil
@@ -81,7 +82,11 @@ public struct ChargeEngine: Sendable {
    if p.mode == .topUp || p.mode == .discharge { completedMode = p.mode }
    return result(.restore, "未连接电源，恢复系统控制")
   }
-  if p.mode == .paused { return result(.inhibitCharge, "已手动暂停充电") }
+  if p.mode == .paused {
+   guard p.pauseAtCurrent == true else { return result(.inhibitCharge, "已手动暂停充电") }
+   if Int(Float(sample.percent)) >= Int(Float(limit)) { return result(.inhibitCharge, "已按当前电量暂停充电") }
+   p.mode = .automatic; p.pauseAtCurrent = nil; previousMode = .automatic; completedMode = .paused
+  }
   var target = p.mode == .topUp ? 100.0 : limit
   if let departure = p.departure, departure > sample.date {
    let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
@@ -205,7 +210,7 @@ public struct ChargeSchedule: Codable, Identifiable {
   let shouldExecute = runMissedTasks || now.timeIntervalSince(date) <= 15
   if shouldExecute {
   switch action { case .limit: policy.limit = value; policy.mode = .automatic
-   case .topUp: policy.mode = .topUp; case .pause: policy.mode = .paused
+   case .topUp: policy.mode = .topUp; case .pause: policy.mode = .paused; policy.pauseAtCurrent = nil
    case .discharge: policy.limit = value; policy.mode = .discharge
    case .calibrate: policy.mode = .calibration; case .automatic: policy.mode = .automatic
    case .lowPowerOn: policy.lowPowerMode = true; case .lowPowerOff: policy.lowPowerMode = false }

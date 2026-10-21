@@ -17,7 +17,7 @@ OpenCharge CLI
   schedule-remove UUID      Remove a stored schedule
   schedule-history          Show execution results
   diagnose-smc              Probe model/key capabilities; read-only, no helper
-  magsafe status|off|green|orange|restore [--confirm]
+  magsafe status|off|green|orange|orange-blinking|restore [--confirm]
                             LED changes expire after 45 awake seconds without renewal
   capabilities              Query the installed root helper
   hardware ACTION --confirm Direct bounded helper action (45s heartbeat lease)
@@ -33,7 +33,7 @@ do {
  case "status": let r = try BatteryTelemetryReader.read(); if args.contains("--json") { try output(r) } else { print("Battery \(r.percent)% · \(r.connected ? "AC" : "battery") · charging=\(r.charging) · \(r.temperature.map { String(format: "%.1f°C", $0) } ?? "temperature unavailable")") }
  case "explain": let r = try BatteryTelemetryReader.read(); var e = ChargeEngine(checkpoint: config.calibrationCheckpoint); try output(e.decide(ChargeSample(percent: try r.controlPercentage(useHardware: config.policy.useHardwarePercent ?? false), temperature: r.temperature, connected: r.connected), policy: config.policy))
  case "limit": guard args.count == 2, let n = Double(args[1]), n.isFinite, (20...100).contains(n) else { throw HelperError.rejected("limit must be 20...100") }; config.policy.limit = n; try config.save(); print("Saved \(n)%")
- case "mode": guard args.count == 2, let mode = ChargeMode(rawValue: args[1]) else { throw HelperError.rejected("invalid mode") }; config.policy.mode = mode; try config.save(); print("Saved \(mode.rawValue)")
+ case "mode": guard args.count == 2, let mode = ChargeMode(rawValue: args[1]) else { throw HelperError.rejected("invalid mode") }; config.policy.mode = mode; config.policy.pauseAtCurrent = nil; try config.save(); print("Saved \(mode.rawValue)")
  case "profile": guard args.count == 2 else { throw HelperError.rejected("profile requires desk|balanced|travel") }; switch args[1] { case "desk": config.policy.limit = 70; config.policy.sailingWidth = 10; case "balanced": config.policy.limit = 80; config.policy.sailingWidth = 5; case "travel": config.policy.limit = 100; default: throw HelperError.rejected("unknown profile") }; config.policy.mode = .automatic; try config.save(); print("Saved profile")
  case "departure": guard args.count >= 2, let date = ISO8601DateFormatter().date(from: args[1]), date > Date() else { throw HelperError.rejected("use a future ISO8601 date with timezone") }; config.policy.departure = date; if args.count > 2 { guard let n = Double(args[2]), n.isFinite, (20...100).contains(n) else { throw HelperError.rejected("target must be 20...100") }; config.policy.departureTarget = n }; try config.save(); print("Saved departure")
  case "schedule": guard args.count >= 4, let date = ISO8601DateFormatter().date(from: args[1]), let action = ScheduleAction(rawValue: args[2]), let rule = RepeatRule(rawValue: args[3]) else { throw HelperError.rejected("schedule ISO8601 action repeat [value]") }; var schedule = ChargeSchedule(); schedule.date = date; schedule.action = action; schedule.repeatRule = rule; if args.count > 4 { guard let n = Double(args[4]), n.isFinite, (20...100).contains(n) else { throw HelperError.rejected("value must be 20...100") }; schedule.value = n }; config.schedules.append(schedule); try config.save(); try output(schedule)
@@ -51,12 +51,14 @@ do {
    print(try HelperClient.request(args[1] == "restore" ? "lowPowerRestore" : prefix + (args[1] == "on" ? "On" : "Off")))
   }
  case "magsafe":
-  guard args.count >= 2 else { throw HelperError.rejected("magsafe status|off|green|orange|restore --confirm") }
+  guard args.count >= 2 else { throw HelperError.rejected("magsafe status|off|green|orange|orange-blinking|restore --confirm") }
   if args[1] == "status", args.count == 2 { print(try HelperClient.request("magSafeStatus")) }
   else {
-   guard args.count == 3, args[2] == "--confirm", ["off", "green", "orange", "restore"].contains(args[1]) else { throw HelperError.rejected("LED change requires a fixed color or restore and --confirm") }
-   let commands = ["off": "magSafeOff", "green": "magSafeGreen", "orange": "magSafeOrange", "restore": "magSafeRestore"]
-   print(try HelperClient.request(commands[args[1]]!))
+   guard args.count == 3, args[2] == "--confirm", ["off", "green", "orange", "orange-blinking", "restore"].contains(args[1]) else { throw HelperError.rejected("LED change requires a fixed color or restore and --confirm") }
+   let commands = ["off": "magSafeOff", "green": "magSafeGreen", "orange": "magSafeOrange", "orange-blinking": "magSafeBlinkOrange", "restore": "magSafeRestore"]
+   let command = commands[args[1]]!
+   try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { try HelperClient.request("capabilities") })
+   print(try HelperClient.request(command))
   }
  case "diagnose-smc": try output(SMCController().capabilities())
  case "capabilities": print(try HelperClient.request("capabilities"))

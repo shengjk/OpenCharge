@@ -157,7 +157,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if mode == .topUp && config.policy.mode == .calibration { error = "请先结束校准，再开始充至满电"; return }
   calibrationPending = false
   if mode != .calibration { config.calibrationCheckpoint = nil }
-  config.policy.mode = mode; save(); refresh()
+  config.policy.mode = mode; config.policy.pauseAtCurrent = nil; save(); refresh()
  }
  func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint); calibrationPending = false; refresh() }
  func setLowPower(_ enabled: Bool, source: String? = nil) {
@@ -171,21 +171,22 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   updateMagSafe()
  }
  func useMagSafePolicy() { magSafeSelection = nil; magSafePolicyFailed = false; updateMagSafe() }
- func updateMagSafe() {
+ func updateMagSafe(request: (String) throws -> String = HelperClient.request) {
   guard !quitting, !magSafePolicyFailed else { return }
   let mode = config.magSafeMode ?? .system
   let wantsControl = magSafeSelection != nil || mode != .system || config.magSafeOffDuringSleep == true
   do {
    if !wantsControl {
-    if magSafeSessionActive { magSafeStatus = try HelperClient.request("magSafeRestore"); magSafeSessionActive = false }
+    if magSafeSessionActive { magSafeStatus = try request("magSafeRestore"); magSafeSessionActive = false }
     return
    }
    let command: String
-   if let color = magSafeSelection { command = color == .off ? "magSafeOff" : color == .green ? "magSafeGreen" : "magSafeOrange" }
+   if let color = magSafeSelection { command = color.command }
    else { command = MagSafePolicy.command(mode: mode, connected: reading?.physicalAdapterConnected ?? (reading?.connected == true || lastHardwareAction == .forceDischarge), charging: reading?.charging ?? false, action: decision.action, controlEnabled: config.hardwareEnabled, blinkDischarge: config.magSafeBlinkDischarge ?? true, percent: config.policy.useHardwarePercent == true ? (reading?.hardwarePercent ?? .nan) : (reading?.percent ?? .nan), target: decision.effectiveLimit, sailingHold: decision.sailingHold ?? false, calibrating: calibration != .idle && calibration != .complete, fullChargeHold: decision.fullChargeHold == true) }
-   _ = try HelperClient.request(config.magSafeOffDuringSleep == true ? "magSafeSleepOn" : "magSafeSleepOff")
+   try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { try request("capabilities") })
+   _ = try request(config.magSafeOffDuringSleep == true ? "magSafeSleepOn" : "magSafeSleepOff")
    magSafeSessionActive = true
-   magSafeStatus = try HelperClient.request(command)
+   magSafeStatus = try request(command)
   } catch { magSafeStatus = error.localizedDescription; magSafePolicyFailed = true }
  }
  func inspectMagSafe() { do { magSafeStatus = try HelperClient.request("magSafeStatus") } catch { magSafeStatus = error.localizedDescription } }
@@ -227,7 +228,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     calibration = engine.calibration
     if config.policy.mode == .calibration && config.calibrationCheckpoint != engine.checkpoint { config.calibrationCheckpoint = engine.checkpoint; save() }
     if calibration == .complete { config.lastCalibration = Date(); config.policy.mode = .automatic; config.calibrationCheckpoint = nil; save() }
-    if engine.completedMode != nil { config.policy.mode = .automatic; save() }
+    if engine.completedMode != nil { config.policy.mode = .automatic; config.policy.pauseAtCurrent = nil; save() }
    }
    let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true, fullChargeHold: decision.fullChargeHold == true)
    applyHardwareDecision(plan)
