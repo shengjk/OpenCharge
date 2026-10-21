@@ -8,10 +8,10 @@ public struct SleepProtectionPlan: Equatable, Sendable {
   let fields = Set(capabilities.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
   return fields.contains("sleepOverride:interfacesDetected") && fields.contains("sleepRecovery:phasesV1")
  }
- public static func evaluate(controlEnabled: Bool, connected: Bool, physicalAdapterConnected: Bool?, action: ChargeAction, percent: Double, target: Double, calibrating: Bool, idleUntilTarget: Bool, systemUntilTarget: Bool, allowDisplaySleep: Bool, lidClosed: Bool? = false, ownAdapterInhibited: Bool = false, thermalHold: Bool = false) -> Self {
+ public static func evaluate(controlEnabled: Bool, connected: Bool, physicalAdapterConnected: Bool?, action: ChargeAction, percent: Double, target: Double, calibrating: Bool, idleUntilTarget: Bool, systemUntilTarget: Bool, allowDisplaySleep: Bool, lidClosed: Bool? = false, ownAdapterInhibited: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false) -> Self {
   let adapterPresent = physicalAdapterConnected ?? (connected || ownAdapterInhibited)
   guard controlEnabled, action != .restore, adapterPresent else { return Self(preventIdleSleep: false, preventSystemAndLidSleep: false, preventDisplaySleep: false) }
-  let moving = action == .forceDischarge || (action == .allowCharge && percent.isFinite && target.isFinite && percent < target)
+  let moving = action == .forceDischarge || (action == .allowCharge && !fullChargeHold && percent.isFinite && target.isFinite && percent < target)
   let waitingForTemperature = thermalHold && action == .inhibitCharge && percent.isFinite && target.isFinite && percent < target
   let needed = moving || calibrating || waitingForTemperature
   let discharging = action == .forceDischarge

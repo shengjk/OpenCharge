@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.22
+
+- Keep ordinary 100% targets and Top Up available for system-managed top-off instead of forcing charge inhibition at full. Top Up remains active until unplugged or explicitly changed.
+- Add a separate full-charge decision flag, a full/managed-top-off menu-bar state, and active-policy green MagSafe indication without changing observed telemetry.
+- Release selected until-target sleep protection at full, including single-precision boundary values; preserve calibration requirements and existing temperature pauses.
+- Refresh the menu-bar presentation when its decision or control configuration changes, retaining the render cache.
+- Add policy, compatibility, indicator and injected production-model full-charge regressions.
+
 ## 0.3.21
 
 - Compare ordinary daily charge/discharge targets in whole percentage bins using single-precision input values, including fractional hardware readings and fractional configured limits.

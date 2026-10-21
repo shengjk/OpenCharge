@@ -4,7 +4,7 @@ final class CompatibilityTests: XCTestCase {
  func testLegacyDecisionWithoutThermalFlagStillDecodes() {
   let data = Data(#"{"action":"inhibitCharge","reason":"fixture","effectiveLimit":80,"sailingHold":false}"#.utf8)
   let decision = try? JSONDecoder().decode(Decision.self, from: data)
-  XCTAssertEqual(decision?.action, .inhibitCharge); XCTAssertNil(decision?.thermalHold)
+  XCTAssertEqual(decision?.action, .inhibitCharge); XCTAssertNil(decision?.thermalHold); XCTAssertNil(decision?.fullChargeHold)
  }
  private let epoch = Date(timeIntervalSince1970: 1_700_000_000)
  private var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(secondsFromGMT: 0)!; return c }
@@ -34,7 +34,7 @@ final class CompatibilityTests: XCTestCase {
  }
  func testTopUpPersistsAtFullUntilUnplugged() {
   var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .topUp
-  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .inhibitCharge); XCTAssertNil(engine.completedMode)
+  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .allowCharge); XCTAssertNil(engine.completedMode)
   XCTAssertEqual(engine.decide(sample(99, seconds: 10), policy: p).action, .allowCharge); XCTAssertNil(engine.completedMode)
   XCTAssertEqual(engine.decide(sample(99, seconds: 20, connected: false), policy: p).action, .restore)
   XCTAssertEqual(engine.completedMode, .topUp)

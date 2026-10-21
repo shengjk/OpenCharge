@@ -23,7 +23,7 @@ import ChargeHardware
   popover.contentViewController = NSHostingController(rootView: MenuView(consumer: .statusItem, dismiss: { [weak self] in self?.close() }).environmentObject(model))
   item.button?.target = self
   item.button?.action = #selector(togglePopover(_:))
-  model.$reading.receive(on: RunLoop.main).sink { [weak self] _ in
+  model.$reading.combineLatest(model.$decision, model.$config).receive(on: RunLoop.main).sink { [weak self] _ in
    MainActor.assumeIsolated { self?.updateLabel() }
   }.store(in: &subscriptions)
   preferencesObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
@@ -48,7 +48,8 @@ import ChargeHardware
   let label = MenuBarLabel(display: display, reading: model.reading,
    style: defaults.string(forKey: "menuIconStyle") ?? "status",
    lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
-   tintLowPower: defaults.bool(forKey: "menuTintLowPower"))
+   tintLowPower: defaults.bool(forKey: "menuTintLowPower"),
+   fullChargeHold: model.config.hardwareEnabled && model.decision.fullChargeHold == true)
   if renderCache.needsRender(label, appearance: button.effectiveAppearance.name.rawValue) {
    button.effectiveAppearance.performAsCurrentDrawingAppearance {
     button.image = MenuBarIconRenderer.image(for: label)

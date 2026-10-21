@@ -9,9 +9,9 @@ enum MenuIconStyle: String, CaseIterable, Identifiable {
  }
 }
 enum MenuBatteryState: String {
- case unknown, charging, discharging, holding, battery
+ case unknown, charging, discharging, holding, full, battery
  var title: String {
-  switch self { case .unknown: return "状态未知"; case .charging: return "充电中"; case .discharging: return "接电放电"; case .holding: return "接电未充电"; case .battery: return "电池供电" }
+  switch self { case .unknown: return "状态未知"; case .charging: return "充电中"; case .discharging: return "接电放电"; case .holding: return "接电未充电"; case .full: return "已满电 · 系统补电管理"; case .battery: return "电池供电" }
  }
 }
 enum MenuBarTint: Equatable { case monochrome, charging, lowBattery, lowPower
@@ -27,13 +27,14 @@ struct MenuBarLabel: Equatable {
  let state: MenuBatteryState
  let fraction: Double?
  let tint: MenuBarTint
- init(display: String, reading: BatteryReading?, style: String = "status", lowPower: Bool = false, tintLowPower: Bool = false) {
+ init(display: String, reading: BatteryReading?, style: String = "status", lowPower: Bool = false, tintLowPower: Bool = false, fullChargeHold: Bool = false) {
   self.style = MenuIconStyle(rawValue: style) ?? .status
   let validPercent = reading.flatMap { $0.percent.isFinite && (0...100).contains($0.percent) ? $0.percent : nil }
   fraction = validPercent.map { $0 / 100 }
   let percent = validPercent.map { "\(Int($0))%" } ?? "—"
   if let reading {
-   if reading.charging { state = .charging }
+   if fullChargeHold && (reading.physicalAdapterConnected ?? reading.connected) { state = .full }
+   else if reading.charging { state = .charging }
    else if reading.physicalAdapterConnected ?? reading.connected {
     state = reading.currentMA.map { $0.isFinite && $0 < 0 } == true ? .discharging : .holding
    } else { state = .battery }
@@ -49,7 +50,7 @@ struct MenuBarLabel: Equatable {
   case .unknown: statusSymbol = "questionmark.circle"
   case .charging: statusSymbol = "battery.100percent.bolt"
   case .discharging: statusSymbol = "arrow.down.circle"
-  case .holding: statusSymbol = "pause.circle"
+  case .holding, .full: statusSymbol = "pause.circle"
   case .battery: statusSymbol = batterySymbol
   }
   switch display {
@@ -66,7 +67,7 @@ struct MenuBarLabel: Equatable {
    }
   }
   if lowPower && tintLowPower { tint = .lowPower }
-  else if self.style == .coloredBattery && state == .charging { tint = .charging }
+  else if self.style == .coloredBattery && (state == .charging || state == .full) { tint = .charging }
   else if self.style == .coloredBattery && validPercent.map({ $0 <= 20 }) == true { tint = .lowBattery }
   else { tint = .monochrome }
   accessibilityText = "OpenCharge · \(text.isEmpty ? percent : text) · \(state.title)" + (lowPower ? " · 低电量模式" : "")
@@ -98,7 +99,7 @@ enum MenuBarIconRenderer {
    }
    let badge: String?
    if label.fraction == nil { badge = "questionmark" }
-   else { switch label.state { case .charging: badge = "bolt.fill"; case .holding: badge = "pause.fill"; case .discharging: badge = "arrow.down"; default: badge = nil } }
+   else { switch label.state { case .charging: badge = "bolt.fill"; case .holding, .full: badge = "pause.fill"; case .discharging: badge = "arrow.down"; default: badge = nil } }
    if let badge, let overlay = NSImage(systemSymbolName: badge, accessibilityDescription: nil) {
     // XOR keeps the state visible over both filled and empty regions of a template image.
     let glyph = overlay.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [.labelColor])) ?? overlay

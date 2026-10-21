@@ -137,3 +137,8 @@ Core cases cover ordinary manual/automatic discharge with high, missing and nonf
 ## 0.3.21 fractional percentage boundaries
 
 Core cases cover manual discharge completion and automatic-discharge entry at whole percentage boundaries, fractional configured daily limits, single-precision values near the next integer, fractional Sailing restart thresholds, and isolation from reserve and calibration comparisons. The production-model fixture follows closed-lid discharge from 90% to 80.6% with an 80% target; it verifies charging is inhibited before selected idle and full sleep protection are released. Helper, idle and lock operations are injected. No physical threshold, charge or lid behavior is established by these software checks.
+
+
+## 0.3.22 full-charge top-off
+
+Core cases cover ordinary 100% and Top Up continuing to allow charging at full, fractional control precision, recharge after a small drop, unplug completion, temperature/manual-pause priority, legacy decisions without the new optional flag, calibration isolation and active-policy MagSafe indication. The injected production-model fixture follows 90% to 100% to 99.5%, verifying protection before charging, release at full, and protection reacquisition below full. Menu-bar checks distinguish full top-off from observed monitoring, missing readings and unplugged state. All helper, idle and lock operations are injected; no physical charging, sleep or LED effect is established.

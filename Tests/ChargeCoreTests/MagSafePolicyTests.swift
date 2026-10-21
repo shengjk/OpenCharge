@@ -1,6 +1,17 @@
 import XCTest
 @testable import ChargeCore
 final class MagSafePolicyTests: XCTestCase {
+ func testFullChargeFlagUsesGreenOnlyWithControlAndOutsideCalibration() {
+  for enabled in [false, true] {
+   XCTAssertEqual(MagSafePolicy.command(mode: .chargeState, connected: true, charging: true,
+    action: .allowCharge, controlEnabled: enabled, blinkDischarge: true, percent: 99.999998,
+    target: 100, fullChargeHold: true), enabled ? "magSafeGreen" : "magSafeOrange")
+  }
+  XCTAssertEqual(MagSafePolicy.command(mode: .chargeState, connected: true, charging: true,
+   action: .allowCharge, controlEnabled: true, blinkDischarge: true, percent: 99.999998,
+   target: 100, calibrating: true, fullChargeHold: true), "magSafeOrange")
+ }
+
  func testPhysicalPresenceAndControlOwnershipChangeIndicator() {
   XCTAssertEqual(MagSafePolicy.command(mode: .chargeState, connected: false, charging: true, action: .allowCharge, controlEnabled: true, blinkDischarge: true, percent: 70, target: 80), "magSafeSystem")
   XCTAssertEqual(MagSafePolicy.command(mode: .chargeState, connected: true, charging: false, action: .forceDischarge, controlEnabled: true, blinkDischarge: true, percent: 70, target: 80), "magSafeBlinkOrange")

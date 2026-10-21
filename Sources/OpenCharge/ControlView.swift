@@ -51,6 +51,7 @@ struct ControlView: View {
    Picker("当前模式", selection: $m.config.policy.mode) { ForEach(ChargeMode.allCases, id: \.self) { Text(modeName($0)).tag($0) } }.pickerStyle(.segmented)
    if m.calibrationPending { HStack { Text("上次校准中断"); Button("继续") { m.resumeCalibration() }; Button("取消") { m.changeMode(.automatic) } } }
    if let last = m.config.lastCalibration { Text("上次完成：\(last.formatted())").font(.caption).foregroundStyle(.secondary) }
+   Text("日常上限为 100% 或临时充满时，满电后由系统管理补电，不强制停充；临时充满在拔线后结束。").font(.caption).foregroundStyle(.secondary)
    Text("校准阶段：\(m.calibration.displayName)").font(.caption).foregroundStyle(.secondary)
    Text("校准顺序：充满 → 放电至 10% → 充满 → 保持一小时 → 恢复日常目标；默认校准期间暂停应用温控，可启用增强保护；可随时切回自动模式。").font(.caption).foregroundStyle(.secondary)
    Stepper("主动放电保底：\(Int(m.config.policy.reserve))%", value: $m.config.policy.reserve, in: 10...40)

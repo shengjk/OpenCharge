@@ -46,6 +46,7 @@ public struct ChargeSample: Codable, Sendable {
 public struct Decision: Codable, Sendable {
  public var sailingHold: Bool? = nil
  public var thermalHold: Bool? = nil
+ public var fullChargeHold: Bool? = nil
  public var action: ChargeAction; public var reason: String; public var effectiveLimit: Double
  public init(_ action: ChargeAction, _ reason: String, limit: Double) { self.action = action; self.reason = reason; effectiveLimit = limit }
 }
@@ -69,7 +70,7 @@ public struct ChargeEngine: Sendable {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
-  func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false) -> Decision { var value = Decision(a, r, limit: l ?? limit); value.sailingHold = sailingHold; value.thermalHold = thermalHold; return value }
+  func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false) -> Decision { var value = Decision(a, r, limit: l ?? limit); value.sailingHold = sailingHold; value.thermalHold = thermalHold; value.fullChargeHold = fullChargeHold; return value }
   if p.mode != .calibration { calibration = .idle; holdingSince = nil }
   if p.mode != previousMode { sailingPaused = true; previousMode = p.mode }
   guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, "无效电池读数，恢复系统控制") }
@@ -158,6 +159,10 @@ public struct ChargeEngine: Sendable {
     return result(sample.percent < limit ? .allowCharge : .inhibitCharge, "校准完成，日常上限控制")
    case .idle: break
    }
+  }
+  if (p.mode == .automatic || p.mode == .topUp) && wholeTarget == 100 && wholePercent == 100 {
+   sailingPaused = false
+   return result(.allowCharge, "满电保持：由系统管理补电", target, fullChargeHold: true)
   }
   let reachedTarget = p.mode == .automatic || p.mode == .discharge ? wholePercent >= wholeTarget : sample.percent >= target
   if reachedTarget { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }

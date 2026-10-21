@@ -5,14 +5,14 @@ public enum MagSafeMode: String, Codable, CaseIterable { case system, chargeStat
 }
 public enum MagSafePolicy {
  /// Physical adapter presence matters during forced discharge, where logical AC can be false.
- public static func command(mode: MagSafeMode, connected: Bool, charging: Bool, action: ChargeAction, controlEnabled: Bool, blinkDischarge: Bool, percent: Double, target: Double, sailingHold: Bool = false, calibrating: Bool = false) -> String {
+ public static func command(mode: MagSafeMode, connected: Bool, charging: Bool, action: ChargeAction, controlEnabled: Bool, blinkDischarge: Bool, percent: Double, target: Double, sailingHold: Bool = false, calibrating: Bool = false, fullChargeHold: Bool = false) -> String {
   guard connected else { return "magSafeSystem" }
   if mode == .off { return "magSafeOff" }
   if mode == .green { return "magSafeGreen" }; if mode == .orange { return "magSafeOrange" }
   guard mode == .chargeState else { return "magSafeSystem" }
   if controlEnabled && action == .forceDischarge { return blinkDischarge ? "magSafeBlinkOrange" : "magSafeOrange" }
   if calibrating { return "magSafeOrange" }
-  if percent.isFinite && target.isFinite && (percent >= target || (controlEnabled && sailingHold)) { return "magSafeGreen" }
+  if percent.isFinite && target.isFinite && (percent >= target || (controlEnabled && (sailingHold || fullChargeHold))) { return "magSafeGreen" }
   return "magSafeOrange"
  }
 }

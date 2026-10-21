@@ -80,6 +80,43 @@ final class PolicyTests: XCTestCase {
    XCTAssertEqual(engine.decide(sample(15, closed: true), policy: p).action, .allowCharge)
   }
  }
+ func testFullChargeFlagUsesControlPrecisionAndStaysOutOfOtherModes() {
+  var p = ChargePolicy(); p.limit = 100; p.sailing = false
+  var engine = ChargeEngine()
+  XCTAssertEqual(engine.decide(sample(99.999998), policy: p).fullChargeHold, true)
+  XCTAssertEqual(engine.decide(sample(99.5), policy: p).fullChargeHold, false)
+  p.mode = .paused
+  XCTAssertEqual(engine.decide(sample(100), policy: p).fullChargeHold, false)
+  p.mode = .calibration
+  XCTAssertEqual(engine.decide(sample(100), policy: p).fullChargeHold, false)
+  p.mode = .automatic; p.limit = 80
+  XCTAssertEqual(engine.decide(sample(100), policy: p).fullChargeHold, false)
+ }
+ func testDailyFullTargetLeavesTopOffToSystem() {
+  var p = ChargePolicy(); p.limit = 100
+  var engine = ChargeEngine()
+  XCTAssertEqual(engine.decide(sample(90), policy: p).action, .allowCharge)
+  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .allowCharge)
+  XCTAssertEqual(engine.decide(sample(99.5), policy: p).action, .allowCharge)
+  XCTAssertNil(engine.completedMode)
+ }
+ func testTopUpStaysActiveAndAllowsSystemTopOffAtFull() {
+  var p = ChargePolicy(); p.mode = .topUp
+  var engine = ChargeEngine()
+  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .allowCharge)
+  XCTAssertNil(engine.completedMode)
+  XCTAssertEqual(engine.decide(sample(99.5), policy: p).action, .allowCharge)
+  let unplugged = engine.decide(sample(100, connected: false), policy: p)
+  XCTAssertEqual(unplugged.action, .restore); XCTAssertEqual(engine.completedMode, .topUp)
+ }
+ func testFullTopOffDoesNotBypassTemperaturePauseOrManualPause() {
+  var p = ChargePolicy(); p.limit = 100
+  var engine = ChargeEngine()
+  let hot = engine.decide(sample(100, temperature: 40), policy: p)
+  XCTAssertEqual(hot.action, .inhibitCharge); XCTAssertEqual(hot.thermalHold, true)
+  p.mode = .paused
+  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .inhibitCharge)
+ }
  func testWholePercentageDischargeCompletionAndAutomaticThreshold() {
   for mode in [ChargeMode.discharge, .automatic] {
    var p = ChargePolicy(); p.mode = mode; p.automaticDischarge = true
@@ -234,7 +271,7 @@ final class PolicyTests: XCTestCase {
   _ = engine.decide(sample(80), policy: p); p.mode = .topUp
   XCTAssertEqual(engine.decide(sample(80), policy: p).effectiveLimit, 100)
   XCTAssertEqual(engine.decide(sample(95), policy: p).action, .allowCharge)
-  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .inhibitCharge)
+  XCTAssertEqual(engine.decide(sample(100), policy: p).action, .allowCharge)
  }
  func testCalibrationPublishedSequenceAndOneHourHold() {
   var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .calibration

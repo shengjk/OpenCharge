@@ -4,6 +4,13 @@ import ChargeHardware
 @MainActor func menuBarAppearanceChecks() throws {
  var checks = 0
  func expect(_ value: Bool, _ reason: String) { precondition(value, reason); checks += 1 }
+ let trickle = BatteryReading(percent: 100, connected: true, charging: true)
+ let full = MenuBarLabel(display: "status", reading: trickle, fullChargeHold: true)
+ expect(full.state == .full && full.symbol == "pause.circle", "full top-off has a separate pause presentation")
+ expect(full.accessibilityText.contains("系统补电管理"), "full presentation does not claim physical charging has stopped")
+ expect(MenuBarLabel(display: "status", reading: trickle).state == .charging, "monitoring continues to show observed charging")
+ expect(MenuBarLabel(display: "status", reading: nil, fullChargeHold: true).state == .unknown, "full flag cannot invent telemetry")
+ expect(MenuBarLabel(display: "status", reading: BatteryReading(percent: 100, connected: false, charging: false), fullChargeHold: true).state == .battery, "unplugged telemetry takes priority over old full flag")
  let held = BatteryReading(percent: 80, connected: true, charging: false)
  let charging = BatteryReading(percent: 7, connected: true, charging: true)
  let discharge = BatteryReading(percent: 76, currentMA: -600, connected: false, charging: false, physicalAdapterConnected: true)

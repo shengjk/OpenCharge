@@ -182,7 +182,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
    let command: String
    if let color = magSafeSelection { command = color == .off ? "magSafeOff" : color == .green ? "magSafeGreen" : "magSafeOrange" }
-   else { command = MagSafePolicy.command(mode: mode, connected: reading?.physicalAdapterConnected ?? (reading?.connected == true || lastHardwareAction == .forceDischarge), charging: reading?.charging ?? false, action: decision.action, controlEnabled: config.hardwareEnabled, blinkDischarge: config.magSafeBlinkDischarge ?? true, percent: config.policy.useHardwarePercent == true ? (reading?.hardwarePercent ?? .nan) : (reading?.percent ?? .nan), target: decision.effectiveLimit, sailingHold: decision.sailingHold ?? false, calibrating: calibration != .idle && calibration != .complete) }
+   else { command = MagSafePolicy.command(mode: mode, connected: reading?.physicalAdapterConnected ?? (reading?.connected == true || lastHardwareAction == .forceDischarge), charging: reading?.charging ?? false, action: decision.action, controlEnabled: config.hardwareEnabled, blinkDischarge: config.magSafeBlinkDischarge ?? true, percent: config.policy.useHardwarePercent == true ? (reading?.hardwarePercent ?? .nan) : (reading?.percent ?? .nan), target: decision.effectiveLimit, sailingHold: decision.sailingHold ?? false, calibrating: calibration != .idle && calibration != .complete, fullChargeHold: decision.fullChargeHold == true) }
    _ = try HelperClient.request(config.magSafeOffDuringSleep == true ? "magSafeSleepOn" : "magSafeSleepOff")
    magSafeSessionActive = true
    magSafeStatus = try HelperClient.request(command)
@@ -229,7 +229,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     if calibration == .complete { config.lastCalibration = Date(); config.policy.mode = .automatic; config.calibrationCheckpoint = nil; save() }
     if engine.completedMode != nil { config.policy.mode = .automatic; save() }
    }
-   let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true)
+   let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true, fullChargeHold: decision.fullChargeHold == true)
    applyHardwareDecision(plan)
    updateMagSafe()
    if !plan.preventSystemAndLidSleep { updateSleepOverride(plan) }
