@@ -48,6 +48,7 @@ public struct Decision: Codable, Sendable {
  public var sailingHold: Bool? = nil
  public var thermalHold: Bool? = nil
  public var fullChargeHold: Bool? = nil
+ public var phase: PolicyPhase? = nil
  public var action: ChargeAction; public var reason: String; public var effectiveLimit: Double
  public init(_ action: ChargeAction, _ reason: String, limit: Double) { self.action = action; self.reason = reason; effectiveLimit = limit }
 }
@@ -60,31 +61,47 @@ public struct ChargeEngine: Sendable {
  public private(set) var calibration: CalibrationStage = .idle
  public private(set) var holdingSince: Date?
  public private(set) var completedMode: ChargeMode?
+ public private(set) var phase = PolicyPhase.pause
  private var nextThermalCheck: Date?
  private var previousThermalBehavior: ThermalBehavior?
  private var heatPaused = false
  private var sailingPaused = true
  private var previousMode: ChargeMode = .automatic
- public init(checkpoint: CalibrationCheckpoint? = nil) { calibration = checkpoint?.stage ?? .idle; holdingSince = checkpoint?.holdingSince }
+ public init(checkpoint: CalibrationCheckpoint? = nil) { calibration = checkpoint?.stage ?? .idle; holdingSince = checkpoint?.holdingSince; if let checkpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { phase = .calibration } }
  public var checkpoint: CalibrationCheckpoint { CalibrationCheckpoint(stage: calibration, holdingSince: holdingSince) }
  public mutating func decide(_ sample: ChargeSample, policy raw: ChargePolicy) -> Decision {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
-  func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false) -> Decision { var value = Decision(a, r, limit: l ?? limit); value.sailingHold = sailingHold; value.thermalHold = thermalHold; value.fullChargeHold = fullChargeHold; return value }
+  var reportedPhase = phase
+  defer { phase = reportedPhase }
+  func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false, phase nextPhase: PolicyPhase? = nil) -> Decision {
+   if let nextPhase { reportedPhase = nextPhase }
+   var value = Decision(a, r, limit: l ?? limit)
+   value.sailingHold = sailingHold; value.thermalHold = thermalHold; value.fullChargeHold = fullChargeHold; value.phase = reportedPhase
+   return value
+  }
   if p.mode != .calibration { calibration = .idle; holdingSince = nil }
-  if p.mode != previousMode { sailingPaused = true; previousMode = p.mode }
+  if p.mode != previousMode {
+   sailingPaused = true; previousMode = p.mode
+   switch p.mode {
+   case .automatic, .paused: reportedPhase = .pause
+   case .topUp: reportedPhase = .topUp
+   case .discharge: reportedPhase = .discharging
+   case .calibration: reportedPhase = .calibration
+   }
+  }
   guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, "无效电池读数，恢复系统控制") }
   // Cutting adapter input can make the OS report battery power. An acknowledged own cut
   // must not be mistaken for unplugging and immediately undone. Prefer raw presence when available.
   let adapterPresent = sample.physicalAdapterConnected ?? (sample.connected || sample.ownAdapterInhibited)
   guard adapterPresent else {
-   if p.mode == .topUp || p.mode == .discharge { completedMode = p.mode }
+   if p.mode == .topUp || p.mode == .discharge { completedMode = p.mode; reportedPhase = p.sailing ? .sailing : .pause }
    return result(.restore, "未连接电源，恢复系统控制")
   }
   if p.mode == .paused {
-   guard p.pauseAtCurrent == true else { return result(.inhibitCharge, "已手动暂停充电") }
-   if Int(Float(sample.percent)) >= Int(Float(limit)) { return result(.inhibitCharge, "已按当前电量暂停充电") }
+   guard p.pauseAtCurrent == true else { return result(.inhibitCharge, "已手动暂停充电", phase: .pause) }
+   if Int(Float(sample.percent)) >= Int(Float(limit)) { return result(.inhibitCharge, "已按当前电量暂停充电", phase: .pause) }
    p.mode = .automatic; p.pauseAtCurrent = nil; previousMode = .automatic; completedMode = .paused
   }
   var target = p.mode == .topUp ? 100.0 : limit
@@ -98,7 +115,7 @@ public struct ChargeEngine: Sendable {
   let wholeTarget = Int(Float(target))
   let sailingFloor = max(Float(20), Float(target) - Float(p.sailingWidth))
   if sailingPaused && p.sailing && p.mode == .automatic && wholePercent < wholeTarget && Float(sample.percent) > sailingFloor {
-   return result(.inhibitCharge, "航行模式：电量处于保持区间", target, sailingHold: true)
+   return result(.inhibitCharge, "航行模式：电量处于保持区间", target, sailingHold: true, phase: .sailing)
   }
   let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
   let ordinaryDischargeRequested = p.mode != .calibration && (p.mode == .discharge || (p.automaticDischarge && wholePercent > wholeTarget))
@@ -111,15 +128,16 @@ public struct ChargeEngine: Sendable {
     heatPaused = false; nextThermalCheck = nil
     if wholePercent <= wholeTarget {
      if p.mode == .discharge { completedMode = .discharge }
-     return result(.inhibitCharge, "已放电至目标", target)
+     return result(.inhibitCharge, "已放电至目标", target, phase: p.sailing ? .sailing : .pause)
     }
-    return result(.forceDischarge, "主动放电至目标", target)
+    return result(.forceDischarge, "主动放电至目标", target, phase: .discharging)
    }
   }
   if p.mode == .automatic && wholeTarget < 100 && !ordinaryDischargeRequested && wholePercent >= wholeTarget {
    sailingPaused = true
-   return result(.inhibitCharge, "达到充电上限", target)
+   return result(.inhibitCharge, "达到充电上限", target, phase: p.sailing ? .sailing : .pause)
   }
+  reportedPhase = p.mode == .calibration ? .calibration : p.mode == .topUp ? .topUp : .charging
   let thermal = p.thermalBehavior ?? .fiveMinuteWindows
   if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; previousThermalBehavior = thermal }
   // The low-charge boundary includes 20% itself.
@@ -135,13 +153,13 @@ public struct ChargeEngine: Sendable {
      if sample.date >= check { heatPaused = t >= p.maxTemperature; nextThermalCheck = sample.date.addingTimeInterval(300) }
     } else if t >= p.maxTemperature { heatPaused = true; nextThermalCheck = sample.date.addingTimeInterval(300) }
    }
-   if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? "热保护：等待降温至阈值以下 2°C" : "热保护：五分钟暂停窗口", target, thermalHold: true) }
+   if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? "热保护：等待降温至阈值以下 2°C" : "热保护：五分钟暂停窗口", target, thermalHold: true, phase: p.mode == .calibration ? .calibration : .heatProtect) }
   } else { heatPaused = false; nextThermalCheck = nil }
   if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || ordinaryDischargeRequested) {
    if p.mode == .calibration { calibration = .refilling }
    if p.mode == .discharge { completedMode = .discharge }
    let charge = wholePercent < wholeTarget || p.mode == .calibration
-   return result(charge ? .allowCharge : .inhibitCharge, charge ? "低电量保底：停止放电并充电" : "低电量保底：停止主动放电", target)
+   return result(charge ? .allowCharge : .inhibitCharge, charge ? "低电量保底：停止放电并充电" : "低电量保底：停止主动放电", target, phase: p.mode == .calibration ? .calibration : charge ? .charging : p.sailing ? .sailing : .pause)
   }
   if p.mode == .calibration {
    if calibration == .idle { calibration = .filling }
@@ -158,21 +176,21 @@ public struct ChargeEngine: Sendable {
     if sample.percent >= 100 { calibration = .holding; holdingSince = sample.date }
     return result(.allowCharge, "校准：重新充满电", 100)
    case .returning:
-    if sample.percent <= limit { calibration = .complete; return result(.inhibitCharge, "校准完成") }
+    if sample.percent <= limit { calibration = .complete; return result(.inhibitCharge, "校准完成", phase: p.sailing ? .sailing : .pause) }
     return result(.forceDischarge, "校准：恢复日常上限")
    case .complete:
-    return result(sample.percent < limit ? .allowCharge : .inhibitCharge, "校准完成，日常上限控制")
+    return result(sample.percent < limit ? .allowCharge : .inhibitCharge, "校准完成，日常上限控制", phase: sample.percent < limit ? .charging : p.sailing ? .sailing : .pause)
    case .idle: break
    }
   }
   if (p.mode == .automatic || p.mode == .topUp) && wholeTarget == 100 && wholePercent == 100 {
    sailingPaused = false
-   return result(.allowCharge, "满电保持：由系统管理补电", target, fullChargeHold: true)
+   return result(.allowCharge, "满电保持：由系统管理补电", target, fullChargeHold: true, phase: p.mode == .topUp ? .topUp : .charging)
   }
   let reachedTarget = p.mode == .automatic || p.mode == .discharge ? wholePercent >= wholeTarget : sample.percent >= target
-  if reachedTarget { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target) }
+  if reachedTarget { sailingPaused = true; return result(.inhibitCharge, "达到充电上限", target, phase: p.sailing ? .sailing : .pause) }
   sailingPaused = false
-  return result(.allowCharge, target != limit ? "临时目标充电" : "低于目标，允许充电", target)
+  return result(.allowCharge, target != limit ? "临时目标充电" : "低于目标，允许充电", target, phase: p.mode == .topUp ? .topUp : .charging)
  }
 }
 

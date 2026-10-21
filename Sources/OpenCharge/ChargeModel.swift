@@ -97,6 +97,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var dischargeExitPending = false
  private var quitting = false
  private var quitCleanupPrepared = false
+ var automationPhase: PolicyPhase { quitting ? .exit : calibrationPending ? .calibration : decision.phase ?? engine.phase }
  var needsQuitPreparation: Bool { config.hardwareEnabled || dischargeExitPending || lastHardwareAction == .forceDischarge || magSafeSessionActive || sleepOverrideSessionActive || sleepController.active }
  var needsDischargeExitWait: Bool { dischargeExitPending }
  private var timer: Timer?
@@ -121,6 +122,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    Task { @MainActor [weak self] in self?.handleLidStateNotification(LidStateObserver.currentState()) }
   } } catch { lidLockStatus = "合盖监听不可用：" + error.localizedDescription } }
   refresh()
+  PolicyStateRuntime.provider = { [weak self] in
+   guard let self else { throw HelperError.rejected("应用策略实例已结束") }
+   return self.automationPhase
+  }
   timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in Task { @MainActor in self?.refresh() } }
   observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.sleep() } })
   observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.refresh() } })

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.24
+
+- Add a read-only live application-state action alongside the existing power-flow getter.
+- Carry typed policy phases through ordinary charging, Sailing, pauses, thermal protection, Top Up and calibration. Preserve legacy decision decoding.
+- Reject unavailable runtime state instead of guessing from configuration or presentation text.
+
 ## 0.3.23
 
 - Correct fixed MagSafe green to ACLC 2 and use the native orange-blink pattern 6; retain legacy value 3 for readback and recovery.

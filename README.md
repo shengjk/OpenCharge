@@ -11,7 +11,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 - Deferred discharge-exit recovery with retry, cancellation and explicit timeout choices.
 - Recurring schedules, departure estimates, presets, decision history and JSON configuration backups.
 - Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings.
-- Eleven App Intents, four App Shortcuts, CLI and an `opencharge://` URL scheme.
+- Twelve App Intents, five App Shortcuts, CLI and an `opencharge://` URL scheme.
 - Local history and explicit diagnostic exports; no account, analytics or cloud storage.
 - Optional GitHub release checks and user-requested ZIP downloads with SHA-256 verification.
 
@@ -31,7 +31,7 @@ New installations start in monitoring mode. Hardware control requires a separate
 
 ## What works and what remains
 
-Version 0.3.23 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
+Version 0.3.24 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
 
 ## Build and verify
 

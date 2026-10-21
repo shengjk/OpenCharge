@@ -21,6 +21,22 @@ import ChargeHardware
   guard let fixture = ProcessInfo.processInfo.environment["OPENCHARGE_DATA_DIR"], fixture.contains("/.build/appintents-validation/") else { print("FAIL isolated fixture missing"); exit(1) }
   do {
    var base = Configuration(); try base.save()
+   let previousProvider = PolicyStateRuntime.provider
+   defer { PolicyStateRuntime.provider = previousProvider }
+   let originalBytes = try Data(contentsOf: Configuration.url)
+   var livePhase = PolicyPhase.pause
+   PolicyStateRuntime.provider = { livePhase }
+   for phase in PolicyPhase.allCases {
+    livePhase = phase
+    let result = try await GetPolicyStateIntent().perform()
+    if result.value != phase.rawValue { failures += 1; print("FAIL live policy state mapping \(phase)") }
+   }
+   PolicyStateRuntime.provider = nil
+   do { _ = try await GetPolicyStateIntent().perform(); failures += 1; print("FAIL unavailable policy state fabricated a result") } catch {}
+   PolicyStateRuntime.provider = { throw HelperError.rejected("fixture unavailable") }
+   do { _ = try await GetPolicyStateIntent().perform(); failures += 1; print("FAIL failed policy provider fabricated a result") } catch {}
+   if try Data(contentsOf: Configuration.url) != originalBytes { failures += 1; print("FAIL read-only policy getter changed configuration") }
+   print("PASS live policy getter, unavailable-provider errors and configuration isolation")
    let limit = SetChargeLimitIntent(); limit.percentage = 75; _ = try await limit.perform()
    if try Configuration.load().policy.limit != 75 { failures += 1; print("FAIL valid limit did not persist") }
    _ = try await StopChargingIntent().perform()

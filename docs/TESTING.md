@@ -20,11 +20,11 @@ bash Scripts/build-universal.sh
 OPENCHARGE_TEST_ARCH=x86_64 bash Scripts/test-smc.sh
 ```
 
-Energy smoke reads the optional system interface and its own CPU usage; restricted process access can make it unavailable. x86_64 execution requires an Intel host or already installed Rosetta. No scripts install Rosetta. Universal packaging verifies arm64/x86_64 executables, nested helper signatures and App Intents metadata (eleven declarations, four shortcuts).
+Energy smoke reads the optional system interface and its own CPU usage; restricted process access can make it unavailable. x86_64 execution requires an Intel host or already installed Rosetta. No scripts install Rosetta. Universal packaging verifies arm64/x86_64 executables, nested helper signatures and App Intents metadata (twelve declarations, five shortcuts).
 
 ## Existing validation boundary
 
-Read-only telemetry and helper capabilities have been observed on MacBookPro17,1. Four native Shortcuts getters ran through the system UI; eleven declarations were discovered. Dashboard visibility/order and popup preview editing were inspected. Status-item overflow/multi-display behavior, real hardware writes, calibration cycles, sleep/wake recovery, user switching and notarized service lifecycle remain unverified. See [STATUS.md](STATUS.md).
+Read-only telemetry and helper capabilities have been observed on MacBookPro17,1. Before 0.3.24, four native Shortcuts getters ran through the system UI and eleven declarations were discovered. Dashboard visibility/order and popup preview editing were inspected. Status-item overflow/multi-display behavior, real hardware writes, calibration cycles, sleep/wake recovery, user switching and notarized service lifecycle remain unverified. See [STATUS.md](STATUS.md).
 
 The GitHub workflow is a validation definition; local checks do not prove that remote CI has run.
 
@@ -149,3 +149,9 @@ Core cases cover ordinary 100% and Top Up continuing to allow charging at full, 
 Pause fixtures inject OS and hardware percentages, exercise below-20%/nonfinite/missing-reading rejection without mutation, cancellation of calibration and temporary targets, and the transition from a current-limit pause into Sailing and charging. A full-percentage pause remains distinct from full-charge top-off. Explicit manual-mode selection clears resumable-pause behavior.
 
 LED fixtures use fixed 1/2/4/6 values, retain read/recovery compatibility for legacy 3, suppress native blink on sleep entry, and avoid repeated heartbeat writes. Recovery includes 54 scenarios with 30 terminated file-backed subprocesses and explicit legacy/native journal cases. A shared app/CLI capability preflight and production-model injected IPC verify the exact capability read precedes every green/blink setter; legacy services receive no LED setter. Tests do not update or restart the installed helper. Physical colors, cadence, sleep and charging remain unverified.
+
+## 0.3.24 live application state
+
+The core adapter passed 135 methods, including typed phase transitions, full-charge versus observed-flow distinctions, current-limit pause resumption, thermal/calibration isolation, invalid-read retention and legacy decision decoding. The isolated intent harness invokes the actual getter with changing live providers, unavailable/throwing providers and byte-identical configuration checks. The production-model fixture reads engine-produced phases independently of presentation text, pending calibration and quit preparation; it verifies weak model lifetime and rejects stale state. All helper/lock operations in these fixtures are injected or disabled.
+
+Native Shortcuts discovered all twelve actions. A new read-only application-state workflow returned `Sailing`, matching the running application's 79%/80% Sailing hold. After the application quit, running that workflow launched it and again returned `Sailing`. This establishes live and cold-start execution for that state on the validation Mac, not all state transitions or hardware effects. The existing observed power-flow getter retains its identifier and output contract.

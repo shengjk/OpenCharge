@@ -46,12 +46,29 @@ struct GetChargeStateIntent: AppIntent {
  }
 }
 
+@MainActor enum PolicyStateRuntime {
+ static var provider: (() throws -> PolicyPhase)?
+ static func read() throws -> PolicyPhase {
+  guard let provider else { throw HelperError.rejected("应用策略状态尚不可读，请先打开 OpenCharge") }
+  return try provider()
+ }
+}
+struct GetPolicyStateIntent: AppIntent {
+ static var title: LocalizedStringResource = "读取 OpenCharge 应用状态"
+ static var description = IntentDescription("读取运行中策略的当前状态；与电源流向不同，不执行控制操作。")
+ func perform() async throws -> some IntentResult & ReturnsValue<String> {
+  let phase = try await MainActor.run { try PolicyStateRuntime.read() }
+  return .result(value: phase.rawValue)
+ }
+}
+
 struct OpenChargeShortcuts: AppShortcutsProvider {
  static var appShortcuts: [AppShortcut] {
   AppShortcut(intent: SetChargeLimitIntent(), phrases: ["设置 \(.applicationName) 充电上限"], shortTitle: "设置充电上限", systemImageName: "battery.80percent")
   AppShortcut(intent: SetChargeModeIntent(), phrases: ["设置 \(.applicationName) 充电模式"], shortTitle: "设置充电模式", systemImageName: "bolt.circle")
   AppShortcut(intent: GetBatteryPercentageIntent(), phrases: ["读取 \(.applicationName) 电量"], shortTitle: "读取电量", systemImageName: "battery.100percent")
   AppShortcut(intent: GetChargeStateIntent(), phrases: ["读取 \(.applicationName) 充电状态"], shortTitle: "读取充电状态", systemImageName: "info.circle")
+  AppShortcut(intent: GetPolicyStateIntent(), phrases: ["读取 \(.applicationName) 应用状态"], shortTitle: "读取应用状态", systemImageName: "app.badge")
  }
 }
 

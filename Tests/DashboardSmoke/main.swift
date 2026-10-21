@@ -53,6 +53,7 @@ import ChargeHardware
   var config = Configuration(); config.policy.limit = 80; config.historyEnabled = false
   try config.save()
   try await automationReloadChecks(defaults: defaults)
+  try await policyStateChecks(defaults: defaults)
   try sleepOrderingChecks(defaults: defaults)
   try lidDischargeChecks(defaults: defaults)
   try thermalProtectionChecks(defaults: defaults)
