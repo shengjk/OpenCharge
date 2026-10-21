@@ -91,7 +91,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var magSafeSessionActive = false
  private var magSafePolicyFailed = false
  @Published var lowPowerStatus = ProcessInfo.processInfo.isLowPowerModeEnabled ? "当前电源：已开启" : "当前电源：已关闭"
+ private let readBattery: () throws -> BatteryReading
  private var engine = ChargeEngine()
+ private var appliedChargeLimitChangeID: UUID?
  private let sleepController = SleepController()
  private var lastHardwareAction: ChargeAction = .restore
  private var dischargeExitPending = false
@@ -104,12 +106,15 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock) {
+ init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }) {
+  self.readBattery = readBattery
   self.screenLockRequest = screenLockRequest
   updates = AppUpdates(defaults: dashboardDefaults)
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
   do { config = try Configuration.load() } catch { config = Configuration(); self.error = "配置文件无法读取：\(error.localizedDescription)" }
+  engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
+  appliedChargeLimitChangeID = config.chargeLimitChangeID
   // An explicit opt-in persists; an interrupted calibration prevents resumption.
   if config.policy.mode == .calibration, let checkpoint = config.calibrationCheckpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { calibrationPending = true; calibration = checkpoint.stage; config.hardwareEnabled = false }
   if let data = try? Data(contentsOf: historyURL), let points = try? JSONDecoder().decode([HistoryPoint].self, from: data) { history = Array(points.suffix(10080)) }
@@ -147,7 +152,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    let correctSavedOptIn = incoming.hardwareEnabled != enabled
    config = incoming; config.hardwareEnabled = enabled
    if startsFreshCalibration {
-    engine = ChargeEngine(); calibration = .idle; calibrationPending = false
+    engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
+  appliedChargeLimitChangeID = config.chargeLimitChangeID; calibration = .idle; calibrationPending = false
    }
    if previousLED != config.magSafeMode { magSafeSelection = nil; magSafePolicyFailed = false }
    if config.policy.mode != .calibration { calibrationPending = false }
@@ -164,7 +170,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if mode != .calibration { config.calibrationCheckpoint = nil }
   config.policy.mode = mode; config.policy.pauseAtCurrent = nil; save(); refresh()
  }
- func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint); calibrationPending = false; refresh() }
+ func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint, sailingCheckpoint: config.sailingCheckpoint); calibrationPending = false; refresh() }
  func setLowPower(_ enabled: Bool, source: String? = nil) {
   guard !quitting else { return }
   let command = source == "battery" ? (enabled ? "lowPowerBatteryOn" : "lowPowerBatteryOff") : source == "ac" ? (enabled ? "lowPowerACOn" : "lowPowerACOff") : (enabled ? "lowPowerOn" : "lowPowerOff")
@@ -197,12 +203,28 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func inspectMagSafe() { do { magSafeStatus = try HelperClient.request("magSafeStatus") } catch { magSafeStatus = error.localizedDescription } }
  func inspectLowPower() { do { lowPowerStatus = try HelperClient.request("lowPowerStatus") } catch { self.error = error.localizedDescription } }
 
- func profile(_ limit: Double, _ sailing: Double, _ heat: Double) { config.policy.limit = limit; config.policy.sailingWidth = sailing; config.policy.maxTemperature = heat; config.policy.mode = .automatic; save(); refresh() }
+ func profile(_ limit: Double, _ sailing: Double, _ heat: Double) { config.setChargeLimit(limit); config.policy.sailingWidth = sailing; config.policy.maxTemperature = heat; config.policy.mode = .automatic; save(); refresh() }
+ // Shared by refresh and isolated sample fixtures; actuator work follows in refresh.
+ func evaluatePolicy(_ sample: ChargeSample) {
+  guard !calibrationPending && !quitting else { return }
+  if config.chargeLimitChangeID != appliedChargeLimitChangeID {
+   if config.chargeLimitChangeID != nil { engine.chargeLimitChanged() }
+   appliedChargeLimitChangeID = config.chargeLimitChangeID
+  }
+  decision = engine.decide(sample, policy: config.policy)
+  calibration = engine.calibration
+  var changed = false
+  if config.sailingCheckpoint != engine.sailingCheckpoint { config.sailingCheckpoint = engine.sailingCheckpoint; changed = true }
+  if config.policy.mode == .calibration && config.calibrationCheckpoint != engine.checkpoint { config.calibrationCheckpoint = engine.checkpoint; changed = true }
+  if calibration == .complete { config.lastCalibration = sample.date; config.policy.mode = .automatic; config.calibrationCheckpoint = nil; changed = true }
+  if engine.completedMode != nil { config.policy.mode = .automatic; config.policy.pauseAtCurrent = nil; changed = true }
+  if changed { save() }
+ }
  func refresh() {
   guard !quitting else { return }
   defer { syncDashboard() }
   do {
-   let r = try BatteryTelemetryReader.read(); reading = r
+   let r = try readBattery(); reading = r
 
    var scheduledPolicy = config.policy
    var changed = false
@@ -229,11 +251,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    else {
     let reference: Double
     if config.policy.useHardwarePercent == true { guard let raw = r.hardwarePercent else { throw HardwareError.unavailable("硬件电量不可读，已停止策略执行") }; reference = raw } else { reference = r.percent }
-    decision = engine.decide(ChargeSample(percent: reference, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge), policy: config.policy)
-    calibration = engine.calibration
-    if config.policy.mode == .calibration && config.calibrationCheckpoint != engine.checkpoint { config.calibrationCheckpoint = engine.checkpoint; save() }
-    if calibration == .complete { config.lastCalibration = Date(); config.policy.mode = .automatic; config.calibrationCheckpoint = nil; save() }
-    if engine.completedMode != nil { config.policy.mode = .automatic; config.policy.pauseAtCurrent = nil; save() }
+    evaluatePolicy(ChargeSample(percent: reference, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge))
    }
    let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true, fullChargeHold: decision.fullChargeHold == true)
    applyHardwareDecision(plan)
@@ -379,7 +397,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
 
  func handleURL(_ url: URL) {
   guard url.scheme == "opencharge", let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-  if url.host == "limit", let text = components.queryItems?.first(where: { $0.name == "value" })?.value, let value = Double(text), value.isFinite, (20...100).contains(value) { config.policy.limit = value; save(); refresh() }
+  if url.host == "limit", let text = components.queryItems?.first(where: { $0.name == "value" })?.value, let value = Double(text), value.isFinite, (20...100).contains(value) { config.setChargeLimit(value); save(); refresh() }
   else if url.host == "mode", let value = components.queryItems?.first(where: { $0.name == "value" })?.value, let mode = ChargeMode(rawValue: value) { changeMode(mode) }
   else { error = "自动化 URL 参数无效" }
  }
@@ -411,7 +429,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    magSafeSelection = nil; magSafePolicyFailed = false
    if config.hardwareEnabled { _ = try HelperClient.request("restore") }
    try sleepController.setPreventIdleSleep(false)
-   try restored.save(); config = restored; engine = ChargeEngine(); calibrationPending = false
+   try restored.save(); config = restored; engine = ChargeEngine(sailingCheckpoint: restored.sailingCheckpoint); appliedChargeLimitChangeID = restored.chargeLimitChangeID; calibrationPending = false
    lastHardwareAction = .restore; refresh()
   } catch { self.error = error.localizedDescription }
  }

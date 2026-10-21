@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.29
+
+- Persist the daily Sailing checkpoint and restore charging versus holding history across app restarts; preserve older configurations without the new field.
+- Record whole-percentage restart boundaries separately from the fractional runtime Sailing boundary, with the Top Up exception and minimum-target ordering.
+- Reset target history when the daily limit changes through the GUI, CLI or Shortcuts. Carry it through calibration reconstruction, and clear it on portable backup restore.
+- Share production policy evaluation with isolated telemetry fixtures; stable samples and read-only CLI explanations do not rewrite settings.
+
 ## 0.3.28
 
 - Separate Top Up from the ordinary charging temperature pause in fresh configurations; add an independent optional Top Up thermal guard. Older saved policies retain their previous temperature behavior until explicitly changed.

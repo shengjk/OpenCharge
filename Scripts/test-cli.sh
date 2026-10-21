@@ -20,6 +20,17 @@ for value in ('nan','inf','19','101'):
  result=subprocess.run([executable,'limit',value],capture_output=True,text=True)
  assert result.returncode!=0
  assert (root/'configuration.json').read_bytes()==before
+assert c['sailingCheckpoint'] is True
+c['sailingCheckpoint']=False
+(root/'configuration.json').write_text(json.dumps(c))
+subprocess.run([executable,'limit','70'],check=True)
+assert json.loads((root/'configuration.json').read_text())['sailingCheckpoint'] is False
+before=(root/'configuration.json').read_bytes()
+result=subprocess.run([executable,'explain'],capture_output=True,text=True)
+assert result.returncode==0 and json.loads(result.stdout)['phase']=='Pause'
+assert (root/'configuration.json').read_bytes()==before, 'read-only explanation rewrote settings'
+subprocess.run([executable,'limit','71'],check=True)
+assert json.loads((root/'configuration.json').read_text())['sailingCheckpoint'] is True
 identifier=c['schedules'][0]['id']
 subprocess.run([executable,'schedule-remove',identifier],check=True)
 assert json.loads((root/'configuration.json').read_text())['schedules']==[]

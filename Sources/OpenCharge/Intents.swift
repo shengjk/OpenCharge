@@ -10,7 +10,7 @@ struct SetChargeLimitIntent: AppIntent {
  @Parameter(title: "充电上限", default: 80) var percentage: Int
  func perform() async throws -> some IntentResult {
   guard (20...100).contains(percentage) else { throw HelperError.rejected("充电上限必须在 20–100%") }
-  var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected("校准期间不能修改上限") }; config.policy.limit = Double(percentage); config.policy.mode = .automatic; try config.save(); return .result()
+  var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected("校准期间不能修改上限") }; config.setChargeLimit(Double(percentage)); config.policy.mode = .automatic; try config.save(); return .result()
  }
 }
 enum AutomationMode: String, AppEnum {

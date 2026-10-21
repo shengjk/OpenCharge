@@ -38,7 +38,7 @@ public struct ConfigurationBackup: Codable {
   config.hardwareEnabled = false; config.systemActionsEnabled = false
   config.magSafeMode = .system; config.magSafeOffDuringSleep = false
   config.policy.mode = .automatic; config.policy.departure = nil
-  config.calibrationCheckpoint = nil; config.scheduleHistory = nil
+  config.calibrationCheckpoint = nil; config.sailingCheckpoint = nil; config.chargeLimitChangeID = nil; config.scheduleHistory = nil
   for index in config.schedules.indices {
    config.schedules[index].enabled = false
    config.schedules[index].value = min(100, max(20, config.schedules[index].value))

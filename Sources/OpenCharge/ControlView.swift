@@ -12,10 +12,10 @@ struct ControlView: View {
  @EnvironmentObject var m: ChargeModel
  @State private var limitDraft = ""
  var body: some View {
-  Card("充电上限") { HStack { Text("日常目标"); Spacer(); Text("\(Int(m.config.policy.limit))%").font(.title.bold()).foregroundStyle(.mint) }; Slider(value: $m.config.policy.limit, in: 20...100, step: 1) { Text("充电上限") } onEditingChanged: { editing in if !editing { m.save(); m.refresh() } }.disabled(m.config.policy.mode == .calibration); HStack { Text("20%"); Spacer(); Text("100%") }.font(.caption).foregroundStyle(.secondary)
+  Card("充电上限") { HStack { Text("日常目标"); Spacer(); Text("\(Int(m.config.policy.limit))%").font(.title.bold()).foregroundStyle(.mint) }; Slider(value: Binding(get: { m.config.policy.limit }, set: { m.config.setChargeLimit($0) }), in: 20...100, step: 1) { Text("充电上限") } onEditingChanged: { editing in if !editing { m.save(); m.refresh() } }.disabled(m.config.policy.mode == .calibration); HStack { Text("20%"); Spacer(); Text("100%") }.font(.caption).foregroundStyle(.secondary)
    HStack { Text("精确上限"); TextField("20–100", text: $limitDraft).frame(width: 70).disabled(m.config.policy.mode == .calibration).onAppear { limitDraft = String(Int(m.config.policy.limit)) }.onSubmit {
     guard let value = Double(limitDraft), value.isFinite, (20...100).contains(value) else { m.error = "充电上限必须在 20–100%"; return }
-    m.config.policy.limit = value; m.save(); m.refresh()
+    m.config.setChargeLimit(value); m.save(); m.refresh()
    }.onChange(of: m.config.policy.limit) { value in limitDraft = String(Int(value)) }; Text("%"); Spacer() }
   }
   Card("航行与温度") {

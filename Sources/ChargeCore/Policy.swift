@@ -70,24 +70,48 @@ public struct ChargeEngine: Sendable {
  private var heatPaused = false
  private var thermalTargetPaused = false
  private var sailingPaused = true
+ public private(set) var sailingCheckpoint: Bool?
+ private var previousLimit: Double?
+ private var targetChangeHold = false
+ private var targetChangePending = false
  private var previousMode: ChargeMode = .automatic
- public init(checkpoint: CalibrationCheckpoint? = nil) { calibration = checkpoint?.stage ?? .idle; holdingSince = checkpoint?.holdingSince; if let checkpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { phase = .calibration } }
+ public init(checkpoint: CalibrationCheckpoint? = nil, sailingCheckpoint: Bool? = nil) { self.sailingCheckpoint = sailingCheckpoint; sailingPaused = sailingCheckpoint ?? true; targetChangeHold = sailingCheckpoint == true; calibration = checkpoint?.stage ?? .idle; holdingSince = checkpoint?.holdingSince; if let checkpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { phase = .calibration } }
+ public mutating func chargeLimitChanged() {
+  sailingCheckpoint = true; sailingPaused = true; targetChangeHold = true; targetChangePending = true
+  heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false
+ }
  public var checkpoint: CalibrationCheckpoint { CalibrationCheckpoint(stage: calibration, holdingSince: holdingSince) }
  public mutating func decide(_ sample: ChargeSample, policy raw: ChargePolicy) -> Decision {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
+  if let previousLimit, previousLimit != limit {
+   // A changed daily target starts a new target projection, including in-band edits.
+   chargeLimitChanged()
+  }
+  previousLimit = limit
   let thermal = p.thermalBehavior ?? .fiveMinuteWindows
   if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false; previousThermalBehavior = thermal }
   let continuingThermalWindow = heatPaused && previousMode == p.mode && previousThermalBehavior == .fiveMinuteWindows && (p.thermalBehavior ?? .fiveMinuteWindows) == .fiveMinuteWindows
   var reportedPhase = phase
-  defer { phase = reportedPhase }
+  defer {
+   phase = reportedPhase
+   // Record after the state update. Runtime Sailing uses a fractional lower bound;
+   // its restart checkpoint uses whole readings and the daily, not temporary, target.
+   if sample.percent.isFinite, (0...100).contains(sample.percent) {
+    let wholePercent = Int(Float(sample.percent))
+    let lower = max(20, Int(Float(p.limit) - Float(p.sailingWidth)))
+    if wholePercent <= lower && reportedPhase != .topUp { sailingCheckpoint = false }
+    else if wholePercent >= Int(Float(p.limit)) { sailingCheckpoint = true }
+   }
+  }
   func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false, phase nextPhase: PolicyPhase? = nil) -> Decision {
    if let nextPhase { reportedPhase = nextPhase }
    var value = Decision(a, r, limit: l ?? limit)
    value.sailingHold = sailingHold; value.thermalHold = thermalHold; value.fullChargeHold = fullChargeHold; value.phase = reportedPhase
    return value
   }
+  if p.mode != .automatic { targetChangeHold = false; targetChangePending = false }
   if p.mode != .calibration { calibration = .idle; holdingSince = nil }
   if p.mode != previousMode {
    sailingPaused = true; previousMode = p.mode
@@ -116,6 +140,21 @@ public struct ChargeEngine: Sendable {
   if let departure = p.departure, departure > sample.date {
    let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
    if departure.timeIntervalSince(sample.date) <= hours * 3600 { target = p.departureTarget }
+  }
+  if targetChangePending && p.mode == .automatic {
+   targetChangePending = false
+   if p.automaticDischarge && Float(sample.percent) > Float(target) && sample.percent > p.reserve {
+    targetChangeHold = false
+    return result(.forceDischarge, "上限变更：放电至目标", target, phase: .discharging)
+   }
+  }
+  if targetChangeHold && p.mode == .automatic {
+   let aboveLower = Float(sample.percent) > max(Float(20), Float(target) - Float(p.sailingWidth))
+   let overTarget = Int(Float(sample.percent)) > Int(Float(target))
+   if p.automaticDischarge && overTarget { targetChangeHold = false }
+   else if (p.sailing && aboveLower) || Int(Float(sample.percent)) >= Int(Float(target)) {
+    return result(.inhibitCharge, "上限变更后保持目标区间", target, sailingHold: p.sailing, phase: p.sailing ? .sailing : .pause)
+   } else { targetChangeHold = false }
   }
   // A confirmed five-minute wait has its own transition order. Ordinary
   // Sailing and integer target projection cannot replace that active state.
@@ -335,6 +374,8 @@ public struct ScheduleExecution: Codable, Identifiable {
 public struct Configuration: Codable {
  public var policy = ChargePolicy(); public var schedules: [ChargeSchedule] = []; public var notifications = false; public var hardwareEnabled = false; public var historyEnabled = true
  public var calibrationCheckpoint: CalibrationCheckpoint? = nil
+ public var sailingCheckpoint: Bool? = nil
+ public var chargeLimitChangeID: UUID? = nil
  public var lastCalibration: Date? = nil
  public var scheduleHistory: [ScheduleExecution]? = nil
  public var runMissedTasks: Bool? = nil
@@ -343,6 +384,11 @@ public struct Configuration: Codable {
  public var magSafeBlinkDischarge: Bool? = nil
  public var magSafeOffDuringSleep: Bool? = nil
  public init() {}
+ public mutating func setChargeLimit(_ value: Double) {
+  let old = policy.limit
+  policy.limit = value; policy.normalize()
+  if policy.limit != old { sailingCheckpoint = true; chargeLimitChangeID = UUID() }
+ }
  public static var directory: URL {
   if let path = ProcessInfo.processInfo.environment["OPENCHARGE_DATA_DIR"], path.hasPrefix("/") { return URL(fileURLWithPath: path, isDirectory: true) }
   return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("OpenCharge") }
