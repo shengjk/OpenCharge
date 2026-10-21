@@ -163,6 +163,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } catch { self.error = error.localizedDescription }
  }
  func save() { do { try config.save() } catch { self.error = error.localizedDescription } }
+ func toggleTopUp() { changeMode(automationPhase == .topUp ? .paused : .topUp) }
+ func toggleDischarge() { changeMode(automationPhase == .discharging ? .paused : .discharge) }
  func changeMode(_ mode: ChargeMode) {
   if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = "请连接电源后开始此操作"; return }
   if mode == .topUp && config.policy.mode == .calibration { error = "请先结束校准，再开始充至满电"; return }

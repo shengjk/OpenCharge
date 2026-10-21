@@ -30,7 +30,7 @@ struct PopoverContents: View {
     ProgressView(value: m.reading?.percent ?? 0, total: 100).tint(.mint)
     Text("目标 \(Int(m.decision.effectiveLimit))% · \(m.decision.reason)").font(.callout)
     Text(m.helperStatus).font(.caption).foregroundStyle(.secondary)
-    HStack { Button("充至满电") { m.changeMode(.topUp) }; Button("放电") { m.changeMode(.discharge) }; Button("自动") { m.changeMode(.automatic) } }
+    HStack { Button(m.automationPhase == .topUp ? "停止充满" : "充至满电") { m.toggleTopUp() }; Button(m.automationPhase == .discharging ? "停止放电" : "放电") { m.toggleDischarge() }; Button("自动") { m.changeMode(.automatic) } }
     if editing {
      Text("拖动调整顺序，也可使用上下按钮。关闭勾选隐藏组件。").font(.caption).foregroundStyle(.secondary)
      ForEach(preferences.layout.widgets) { widget in editor(widget) }

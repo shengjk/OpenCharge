@@ -60,6 +60,7 @@ import ChargeHardware
   try thermalProtectionChecks(defaults: defaults)
   try thermalExitChecks(defaults: defaults)
   try sailingCheckpointChecks(defaults: defaults)
+  try temporaryActionChecks(defaults: defaults)
   try dischargeThermalChecks(defaults: defaults)
   try fractionalDischargeChecks(defaults: defaults)
   try fullChargeChecks(defaults: defaults)

@@ -23,7 +23,7 @@ struct OverviewView: View {
    Card("当前电量") {
    HStack(spacing: 30) {
     ZStack { Circle().stroke(.mint.opacity(0.12), lineWidth: 13); Circle().trim(from: 0, to: (d.reading?.percent ?? 0) / 100).stroke(.mint, style: StrokeStyle(lineWidth: 13, lineCap: .round)).rotationEffect(.degrees(-90)); VStack { Text(d.title).font(.system(size: 38, weight: .bold, design: .rounded)); Text(d.reading?.connected == true ? "已接入电源" : "使用电池").font(.caption).foregroundStyle(.secondary) } }.frame(width: 160, height: 160)
-    VStack(alignment: .leading, spacing: 14) { Text(d.decision.reason).font(.title3.bold()); Text("日常上限 \(Int(d.limit))% · 本次目标 \(Int(d.decision.effectiveLimit))%").foregroundStyle(.secondary); Text(d.helperStatus).font(.caption).foregroundStyle(.secondary); HStack { Button("充至满电") { m.changeMode(.topUp) }.buttonStyle(.borderedProminent).tint(.mint); Button("暂停") { m.changeMode(.paused) }; Button("自动") { m.changeMode(.automatic) } }
+    VStack(alignment: .leading, spacing: 14) { Text(d.decision.reason).font(.title3.bold()); Text("日常上限 \(Int(d.limit))% · 本次目标 \(Int(d.decision.effectiveLimit))%").foregroundStyle(.secondary); Text(d.helperStatus).font(.caption).foregroundStyle(.secondary); HStack { Button(d.decision.phase == .topUp ? "停止充满" : "充至满电") { m.toggleTopUp() }.buttonStyle(.borderedProminent).tint(.mint); Button("暂停") { m.changeMode(.paused) }; Button("自动") { m.changeMode(.automatic) } }
    }
   }
   }

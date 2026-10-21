@@ -192,3 +192,7 @@ A private, never-shown layer fixture checks missing/idle channel suppression, di
 ## 0.3.31 zero-size animation cleanup
 
 The new zero-size lifecycle case failed on the 0.3.30 source with active compositor animations still attached. The host now removes both animations before returning for empty geometry, and the fixture checks restart after restoring its size, followed by detach cleanup. The 0.3.30 source tag is retained; compiled release packages start with 0.3.31 for this performance update.
+
+### 0.3.32 temporary operation buttons
+
+An isolated production-model fixture uses injected battery readings with hardware and system actions disabled. It checks Top Up start/stop, an idempotent explicit Top Up request, persistence of indefinite Pause below the daily limit, full-charge stop, manual and automatic discharge stop, thermal-phase separation and unplugged Top Up rejection. The daily limit stays at 80% throughout the stop cases. This verifies policy transitions without performing physical charge/discharge or clicking live control buttons.

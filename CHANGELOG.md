@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.32
+
+- Let the Top Up and Discharge buttons stop their active operation and enter persistent Pause without changing the daily charge limit. Show the corresponding Stop label while the operation is active.
+- Use the current policy phase for this toggle, including automatic discharge; a thermal wait does not become a Stop selection solely because Top Up remains configured.
+- Preserve explicit mode requests from CLI, URLs and Shortcuts. Add isolated production-model checks for repeated clicks, full charge, persistence, thermal state and unplugged Top Up.
+
 ## 0.3.31
 
 - Stop compositor animation when the power-flow host shrinks to zero size, and restart correctly when usable geometry returns.
