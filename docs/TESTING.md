@@ -187,3 +187,8 @@ Core cases cover absent/charging/holding history, cold engine reconstruction, fr
 ## 0.3.30 power-flow animation lifecycle
 
 A private, never-shown layer fixture checks missing/idle channel suppression, direction reversal, reactivation, the two-second cycle, stable animation timing during telemetry updates, compact and resized geometry, focus pause, Reduce Motion, hiding and detachment. Native full-size diagrams were compared visually in monitoring mode and their arrows observed at different positions. On the test host with a focused visible two-channel diagram, 0.3.29 consumed about 24–28% of one CPU core in two five-second samples; the layer candidate measured 0–1.6%. This measures the app process, not total GPU/window-server energy or a universal performance guarantee. Existing policy and hardware-fixture checks remain separate.
+
+
+## 0.3.31 zero-size animation cleanup
+
+The new zero-size lifecycle case failed on the 0.3.30 source with active compositor animations still attached. The host now removes both animations before returning for empty geometry, and the fixture checks restart after restoring its size, followed by detach cleanup. The 0.3.30 source tag is retained; compiled release packages start with 0.3.31 for this performance update.

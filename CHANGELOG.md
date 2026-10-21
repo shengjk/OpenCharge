@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.31
+
+- Stop compositor animation when the power-flow host shrinks to zero size, and restart correctly when usable geometry returns.
+- Includes the power-flow performance optimization from the source-only 0.3.30 tag.
+
 ## 0.3.30
 
 - Move power-flow arrows with system layer animation while keeping telemetry labels and power-width paths outside frame updates. Preserve the two-second cycle and charging/discharging directions in the dashboard and compact popover.

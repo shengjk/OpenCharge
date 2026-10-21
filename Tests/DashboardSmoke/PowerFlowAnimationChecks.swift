@@ -51,7 +51,11 @@ import ChargeCore
  precondition(layers.allSatisfy { $0.animation(forKey: "flow") == nil })
  view.isHidden = false
  precondition(adapter.animation(forKey: "flow") != nil)
+ view.setFrameSize(.zero); view.layout()
+ precondition(layers.allSatisfy { $0.animation(forKey: "flow") == nil }, "zero-sized hosts must stop compositor animation")
+ view.setFrameSize(NSSize(width: 800, height: 135)); view.layout()
+ precondition(adapter.animation(forKey: "flow") != nil)
  window.contentView = nil
  precondition(layers.allSatisfy { $0.animation(forKey: "flow") == nil })
- print("Power-flow layers preserve direction, two-second motion, live widths' independent updates, compact/resize geometry, reduced motion and pause/detach lifecycle; private never-shown layer fixture")
+ print("Power-flow layers preserve direction, two-second motion, live widths' independent updates, compact/resize geometry, reduced motion and pause/zero-size/detach lifecycle; private never-shown layer fixture")
 }

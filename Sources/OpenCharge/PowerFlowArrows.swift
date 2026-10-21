@@ -49,7 +49,10 @@ final class PowerFlowArrowView: NSView {
  override func viewDidUnhide() { super.viewDidUnhide(); updateArrows() }
  override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); updateArrows() }
  private func updateArrows() {
-  guard bounds.width > 0, bounds.height > 0 else { return }
+  guard bounds.width > 0, bounds.height > 0 else {
+   adapter.removeAnimation(forKey: "flow"); battery.removeAnimation(forKey: "flow")
+   return
+  }
   let inset: CGFloat = compact ? 35 : 55
   let edge: CGFloat = compact ? 34 : 52
   let middle = bounds.width / 2
