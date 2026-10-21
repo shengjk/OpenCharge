@@ -163,3 +163,9 @@ Core regressions follow an already-confirmed five-minute thermal pause from 21% 
 ## 0.3.26 thermal behavior switching
 
 A regression switches from an active degree-hysteresis pause to five-minute behavior at 19%. The new behavior must apply its fresh low-charge exemption, rather than inherit the old behavior's pause. This supplements the five-minute-to-degree case and preserves established-window continuation. The 0.3.25 development release was withdrawn after this boundary was found before final publication verification.
+
+## 0.3.27 thermal-state ordering
+
+New core regressions first reproduced four failures (14 assertions) on 0.3.26: Sailing replacing an active thermal wait, truncation of fractional thermal targets, the full-target transition and loss of confirmed state on unavailable temperature. The corrected core suite passes 145 methods. Coverage includes cooling at the deadline, fresh hot re-entry after cooling, full-target pause persistence, missing/nonfinite temperature and explicit discharge preemption. Older expectations for a fixed charging allowance after cooling and immediate opt-out charging were replaced with state transitions: renewed heat starts a new wait; disabling active protection transitions through Pause.
+
+The production-model fixture moves a confirmed heat wait into the Sailing band, removes temperature, cools before/at the deadline, then reaches the daily target. It requires selected system/lid protection before every control command until completion and release afterward. Helper, idle and lock operations are injected. Actual temperature, battery, lid and sleep effects remain unverified; Top Up and broader coordinator interactions remain separate work.

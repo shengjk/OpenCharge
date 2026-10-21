@@ -15,7 +15,7 @@ final class CompatibilityTests: XCTestCase {
   XCTAssertEqual(engine.decide(sample(50, temperature: 36), policy: p).action, .inhibitCharge)
   XCTAssertEqual(engine.decide(sample(50, temperature: 30, seconds: 299), policy: p).action, .inhibitCharge)
   XCTAssertEqual(engine.decide(sample(50, temperature: 34, seconds: 300), policy: p).action, .allowCharge)
-  XCTAssertEqual(engine.decide(sample(50, temperature: 36, seconds: 599), policy: p).action, .allowCharge)
+  XCTAssertEqual(engine.decide(sample(50, temperature: 36, seconds: 599), policy: p).action, .inhibitCharge)
   XCTAssertEqual(engine.decide(sample(50, temperature: 36, seconds: 600), policy: p).action, .inhibitCharge)
   XCTAssertEqual(engine.decide(sample(50, temperature: 36, seconds: 900), policy: p).action, .inhibitCharge)
   XCTAssertEqual(engine.decide(sample(50, temperature: 30, seconds: 1199), policy: p).action, .inhibitCharge)

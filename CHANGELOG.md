@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.27
+
+- Evaluate an established ordinary five-minute thermal wait before Sailing and integer target projection; compare its target at control precision.
+- Preserve confirmed thermal state and selected protection when temperature is temporarily unavailable. Resume charging when the cooling window completes; renewed heat can start a fresh wait immediately.
+- Move a completed thermal wait to target pause, including at 100%, and exit disabled thermal protection through a pause transition. Clear thermal state on explicit mode changes.
+
 ## 0.3.26
 
 - Prevent a pause from degree hysteresis from being reused as an existing five-minute window when switching behavior at low charge.

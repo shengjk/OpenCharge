@@ -65,6 +65,7 @@ public struct ChargeEngine: Sendable {
  private var nextThermalCheck: Date?
  private var previousThermalBehavior: ThermalBehavior?
  private var heatPaused = false
+ private var thermalTargetPaused = false
  private var sailingPaused = true
  private var previousMode: ChargeMode = .automatic
  public init(checkpoint: CalibrationCheckpoint? = nil) { calibration = checkpoint?.stage ?? .idle; holdingSince = checkpoint?.holdingSince; if let checkpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { phase = .calibration } }
@@ -73,6 +74,8 @@ public struct ChargeEngine: Sendable {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
+  let thermal = p.thermalBehavior ?? .fiveMinuteWindows
+  if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false; previousThermalBehavior = thermal }
   let continuingThermalWindow = heatPaused && previousMode == p.mode && previousThermalBehavior == .fiveMinuteWindows && (p.thermalBehavior ?? .fiveMinuteWindows) == .fiveMinuteWindows
   var reportedPhase = phase
   defer { phase = reportedPhase }
@@ -85,6 +88,7 @@ public struct ChargeEngine: Sendable {
   if p.mode != .calibration { calibration = .idle; holdingSince = nil }
   if p.mode != previousMode {
    sailingPaused = true; previousMode = p.mode
+   heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = false
    switch p.mode {
    case .automatic, .paused: reportedPhase = .pause
    case .topUp: reportedPhase = .topUp
@@ -109,6 +113,38 @@ public struct ChargeEngine: Sendable {
   if let departure = p.departure, departure > sample.date {
    let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
    if departure.timeIntervalSince(sample.date) <= hours * 3600 { target = p.departureTarget }
+  }
+  // A confirmed five-minute wait has its own transition order. Ordinary
+  // Sailing and integer target projection cannot replace that active state.
+  if p.mode == .automatic && thermalTargetPaused {
+   if Int(Float(sample.percent)) < Int(Float(target)) || (p.automaticDischarge && Int(Float(sample.percent)) > Int(Float(target))) {
+    thermalTargetPaused = false
+   } else { return result(.inhibitCharge, "热保护结束：保持目标暂停", target, phase: .pause) }
+  }
+  if continuingThermalWindow && p.mode == .automatic {
+   if !p.heatProtection {
+    heatPaused = false; nextThermalCheck = nil
+    return result(.inhibitCharge, "已退出热保护暂停", target, phase: .pause)
+   }
+   if Float(sample.percent) < 15 {
+    heatPaused = false; nextThermalCheck = nil; sailingPaused = false
+    return result(.allowCharge, "热保护低电量保底：恢复充电", target, phase: .charging)
+   }
+   if Float(sample.percent) >= Float(target) {
+    heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = true
+    return result(.inhibitCharge, "热保护结束：达到目标", target, phase: .pause)
+   }
+   guard let temperature = sample.temperature, temperature.isFinite else {
+    return result(.inhibitCharge, "热保护：等待可靠温度读数", target, thermalHold: true, phase: .heatProtect)
+   }
+   if sample.date >= (nextThermalCheck ?? sample.date) {
+    if temperature < p.maxTemperature {
+     heatPaused = false; nextThermalCheck = nil; sailingPaused = false
+     return result(.allowCharge, "热保护窗口结束：恢复充电", target, phase: .charging)
+    }
+    nextThermalCheck = sample.date.addingTimeInterval(300)
+   }
+   return result(.inhibitCharge, "热保护：五分钟暂停窗口", target, thermalHold: true, phase: .heatProtect)
   }
   // Ordinary target decisions compare whole percentages from single-precision
   // readings. Sailing's lower boundary remains a fractional comparison.
@@ -139,8 +175,6 @@ public struct ChargeEngine: Sendable {
    return result(.inhibitCharge, "达到充电上限", target, phase: p.sailing ? .sailing : .pause)
   }
   reportedPhase = p.mode == .calibration ? .calibration : p.mode == .topUp ? .topUp : .charging
-  let thermal = p.thermalBehavior ?? .fiveMinuteWindows
-  if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; previousThermalBehavior = thermal }
   // Entry and emergency exit are separate boundaries. An existing five-minute
   // pause survives the 20% entry exemption until the battery falls below 15%.
   let thermalPercentEligible = sample.percent > 20 || (continuingThermalWindow && p.mode != .calibration && Float(sample.percent) >= 15)

@@ -40,11 +40,12 @@ final class PolicyTests: XCTestCase {
    XCTAssertEqual(engine.decide(sample(50, temperature: temperature), policy: ChargePolicy()).action, .inhibitCharge)
   }
  }
- func testDisablingHeatProtectionAllowsMissingTemperatureAndClearsLatch() {
+ func testDisablingHeatProtectionExitsViaPauseAndClearsLatch() {
   var engine = ChargeEngine(); var p = ChargePolicy()
   _ = engine.decide(sample(50, temperature: 40), policy: p)
   p.heatProtection = false
-  XCTAssertEqual(engine.decide(sample(50, temperature: nil), policy: p).action, .allowCharge)
+  XCTAssertEqual(engine.decide(sample(50, temperature: nil), policy: p).phase, .pause)
+  XCTAssertEqual(engine.decide(sample(50, temperature: nil, seconds: 1), policy: p).action, .allowCharge)
   p.heatProtection = true
   XCTAssertEqual(engine.decide(sample(50, temperature: 34), policy: p).action, .allowCharge)
  }
