@@ -206,11 +206,17 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    config.policy.lowPowerMode = enabled; save()
   } catch { self.error = error.localizedDescription }
  }
+ var controlModeSelection: Binding<ChargeMode> {
+  Binding(get: { self.config.policy.mode }, set: { self.changeMode($0) })
+ }
  func changeMode(_ mode: ChargeMode) {
+  guard !quitting else { return }
+  if mode == .calibration && calibrationPending { error = "校准已中断，请先选择继续或取消"; return }
   if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = "请连接电源后开始此操作"; return }
   if mode == .topUp && config.policy.mode == .calibration { error = "请先结束校准，再开始充至满电"; return }
   calibrationPending = false
   if mode != .calibration { config.calibrationCheckpoint = nil }
+  engine.modeChanged(to: mode); calibration = engine.calibration
   config.policy.mode = mode; config.policy.pauseAtCurrent = nil; save(); refresh()
  }
  func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint, sailingCheckpoint: config.sailingCheckpoint); calibrationPending = false; refresh() }
@@ -246,7 +252,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func inspectMagSafe() { do { magSafeStatus = try HelperClient.request("magSafeStatus") } catch { magSafeStatus = error.localizedDescription } }
  func inspectLowPower() { do { lowPowerStatus = try HelperClient.request("lowPowerStatus") } catch { self.error = error.localizedDescription } }
 
- func profile(_ limit: Double, _ sailing: Double, _ heat: Double) { config.setChargeLimit(limit); config.policy.sailingWidth = sailing; config.policy.maxTemperature = heat; config.policy.mode = .automatic; save(); refresh() }
+ func profile(_ limit: Double, _ sailing: Double, _ heat: Double) { config.setChargeLimit(limit); config.policy.sailingWidth = sailing; config.policy.maxTemperature = heat; changeMode(.automatic) }
  // Shared by refresh and isolated sample fixtures; actuator work follows in refresh.
  func evaluatePolicy(_ sample: ChargeSample) {
   guard !calibrationPending && !quitting else { return }

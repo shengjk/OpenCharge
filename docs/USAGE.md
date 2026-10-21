@@ -50,3 +50,9 @@ Settings → Appearance offers four right-click actions: show/hide the popover (
 The charging toggle pauses at the selected current percentage when the policy is Charging or Top Up, or Heat Protection with a 100% daily limit, and the percentage is at least 20%. Otherwise it selects ordinary Automatic charging with a 100% daily target, distinct from temporary Top Up. It cancels a departure plan. Missing or invalid selected telemetry leaves the policy unchanged; interrupted calibration still requires a continuation or cancellation choice. Saving a policy does not enable hardware control.
 
 The Low Power Mode shortcut requires the system-actions permission in Settings and a responding helper with at least one supported power source. It toggles the current system activity and applies the existing helper command to supported sources. Capability failures do not save a successful selection. This project does not yet implement a global settings lock.
+
+## Explicit mode selection
+
+The Charge Control mode picker applies and saves an accepted selection immediately, using the same path as explicit dashboard mode buttons. Selecting Pause creates an indefinite pause and clears any earlier current-percentage Pause marker. Top Up and Calibration require a connected power source; Top Up also requires leaving calibration first. An interrupted calibration remains pending when Calibration is selected again: use Continue to resume or select another mode to cancel.
+
+Selecting a different mode cancels the old calibration stage even if the following telemetry read fails. A later calibration begins a new run. Quick profiles select Automatic and clear any interrupted calibration/checkpoint. These requests preserve the hardware-control opt-in; applying a mode in monitoring does not enable physical control.

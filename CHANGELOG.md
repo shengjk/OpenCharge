@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.35
+
+- Route the charge-control mode picker through the shared explicit GUI mode request. Clear current-percentage Pause state, save accepted changes immediately, and enforce the existing connection and calibration guards.
+- Apply accepted mode changes to the policy engine before reading telemetry, so cancellation cannot resume an old calibration stage after a temporary read failure.
+- Let quick profiles cancel interrupted calibration through the same Automatic-mode request and clear stale checkpoints.
+- Add production-binding regressions for the Pause round trip, unplugged requests, interrupted calibration, failed telemetry and profile cleanup.
+
 ## 0.3.34
 
 - Configure menu-bar right-click to toggle the popover, open Settings, toggle charging, or toggle Low Power Mode. Left click and Command-3 always toggle the popover.
