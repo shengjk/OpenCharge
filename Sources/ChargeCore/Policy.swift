@@ -73,6 +73,7 @@ public struct ChargeEngine: Sendable {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
+  let continuingThermalWindow = heatPaused && previousMode == p.mode && (p.thermalBehavior ?? .fiveMinuteWindows) == .fiveMinuteWindows
   var reportedPhase = phase
   defer { phase = reportedPhase }
   func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false, phase nextPhase: PolicyPhase? = nil) -> Decision {
@@ -140,8 +141,10 @@ public struct ChargeEngine: Sendable {
   reportedPhase = p.mode == .calibration ? .calibration : p.mode == .topUp ? .topUp : .charging
   let thermal = p.thermalBehavior ?? .fiveMinuteWindows
   if previousThermalBehavior != thermal { heatPaused = false; nextThermalCheck = nil; previousThermalBehavior = thermal }
-  // The low-charge boundary includes 20% itself.
-  let thermalActive = p.heatProtection && sample.percent > 20 && (p.mode != .calibration || p.protectDuringCalibration == true)
+  // Entry and emergency exit are separate boundaries. An existing five-minute
+  // pause survives the 20% entry exemption until the battery falls below 15%.
+  let thermalPercentEligible = sample.percent > 20 || (continuingThermalWindow && p.mode != .calibration && Float(sample.percent) >= 15)
+  let thermalActive = p.heatProtection && thermalPercentEligible && (p.mode != .calibration || p.protectDuringCalibration == true)
   if thermalActive {
    guard let t = sample.temperature, t.isFinite else { return result(.inhibitCharge, "温度不可用，等待可靠读数", target) }
    switch thermal {

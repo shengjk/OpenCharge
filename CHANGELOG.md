@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.25
+
+- Preserve an existing five-minute thermal pause below its 20% entry threshold until the battery falls below 15% or the cooling window completes.
+- Keep fresh low-charge readings, explicit mode changes, calibration and optional degree hysteresis independent of that continuation rule.
+
 ## 0.3.24
 
 - Add a read-only live application-state action alongside the existing power-flow getter.
