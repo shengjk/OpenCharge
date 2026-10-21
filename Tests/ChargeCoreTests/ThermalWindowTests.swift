@@ -35,6 +35,15 @@ final class ThermalWindowTests: XCTestCase {
   p.heatProtection = false
   XCTAssertEqual(engine.decide(sample(19, 600), policy: p).action, .allowCharge)
  }
+ func testSwitchFromDegreeHysteresisDoesNotCreateLowChargeWindow() {
+  var p = ChargePolicy(); p.sailing = false; p.thermalBehavior = .degreeHysteresis
+  var engine = ChargeEngine()
+  XCTAssertEqual(engine.decide(sample(21), policy: p).thermalHold, true)
+  p.thermalBehavior = .fiveMinuteWindows
+  let low = engine.decide(sample(19, 1), policy: p)
+  XCTAssertEqual(low.action, .allowCharge); XCTAssertEqual(low.thermalHold, false)
+  XCTAssertEqual(low.phase, .charging)
+ }
  func testFreshLowChargeAndOtherThermalModeDoNotInheritWindow() {
   var p = ChargePolicy(); p.sailing = false
   for percent in [15.0, 19, 20] {

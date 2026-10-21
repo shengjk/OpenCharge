@@ -159,3 +159,7 @@ Native Shortcuts discovered all twelve actions. A new read-only application-stat
 ## 0.3.25 thermal-window continuation
 
 Core regressions follow an already-confirmed five-minute thermal pause from 21% through 20%, 19% and exactly 15%, require continued inhibition, and release below 15%. Additional cases cover cooling at 299/300 seconds, a renewed hot window, the thermal opt-out, fresh low-charge samples, explicit mode changes and switching to degree hysteresis. Calibration retains its separate optional thermal behavior. These are injected samples; physical battery discharge and temperature effects remain unverified.
+
+## 0.3.26 thermal behavior switching
+
+A regression switches from an active degree-hysteresis pause to five-minute behavior at 19%. The new behavior must apply its fresh low-charge exemption, rather than inherit the old behavior's pause. This supplements the five-minute-to-degree case and preserves established-window continuation. The 0.3.25 development release was withdrawn after this boundary was found before final publication verification.

@@ -73,7 +73,7 @@ public struct ChargeEngine: Sendable {
   completedMode = nil
   var p = raw; p.normalize()
   let limit = p.limit
-  let continuingThermalWindow = heatPaused && previousMode == p.mode && (p.thermalBehavior ?? .fiveMinuteWindows) == .fiveMinuteWindows
+  let continuingThermalWindow = heatPaused && previousMode == p.mode && previousThermalBehavior == .fiveMinuteWindows && (p.thermalBehavior ?? .fiveMinuteWindows) == .fiveMinuteWindows
   var reportedPhase = phase
   defer { phase = reportedPhase }
   func result(_ a: ChargeAction, _ r: String, _ l: Double? = nil, sailingHold: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false, phase nextPhase: PolicyPhase? = nil) -> Decision {

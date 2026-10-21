@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.3.25
+## 0.3.26
+
+- Prevent a pause from degree hysteresis from being reused as an existing five-minute window when switching behavior at low charge.
+- Includes the low-charge window correction from withdrawn development build 0.3.25.
+
+## 0.3.25 (withdrawn)
 
 - Preserve an existing five-minute thermal pause below its 20% entry threshold until the battery falls below 15% or the cooling window completes.
 - Keep fresh low-charge readings, explicit mode changes, calibration and optional degree hysteresis independent of that continuation rule.
