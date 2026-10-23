@@ -53,10 +53,14 @@ public enum HelperSocketIO {
 }
 public enum HelperClient {
  public static let socketPath = "/var/run/opencharge.sock"
- public static let supportedActions: Set<String> = ["sleepOverrideOn", "sleepOverrideDisplayOn", "sleepOverrideRestore", "sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
+ public static let supportedActions: Set<String> = Set(["sleepOverrideOn", "sleepOverrideDisplayOn", "sleepOverrideRestore", "sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
          "lowPowerOn", "lowPowerOff", "lowPowerRestore", "lowPowerStatus",
          "lowPowerBatteryOn", "lowPowerBatteryOff", "lowPowerACOn", "lowPowerACOff",
-         "magSafeSystem", "magSafeBlinkOrange", "magSafeSleepOn", "magSafeSleepOff", "magSafeStatus", "magSafeOff", "magSafeGreen", "magSafeOrange", "magSafeRestore"]
+         "magSafeSystem", "magSafeBlinkOrange", "magSafeSleepOn", "magSafeSleepOff", "magSafeStatus", "magSafeOff", "magSafeGreen", "magSafeOrange", "magSafeRestore"]).union(FirmwareCommand.supportedActions)
+ public static func request(_ command: FirmwareCommand) throws -> String {
+  guard let value = command.wireValue else { throw HelperError.rejected("invalid firmware command") }
+  return try request(value)
+ }
  public static func request(_ action: String) throws -> String {
   guard supportedActions.contains(action) else {
    throw HelperError.rejected("unknown helper action")

@@ -19,7 +19,7 @@ do {
 let controller: SMCController?
 let smcFailure: String?
 do {
- controller = try SMCController(recoveryStore: recoveryStore, bootSession: recoveryBootSession); smcFailure = nil
+ controller = try SMCController(recoveryStore: recoveryStore, firmwareStore: recoveryStore.firmwareStore(), bootSession: recoveryBootSession); smcFailure = nil
 }
 catch { controller = nil; smcFailure = error.localizedDescription; log("SMC unavailable; power-mode service remains available") }
 let powerModes = PowerModeController()
@@ -41,7 +41,7 @@ var ledRecoveryPending = false
 func restoreLED() throws { try ledSession?.restore(); ledNeedsRestore = false; ledRecoveryPending = false; ledLease.clear() }
 func restoreSMC() throws {
  var failure: Error?
- do { try controller?.apply(.restore) } catch { failure = error }
+ do { try controller?.apply(.restore); firmwareSession.reset() } catch { failure = error }
  do { try restoreLED() } catch { failure = failure ?? error }
  do { try restoreSleep() } catch { failure = failure ?? error }
  if let failure { throw failure }
@@ -53,6 +53,8 @@ func capabilities() -> String {
  if let status = try? magSafe?.status() { values.append("magSafe:" + status); values.append("magSafeEncoding:aclcNativeV2") }
  else { values.append("magSafe:unavailable") }
  if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
+ values.append("firmwareProtocol:fixedV1")
+ values.append("chargeRecovery:\(restoreBeforeCommands ? "pending" : "ready")")
  return values.joined(separator: ", ")
 }
 let path = HelperClient.socketPath
@@ -69,6 +71,7 @@ var address = sockaddr_un(); address.sun_family = sa_family_t(AF_UNIX); address.
 withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: Array(path.utf8CString).map { UInt8(bitPattern: $0) }) }
 let bound = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) } }
 guard bound == 0, chmod(path, 0o600) == 0, listen(fd, 8) == 0 else { log("socket setup failed"); exit(1) }
+var firmwareMutationGeneration: UInt64 = 0
 var lease = ControlLease()
 var needsRestore = false
 var owner: uid_t = 0
@@ -82,6 +85,23 @@ if let controller {
   log("interrupted charge recovery pending: \(error.localizedDescription)")
  }
 }
+let firmwareSession = FirmwareControlSession(status: {
+ guard let controller else { throw HelperError.rejected("SMC unavailable") }
+ let state = try controller.firmwareStatus()
+ return "limit=\(state.limit), charging=\(state.chargingAllowed.map { $0 ? "allowed" : "inhibited" } ?? "unknown")"
+}, preflight: {
+ guard let controller else { throw HelperError.rejected("SMC unavailable") }
+ _ = try controller.firmwareStatus()
+}, beforeMutation: {
+ firmwareMutationGeneration &+= 1
+ needsRestore = true; lease.request(at: ProcessInfo.processInfo.systemUptime)
+}, limit: { value in
+ guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.setFirmwareLimit(value)
+}, inhibit: {
+ guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.inhibitFirmware()
+}, beforeExit: { try restoreSleep() }, exit: { value in
+ guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.finishFirmwareExit(value)
+})
 var pauseOnSleep = false
 var currentAction: HardwareAction? = nil
 if ledSession != nil {
@@ -138,7 +158,10 @@ do {
   if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   lease.beginSleep(); ledLease.beginSleep()
   if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED sleep update failed: \(error.localizedDescription)") } }
-  if pauseOnSleep || currentAction == .forceDischarge {
+  if firmwareSession.active && !restoreBeforeCommands {
+   do { try firmwareSession.applySleep(recoveryPending: restoreBeforeCommands) }
+   catch { restoreBeforeCommands = true; log("firmware sleep update failed: \(error.localizedDescription)") }
+  } else if !restoreBeforeCommands && (pauseOnSleep || currentAction == .forceDischarge) {
    do { guard let controller else { return }; needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge }
    catch { log("pause on sleep failed: \(error.localizedDescription)") }
   }
@@ -162,23 +185,38 @@ source.setEventHandler {
  var attemptedLED = false
  do {
   if command == "capabilities" { response = "OK " + capabilities() }
+  else if let firmware = FirmwareCommand.parse(command) {
+   let oldMutation = firmwareMutationGeneration
+   do {
+    response = "OK " + (try firmwareSession.execute(firmware, recoveryPending: restoreBeforeCommands, sleepObserverAvailable: powerObserver != nil))
+   } catch {
+    // A rejected preflight must not tear down a healthy ordinary charge session.
+    if firmwareMutationGeneration != oldMutation { attemptedAction = true }
+    throw error
+   }
+   if case .exit = firmware { needsRestore = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
+   else if firmwareSession.active {
+    currentAction = nil; pauseOnSleep = false
+    if case .status = firmware {} else { lease.request(at: ProcessInfo.processInfo.systemUptime) }
+   }
+  }
   else if command == "sleepOverrideRestore" { try restoreSleep(); response = "OK sleep override released" }
   else if command == "sleepOverrideOn" || command == "sleepOverrideDisplayOn" {
-   guard !sleepRecoveryPending, let sleepOverrides, currentAction != nil, currentAction != .restore else { throw HelperError.rejected("sleep override requires a current charge session and recovered helper") }
+   guard !sleepRecoveryPending, let sleepOverrides, (firmwareSession.active || (currentAction != nil && currentAction != .restore)) else { throw HelperError.rejected("sleep override requires a current charge session and recovered helper") }
    sleepNeedsRestore = true; sleepLease.request(at: ProcessInfo.processInfo.systemUptime)
    do { try sleepOverrides.apply(preventDisplaySleep: command == "sleepOverrideDisplayOn") }
    catch { sleepRecoveryPending = true; throw error }
    response = "OK sleep override accepted; physical effects unverified"
   }
   else if command == "sleepPolicyOn" || command == "sleepPolicyOff" {
-   guard command == "sleepPolicyOff" || (controller != nil && powerObserver != nil) else { throw HelperError.rejected("sleep policy unavailable") }
+   guard command == "sleepPolicyOff" || (!firmwareSession.active && controller != nil && powerObserver != nil) else { throw HelperError.rejected("sleep policy unavailable") }
    pauseOnSleep = command == "sleepPolicyOn"; response = "OK sleepPolicy=\(pauseOnSleep ? "on" : "off")"
   }
   else if command == "retainChargeInhibit" {
    guard !restoreBeforeCommands, let controller else { throw HelperError.rejected("SMC or cleanup unavailable") }
    try restoreSleep()
    attemptedAction = true; needsRestore = true; lease.request(at: ProcessInfo.processInfo.systemUptime)
-   try controller.apply(.inhibitCharge); currentAction = .inhibitCharge; lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
+   try controller.apply(.inhibitCharge); firmwareSession.reset(); currentAction = .inhibitCharge; lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
    response = "OK retainedChargeInhibit"
   }
   else if command == "magSafeStatus" { guard let magSafe else { throw HelperError.rejected("MagSafe unavailable") }; response = "OK " + (try magSafe.status()) }
@@ -216,7 +254,7 @@ source.setEventHandler {
    attemptedAction = true
    lease.request(at: ProcessInfo.processInfo.systemUptime); needsRestore = true
    if action == .restore { try restoreSleep() }
-   try controller.apply(action); needsRestore = action != .restore; currentAction = action
+   try controller.apply(action); firmwareSession.reset(); needsRestore = action != .restore; currentAction = action
    if action == .restore { pauseOnSleep = false; lease.clear() }
    response = "OK \(action.rawValue)"
   }

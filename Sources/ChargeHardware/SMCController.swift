@@ -17,6 +17,7 @@ public final class SMCController {
     public let model: String
     private let internalBattery: Bool
     private let recoveryStore: ChargeRecoveryStore?
+    private let firmwareStore: ChargeRecoveryStore?
     private let bootSession: String
     private lazy var keyIO = SMCKeyIO { [unowned self] key, command, count, bytes in
         try self.call(key, command: command, count: count, bytes: bytes)
@@ -32,8 +33,23 @@ public final class SMCController {
         read: { [unowned self] in try self.optionalKey($0) },
         write: { [unowned self] in try self.writeKey($0, $1) }, recoveryStore: recoveryStore, bootSession: bootSession)
 
-    public init(recoveryStore: ChargeRecoveryStore? = nil, bootSession: String = "") throws {
-        self.recoveryStore = recoveryStore; self.bootSession = bootSession
+    private var firmwareEligible: Bool { SMCFirmwareProbe.eligible(model: model, architecture: processArchitecture, internalBattery: internalBattery) }
+    private lazy var firmwareController = SMCFirmwareChargeController(eligibleHost: firmwareEligible, batteryPresent: internalBattery,
+        read: { [unowned self] in try self.keyIO.optionalRead($0) },
+        write: { [unowned self] in try self.keyIO.writeFirmwareByte($0, value: $1) },
+        recoveryStore: firmwareStore, bootSession: bootSession)
+    private lazy var chargeSession = ChargeBackendSession(
+        ordinaryPending: { [unowned self] in try self.recoveryStore?.load() != nil },
+        firmwarePending: { [unowned self] in try self.firmwareStore?.load() != nil },
+        ordinary: { [unowned self] in try self.chargeController.apply($0) }, firmwareEligible: firmwareEligible,
+        firmwareInspect: { [unowned self] in _ = try self.firmwareController.inspect() },
+        firmwareLimit: { [unowned self] in try self.firmwareController.setLimit($0) },
+        firmwareInhibit: { [unowned self] in try self.firmwareController.inhibitCharging() },
+        firmwareExit: { [unowned self] in try self.firmwareController.finishExit(limit: $0) },
+        firmwareRestore: { [unowned self] in try self.firmwareController.restore() })
+
+    public init(recoveryStore: ChargeRecoveryStore? = nil, firmwareStore: ChargeRecoveryStore? = nil, bootSession: String = "") throws {
+        self.recoveryStore = recoveryStore; self.firmwareStore = firmwareStore; self.bootSession = bootSession
         model = try HardwareIdentity.model()
         // Ordinary charge profiles require an internal battery and recognized key layout.
         // Numeric firmware probing additionally requires an explicitly selected model.
@@ -52,12 +68,13 @@ public final class SMCController {
         lock.lock(); defer { lock.unlock() }
         var values = ["model:\(model)", "internalBattery:\(internalBattery ? "present" : "absent")"]
         if let bytes = try? optionalKey("ACLC"), bytes.count == 1, bytes[0] <= 4 { values.append("magSafeKey:ACLC") }
-        if let status = try? firmwareStatusUnlocked() {
+        let numericStatus = try? firmwareStatusUnlocked()
+        if let status = numericStatus {
             values.append("firmwareRead:CH0B+BCLM")
             values.append("firmwareLimit:\(status.limit)")
             values.append("firmwareCharging:\(status.chargingAllowed.map { $0 ? "allowed" : "inhibited" } ?? "unknown")")
         } else { values.append("firmwareRead:unavailable") }
-        values.append("firmwareWrite:unavailable")
+        values.append(numericStatus != nil && firmwareStore != nil ? "firmwareWrite:fixedV1" : "firmwareWrite:unavailable")
         return values + chargeController.capabilities()
     }
 
@@ -94,7 +111,23 @@ public final class SMCController {
 
     public func apply(_ action: HardwareAction) throws {
         lock.lock(); defer { lock.unlock() }
-        try chargeController.apply(action)
+        guard geteuid() == 0 else { throw HardwareError.permissionRequired }
+        try chargeSession.apply(action)
+    }
+
+    public func setFirmwareLimit(_ percent: Int) throws {
+        lock.lock(); defer { lock.unlock() }; try requireFirmwareWriter(); try chargeSession.setFirmwareLimit(percent)
+    }
+    public func inhibitFirmware() throws {
+        lock.lock(); defer { lock.unlock() }; try requireFirmwareWriter(); try chargeSession.inhibitFirmware()
+    }
+    public func finishFirmwareExit(_ percent: Int) throws {
+        lock.lock(); defer { lock.unlock() }; try requireFirmwareWriter(); try chargeSession.finishFirmwareExit(percent)
+    }
+
+    private func requireFirmwareWriter() throws {
+        guard geteuid() == 0 else { throw HardwareError.permissionRequired }
+        guard firmwareStore != nil else { throw HardwareError.unavailable("Firmware recovery store required") }
     }
 
     private func optionalKey(_ key: String) throws -> [UInt8]? {

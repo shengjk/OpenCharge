@@ -11,7 +11,7 @@ public protocol ChargeRecoveryStore: AnyObject {
 public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
  private let directory: Int32
  private let owner: uid_t
- private enum Record: String { case charge = "charge-recovery.json", magSafe = "magsafe-recovery.json", sleep = "sleep-recovery.json" }
+ private enum Record: String { case charge = "charge-recovery.json", magSafe = "magsafe-recovery.json", sleep = "sleep-recovery.json", firmware = "firmware-recovery.json" }
  private static let limit = 8192
  public init(directory path: String = "/var/db/org.opencharge.charged", owner: uid_t = 0) throws {
   self.owner = owner
@@ -53,6 +53,13 @@ public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
   init(parent: ChargeRecoveryFileStore) { self.parent = parent }
   func load() throws -> Data? { try parent.load(.sleep) }
   func save(_ data: Data?) throws { try parent.save(data, record: .sleep) }
+ }
+ public func firmwareStore() -> ChargeRecoveryStore { FirmwareFileView(parent: self) }
+ private final class FirmwareFileView: ChargeRecoveryStore {
+  let parent: ChargeRecoveryFileStore
+  init(parent: ChargeRecoveryFileStore) { self.parent = parent }
+  func load() throws -> Data? { try parent.load(.firmware) }
+  func save(_ data: Data?) throws { try parent.save(data, record: .firmware) }
  }
  private func load(_ record: Record) throws -> Data? {
   let fd = openat(directory, record.rawValue, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)

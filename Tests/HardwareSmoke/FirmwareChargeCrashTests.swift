@@ -6,8 +6,8 @@ private final class CrashJournal: ChargeRecoveryStore {
  var before: (() -> Void)?
  var after: (() -> Void)?
  init(_ path: String) throws { file = try ChargeRecoveryFileStore(directory: path, owner: geteuid()) }
- func load() throws -> Data? { try file.load() }
- func save(_ data: Data?) throws { before?(); try file.save(data); after?() }
+ func load() throws -> Data? { try file.firmwareStore().load() }
+ func save(_ data: Data?) throws { before?(); try file.firmwareStore().save(data); after?() }
 }
 private final class CrashScenario {
  let directory: URL
@@ -80,6 +80,7 @@ private final class CrashScenario {
      }, authorized: { true }, recoveryStore: store, bootSession: boot)
      try recovered.restore()
      let values = try scenario.values(), journal = try store.load()
+     let ordinaryRecord = try store.file.load(); precondition(ordinaryRecord == nil, "numeric fixture must use its distinct production filename")
      let expected: [String: UInt8] = stage == "exit-save-after-2" ? ["CH0B": 0, "BCLM": 75, "BSIn": 0] : original
      precondition(values == expected && journal == nil, "cold recovery failed at \(stage)")
      let completed = writes

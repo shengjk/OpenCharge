@@ -8,12 +8,14 @@ import os, subprocess, tempfile
 project = Path(__file__).resolve().parents[2]
 source = (project / "Scripts/uninstall-helper.sh").read_text()
 assert "$EUID -ne 0" in source
-for marker in [None, "regular", "symlink", "directory"]:
+scenarios = 0
+for filename, marker in [("sleep-recovery.json", None)] + [(name, marker) for name in ["sleep-recovery.json", "charge-recovery.json", "firmware-recovery.json", "magsafe-recovery.json"] for marker in ["regular", "symlink", "directory"]]:
+    scenarios += 1
     with tempfile.TemporaryDirectory(prefix="OpenCharge-uninstall-fixture-") as temporary:
         root = Path(temporary)
         helper = root / "Library/PrivilegedHelperTools/org.opencharge.charged"
         plist = root / "Library/LaunchDaemons/org.opencharge.charged.plist"
-        record = root / "var/db/org.opencharge.charged/sleep-recovery.json"
+        record = root / "var/db/org.opencharge.charged" / filename
         helper.parent.mkdir(parents=True)
         plist.parent.mkdir(parents=True)
         record.parent.mkdir(parents=True)
@@ -57,4 +59,4 @@ for marker in [None, "regular", "symlink", "directory"]:
                 assert record.is_symlink() and os.readlink(record) == "missing-target"
             else:
                 assert record.is_dir()
-print("Helper removal: 4 path-remapped/stub-service scenarios passed; no real service or system-path writes")
+print(f"Helper removal: {scenarios} path-remapped/stub-service scenarios passed; no real service or system-path writes")

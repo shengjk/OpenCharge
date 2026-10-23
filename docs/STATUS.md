@@ -4,7 +4,7 @@ This is a development release. Implemented policy, OS integration and physical h
 
 | Area | Implemented | Remaining validation or scope |
 | --- | --- | --- |
-| Firmware limits (unreleased work) | Pure sleep/exit projections, typed SMC frame decoding, bounded read-only probing, and injected fixed CH0B/BCLM transactions with owned recovery | Read-only production probing covers three selected Intel Air models; mutation transport wiring, fixed IPC and lifecycle integration remain incomplete; no firmware control or physical effect verified |
+| Firmware limits (unreleased work) | Typed fixed CH0B/BCLM backend, exclusive charge sessions, separate recovery file, bounded helper commands and injected sleep/exit handling for three selected Intel Air models | App policy/GUI selection and lifecycle projection handoff remain incomplete; no installed service update or physical firmware validation |
 | Administrator restriction | Scoped charge-setting UI/binding and right-click guards; read-only preference, observation, isolated tests | Managed-profile deployment and broader enterprise/session environments |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
 | Quit lifecycle | Deferred cleanup, stable OS power-source checks after owned discharge, error/timeout choices and monitoring after cancellation | Physical adapter/display transitions, logout/shutdown, user switching and forced process termination |
