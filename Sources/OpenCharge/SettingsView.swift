@@ -27,7 +27,8 @@ struct SettingsView: View {
    Text(m.helperStatus).foregroundStyle(.secondary)
    HelperServiceView(service: m.helperService)
    Text("服务仅接受当前登录用户的固定动作，45 秒没有心跳时尝试恢复系统充电。安装服务不会自动开启控制。").font(.caption).foregroundStyle(.secondary)
-   Button("检测服务能力") { do { m.helperStatus = try HelperClient.request("capabilities") } catch { m.error = error.localizedDescription } }
+   Button("检测服务能力") { m.inspectServiceCapabilities() }
+   Text(m.firmwareStatus).font(.caption).foregroundStyle(.secondary)
   }
   Card("MagSafe 灯光") {
    Picker("自动灯光", selection: Binding(get: { m.config.magSafeMode ?? .system }, set: { m.config.magSafeMode = $0; m.save(); m.useMagSafePolicy() })) { ForEach(MagSafeMode.allCases, id: \.self) { Text($0.displayName).tag($0) } }

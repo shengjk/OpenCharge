@@ -81,6 +81,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published var decision = Decision(.restore, "正在读取电池…", limit: 80)
  @Published var error: String?
  @Published var helperStatus = "监测模式"
+ @Published private(set) var firmwareInspection: FirmwareHelperState?
+ @Published private(set) var firmwareStatus = "尚未检测数值固件通道"
  @Published var history: [HistoryPoint] = []
  @Published var calibration = CalibrationStage.idle
  @Published var calibrationPending = false
@@ -422,6 +424,21 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard lidLockPolicy.shouldRequest(lidClosed: closed, enabled: enabled, sleepOverrideActive: sleepOverrideSessionActive && !sleepOverrideFailed, consoleSessionActive: consoleActive) else { return }
   do { try (request ?? screenLockRequest)(); lidLockStatus = "已向系统发送锁屏请求；尚未确认锁定结果" }
   catch { lidLockStatus = "锁屏请求失败：" + error.localizedDescription + "；重新开合盖后可再试" }
+ }
+ func inspectServiceCapabilities(request: (String) throws -> String = HelperClient.request) {
+  guard !quitting else { return }
+  firmwareInspection = nil
+  do {
+   let capabilities = try request("capabilities"); helperStatus = capabilities
+   guard FirmwareHelperCapabilities.supportsNumericControl(capabilities) else {
+    firmwareStatus = "当前服务或硬件未提供已恢复的数值固件通道"; return
+   }
+   let reply = try request("firmwareStatus")
+   guard let state = FirmwareHelperState(reply: reply) else { throw HelperError.rejected("固件状态回复格式无效") }
+   firmwareInspection = state
+   let control = state.chargingAllowed.map { $0 ? "允许充电" : "限制充电" } ?? "未知"
+   firmwareStatus = "固件上限 \(state.limit)% · 控制状态：\(control) · 尚未启用数值固件控制"
+  } catch { firmwareStatus = "固件检测失败：" + error.localizedDescription; self.error = error.localizedDescription }
  }
  func inspectSleepInterfaces(request: (String) throws -> String = HelperClient.request) {
   do {
