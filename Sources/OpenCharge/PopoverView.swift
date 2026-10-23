@@ -27,6 +27,7 @@ struct PopoverContents: View {
   ScrollView {
    VStack(alignment: .leading, spacing: 14) {
     HStack { Text("OpenCharge").font(.headline); Spacer(); if preferences.showPercentage { Text(m.title).font(.title2.monospacedDigit()) } }
+    ChargeSettingsLockNotice(model: m)
     ProgressView(value: m.reading?.percent ?? 0, total: 100).tint(.mint)
     Text("目标 \(Int(m.decision.effectiveLimit))% · \(m.decision.reason)").font(.callout)
     Text(m.helperStatus).font(.caption).foregroundStyle(.secondary)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.36
+
+- Read the administrator settingsLock preference, off by default. Restrict interactive charge-policy editors, quick profiles, backup restore and the right-click charging toggle, with a visible lock notice.
+- Re-check the current restriction before each protected edit, including bindings and input drafts created before locking. Observe preference changes and retain periodic refresh.
+- Keep mode actions, Top Up, Low Power Mode, appearance, background tasks, automation and recovery on their existing paths. MagSafe controls remain separate.
+- Add isolated binding, preference-observation and persistence regressions. The user confirmed default menu-bar right-click opening/closing on the current Mac.
+
 ## 0.3.35
 
 - Route the charge-control mode picker through the shared explicit GUI mode request. Clear current-percentage Pause state, save accepted changes immediately, and enforce the existing connection and calibration guards.

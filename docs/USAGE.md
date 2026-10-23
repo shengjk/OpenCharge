@@ -49,10 +49,25 @@ Settings → Appearance offers four right-click actions: show/hide the popover (
 
 The charging toggle pauses at the selected current percentage when the policy is Charging or Top Up, or Heat Protection with a 100% daily limit, and the percentage is at least 20%. Otherwise it selects ordinary Automatic charging with a 100% daily target, distinct from temporary Top Up. It cancels a departure plan. Missing or invalid selected telemetry leaves the policy unchanged; interrupted calibration still requires a continuation or cancellation choice. Saving a policy does not enable hardware control.
 
-The Low Power Mode shortcut requires the system-actions permission in Settings and a responding helper with at least one supported power source. It toggles the current system activity and applies the existing helper command to supported sources. Capability failures do not save a successful selection. This project does not yet implement a global settings lock.
+The Low Power Mode shortcut requires the system-actions permission in Settings and a responding helper with at least one supported power source. It toggles the current system activity and applies the existing helper command to supported sources. Capability failures do not save a successful selection. The administrator charging-settings restriction described below affects the charging toggle and selected editors; it leaves this Low Power Mode shortcut available.
 
 ## Explicit mode selection
 
 The Charge Control mode picker applies and saves an accepted selection immediately, using the same path as explicit dashboard mode buttons. Selecting Pause creates an indefinite pause and clears any earlier current-percentage Pause marker. Top Up and Calibration require a connected power source; Top Up also requires leaving calibration first. An interrupted calibration remains pending when Calibration is selected again: use Continue to resume or select another mode to cancel.
 
 Selecting a different mode cancels the old calibration stage even if the following telemetry read fails. A later calibration begins a new run. Quick profiles select Automatic and clear any interrupted calibration/checkpoint. These requests preserve the hardware-control opt-in; applying a mode in monitoring does not enable physical control.
+
+## Administrator charging-settings restriction
+
+The Boolean `settingsLock` preference in the `org.opencharge.app` defaults domain defaults to false. When true, the app displays a lock notice and disables interactive edits to the daily limit, Sailing, temperature protection, control percentage, sleep/exit charging policy and the right-click charging toggle. OpenCharge also restricts its additional charging-policy options (thermal enhancements, departure plan and reserve), GUI quick profiles and GUI configuration restore. Backup export remains available. Both the visual controls and their setters check the restriction; old input drafts cannot submit protected changes after locking.
+
+The preference is read-only inside the app; there is no in-app unlock or password workflow. Administrators manage it through their normal preference-management mechanism. Local development examples:
+
+```sh
+defaults write org.opencharge.app settingsLock -bool true
+defaults delete org.opencharge.app settingsLock
+```
+
+Preference observation updates the UI; policy refresh also re-reads it, and protected setters always re-read before writing. The app never saves the lock into the portable configuration backup or clears it on import. Managed-profile deployment still needs its own environment validation.
+
+This is a restriction on selected interactive charge settings. Temporary Top Up, explicit mode selection, calibration continuation/cancellation, Low Power Mode, MagSafe, appearance and read-only inspection keep their existing paths. Schedules, CLI, URLs, Shortcuts, checkpoints and recovery also retain their contracts; this preference does not replace macOS authorization or provide a system-wide security boundary.

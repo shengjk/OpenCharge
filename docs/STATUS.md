@@ -1,9 +1,10 @@
-# Status — 0.3.35
+# Status — 0.3.36
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
 | Area | Implemented | Remaining validation or scope |
 | --- | --- | --- |
+| Administrator restriction | Scoped charge-setting UI/binding and right-click guards; read-only preference, observation, isolated tests | Managed-profile deployment and broader enterprise/session environments |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
 | Quit lifecycle | Deferred cleanup, stable OS power-source checks after owned discharge, error/timeout choices and monitoring after cancellation | Physical adapter/display transitions, logout/shutdown, user switching and forced process termination |
 | Automation | Recurrence and DST anchors, templates, history, CLI, URL scheme, twelve intents | Full policy-state transition and hardware validation; broader system UI execution of setters and calendar/session environments |
@@ -17,6 +18,6 @@ This is a development release. Implemented policy, OS integration and physical h
 | Software updates | Manual / opt-in scheduled checks, preview channel, bounded verified ZIP download with quarantine metadata | Signed automatic installation, notarization and broader network environments |
 | Distribution | Native and universal builds, local signatures, CI definition | Notarized releases and broader model matrix |
 
-Unsupported or incomplete: global settings locking, BCLM-only firmware control, guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
+Unsupported or incomplete: BCLM-only firmware control, guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
 
 The installed development helper was validated only through read-only capabilities. Hardware control and scheduled system actions remain disabled on the validation machine. No physical effects are claimed from capability detection or fake-backend tests.

@@ -73,6 +73,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if active || dashboard.reading == nil { dashboard.capture(self) }
   if wantsEnergy { energyMonitor.refresh(sensitivity: EnergySensitivity(rawValue: UserDefaults.standard.string(forKey: "energySensitivity") ?? "balanced") ?? .balanced) }
  }
+ @Published private(set) var settingsLocked = false
+ private let settingsDefaults: UserDefaults
+ private var settingsPreferenceObservation: SettingsLockObservation?
  @Published var config: Configuration
  @Published var reading: BatteryReading?
  @Published var decision = Decision(.restore, "正在读取电池…", limit: 80)
@@ -111,6 +114,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
  init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }) {
+  settingsDefaults = dashboardDefaults
   self.readBattery = readBattery
   self.screenLockRequest = screenLockRequest
   updates = AppUpdates(defaults: dashboardDefaults)
@@ -131,6 +135,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if observeLid { do { lidObserver = try LidStateObserver { [weak self] in
    Task { @MainActor [weak self] in self?.handleLidStateNotification(LidStateObserver.currentState()) }
   } } catch { lidLockStatus = "合盖监听不可用：" + error.localizedDescription } }
+  reloadSettingsLock()
+  settingsPreferenceObservation = SettingsLockObservation(defaults: dashboardDefaults) { [weak self] in self?.reloadSettingsLock() }
   refresh()
   PolicyStateRuntime.provider = { [weak self] in
    guard let self else { throw HelperError.rejected("应用策略实例已结束") }
@@ -168,10 +174,20 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } catch { self.error = error.localizedDescription }
  }
  func save() { do { try config.save() } catch { self.error = error.localizedDescription } }
+ func reloadSettingsLock() {
+  let locked = settingsDefaults.bool(forKey: "settingsLock")
+  if settingsLocked != locked { settingsLocked = locked }
+ }
+ @discardableResult func allowChargeSettingsEdit() -> Bool {
+  guard !quitting else { return false }
+  reloadSettingsLock()
+  guard !settingsLocked else { error = "充电设置已锁定，请联系管理员调整配置"; return false }
+  return true
+ }
  func toggleTopUp() { changeMode(automationPhase == .topUp ? .paused : .topUp) }
  func toggleDischarge() { changeMode(automationPhase == .discharging ? .paused : .discharge) }
  func toggleChargingFromMenu() {
-  guard !quitting else { return }
+  guard !quitting, allowChargeSettingsEdit() else { return }
   guard !calibrationPending else { error = "校准已中断，请先选择继续或取消"; return }
   do {
    let sample = try readBattery()
@@ -271,6 +287,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func refresh() {
   guard !quitting else { return }
+  reloadSettingsLock()
   defer { syncDashboard() }
   do {
    let r = try readBattery(); reading = r
@@ -496,13 +513,14 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   catch { self.error = error.localizedDescription }
  }
  func restoreConfiguration() {
-  guard !quitting else { return }
+  guard !quitting, allowChargeSettingsEdit() else { return }
   let panel = NSOpenPanel(); panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false; panel.canChooseDirectories = false
   guard panel.runModal() == .OK, let url = panel.url else { return }
   do {
    let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
    guard size <= 1_048_576 else { throw ConfigurationBackupError.tooLarge }
    let restored = try ConfigurationBackup.restored(from: Data(contentsOf: url))
+   guard allowChargeSettingsEdit() else { return }
    // Validate before touching current hardware or configuration.
    if magSafeSessionActive { _ = try HelperClient.request("magSafeRestore"); magSafeSessionActive = false }
    magSafeSelection = nil; magSafePolicyFailed = false

@@ -17,6 +17,7 @@ struct SettingsView: View {
  @AppStorage("showDockIcon") private var showDockIcon = true
  @State private var loginError: String?
  var body: some View {
+  ChargeSettingsLockNotice(model: m)
   Card("界面与能耗") {
    PopoverActivityView(monitor: m.energyMonitor, popoverVisible: m.popoverVisible)
    Text("只有可见界面需要能耗列表时才读取；暂停界面更新不会停止充电策略和定时任务。").font(.caption).foregroundStyle(.secondary)
@@ -74,7 +75,7 @@ struct SettingsView: View {
    Text("包含应用与系统版本、机型、当前电池读数、策略摘要和服务状态。不包含序列号、用户名、路径、定时任务日期或历史明细；文件保存在你选择的位置，不自动上传。").font(.caption).foregroundStyle(.secondary)
   }
   Card("配置备份") {
-   HStack { Button("导出配置备份") { m.backupConfiguration() }; Button("从备份恢复…") { m.restoreConfiguration() } }
+   HStack { Button("导出配置备份") { m.backupConfiguration() }; Button("从备份恢复…") { m.restoreConfiguration() }.disabled(m.settingsLocked) }
    Text("备份包含策略和时间表。恢复会替换当前配置，进入监测模式并停用导入的任务；重新启用前请检查时间和操作。电池历史不在备份中。").font(.caption).foregroundStyle(.secondary)
   }
   Card("兼容性与边界") {

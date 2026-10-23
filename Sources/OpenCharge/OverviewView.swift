@@ -59,5 +59,5 @@ struct OverviewView: View {
    Card("最近趋势") { TrendChart(points: Array(d.history.suffix(120))).frame(height: 150) }
   }
  }
- func profile(_ title: String, subtitle: String, limit: Double, width: Double, heat: Double) -> some View { Button { m.profile(limit, width, heat) } label: { VStack(alignment: .leading, spacing: 7) { Text(title).font(.headline); Text(subtitle).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading).padding(12) }.buttonStyle(.bordered) }
+ func profile(_ title: String, subtitle: String, limit: Double, width: Double, heat: Double) -> some View { Button { m.profileFromGUI(limit, width, heat) } label: { VStack(alignment: .leading, spacing: 7) { Text(title).font(.headline); Text(subtitle).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading).padding(12) }.buttonStyle(.bordered).disabled(m.settingsLocked) }
 }
