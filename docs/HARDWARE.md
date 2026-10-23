@@ -44,3 +44,12 @@ The record includes the kernel boot-session UUID. Same-boot entries block new ch
 The production planner and file store are tested with disposable fake registers, including terminated subprocesses at write/restore boundaries. These tests never restart the production daemon, create its root recovery directory or perform physical SMC writes. Since 0.3.8, LED recovery uses a separate bounded record in the shared private directory; persistent macOS Low Power Mode settings are deliberately excluded.
 
 Recovery-directory safety/locking or boot-identity failures refuse daemon startup before its socket is changed. The directory lock stays held for the entire daemon lifetime, including when SMC is unavailable but power-mode service remains available.
+
+
+## Unreleased numeric firmware backend
+
+An injected controller implements only the fixed CH0B/BCLM profile for a caller-established eligible host with an internal battery. It requires one-byte `ui8 ` metadata, accepts recognized current values, and exposes bounded limits from 20 through 100 plus a separate internal inhibit target of 15. Read-only status uses CH0B and BCLM, consulting BSIn bit 0 only when CH0B is zero and BCLM is 15; unavailable BSIn leaves that control state unknown. It does not substitute OS charging or measured power flow.
+
+Transactions save owned original/expected/previous values before writes and validate readback and the final full profile. Crash recovery compares owned values before restoring originals. Orderly exit applies a separate explicit target and relinquishes ownership only after validation and successful journal removal; subsequent restore must preserve that target. Malformed recovery data and incomplete rollback block further mutation. The recovery schema is distinct from the production charge journal and has no production file path or IPC yet. Compare-and-restore remains subject to external-writer races and cannot identify an identical external value.
+
+This backend is not connected to the real SMC transport, production helper, host selection or GUI lifecycle. It does not change available hardware capabilities or enable firmware control. Process-crash fixtures establish recovery behavior for injected registers and local file operations only; real sleep, shutdown, charging effects, reboot and power-loss behavior remain unverified.
