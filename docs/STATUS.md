@@ -5,6 +5,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Area | Implemented | Remaining validation or scope |
 | --- | --- | --- |
 | Firmware limits (unreleased work) | Typed fixed CH0B/BCLM backend, exclusive recovery, bounded helper commands, injected sleep/exit handling and read-only app inspection for three selected Intel Air models | App policy/GUI selection and lifecycle projection handoff remain incomplete; no installed service update or physical firmware validation |
+| Intel inflow assertion (unreleased work) | Fixed process-local assertion ownership component, exact property checks and retryable cleanup | Not connected to the helper or application; numeric inhibition alone does not establish forced discharge; host qualification and complete lifecycle handoff remain incomplete |
 | Administrator restriction | Scoped charge-setting UI/binding and right-click guards; read-only preference, observation, isolated tests | Managed-profile deployment and broader enterprise/session environments |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
 | Quit lifecycle | Deferred cleanup, stable OS power-source checks after owned discharge, error/timeout choices and monitoring after cancellation | Physical adapter/display transitions, logout/shutdown, user switching and forced process termination |
