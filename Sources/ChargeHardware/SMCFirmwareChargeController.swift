@@ -15,7 +15,7 @@ public struct FirmwareChargeStatus: Equatable, Sendable {
 
 /// Fixed CH0B/BCLM transactions for an explicitly selected numeric firmware profile.
 /// The caller must establish host eligibility; readable bytes alone do not prove it.
-/// This controller is not yet connected to the production helper or GUI.
+/// Mutation methods are not connected to the production helper or GUI.
 public final class SMCFirmwareChargeController {
  private enum Key: String, Codable, Hashable { case charge = "CH0B", limit = "BCLM" }
  private struct Entry: Codable {

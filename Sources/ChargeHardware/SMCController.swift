@@ -18,6 +18,16 @@ public final class SMCController {
     private let internalBattery: Bool
     private let recoveryStore: ChargeRecoveryStore?
     private let bootSession: String
+    private lazy var keyIO = SMCKeyIO { [unowned self] key, command, count, bytes in
+        try self.call(key, command: command, count: count, bytes: bytes)
+    }
+    private var processArchitecture: String {
+        #if arch(x86_64)
+        return "x86_64"
+        #else
+        return "arm64"
+        #endif
+    }
     private lazy var chargeController = SMCChargeController(batteryPresent: internalBattery,
         read: { [unowned self] in try self.optionalKey($0) },
         write: { [unowned self] in try self.writeKey($0, $1) }, recoveryStore: recoveryStore, bootSession: bootSession)
@@ -25,8 +35,8 @@ public final class SMCController {
     public init(recoveryStore: ChargeRecoveryStore? = nil, bootSession: String = "") throws {
         self.recoveryStore = recoveryStore; self.bootSession = bootSession
         model = try HardwareIdentity.model()
-        // A real internal battery and recognized key layout determine eligibility.
-        // Model names do not prove firmware behavior and are retained only for diagnostics.
+        // Ordinary charge profiles require an internal battery and recognized key layout.
+        // Numeric firmware probing additionally requires an explicitly selected model.
         internalBattery = (try? BatteryReader.read()) != nil
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
         guard service != 0 else { throw HardwareError.unavailable("AppleSMC") }
@@ -42,19 +52,32 @@ public final class SMCController {
         lock.lock(); defer { lock.unlock() }
         var values = ["model:\(model)", "internalBattery:\(internalBattery ? "present" : "absent")"]
         if let bytes = try? optionalKey("ACLC"), bytes.count == 1, bytes[0] <= 4 { values.append("magSafeKey:ACLC") }
+        if let status = try? firmwareStatusUnlocked() {
+            values.append("firmwareRead:CH0B+BCLM")
+            values.append("firmwareLimit:\(status.limit)")
+            values.append("firmwareCharging:\(status.chargingAllowed.map { $0 ? "allowed" : "inhibited" } ?? "unknown")")
+        } else { values.append("firmwareRead:unavailable") }
+        values.append("firmwareWrite:unavailable")
         return values + chargeController.capabilities()
     }
 
     /// Fixed, read-only temperature key. This does not inspect or change charge control.
     public func batteryTemperatureReading() throws -> SMCTemperatureReading {
         lock.lock(); defer { lock.unlock() }
-        let metadata = try call("TB0T", command: 9)
-        let count = metadata.withUnsafeBytes { Int($0.loadUnaligned(fromByteOffset: 28, as: UInt32.self)) }
-        guard (1...32).contains(count) else { throw HardwareError.invalidData("TB0T length") }
-        let type = metadata.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 32, as: UInt32.self) }
-        let name = String(bytes: [UInt8(truncatingIfNeeded: type >> 24), UInt8(truncatingIfNeeded: type >> 16), UInt8(truncatingIfNeeded: type >> 8), UInt8(truncatingIfNeeded: type)], encoding: .ascii) ?? "unknown"
-        let output = try call("TB0T", command: 5, count: count)
-        return SMCTemperatureReading(dataType: name, bytes: Array(output[48..<(48 + count)]))
+        let reading = try keyIO.read("TB0T")
+        return SMCTemperatureReading(dataType: reading.dataType, bytes: reading.bytes)
+    }
+
+    /// Explicit numeric-profile observation only; never loads a recovery journal.
+    /// Architecture is the current process architecture; the exact physical model
+    /// check also prevents Rosetta on an Apple Silicon model from selecting Intel.
+    public func firmwareStatus() throws -> FirmwareChargeStatus {
+        lock.lock(); defer { lock.unlock() }
+        return try firmwareStatusUnlocked()
+    }
+    private func firmwareStatusUnlocked() throws -> FirmwareChargeStatus {
+        try SMCFirmwareProbe.inspect(model: model, architecture: processArchitecture, internalBattery: internalBattery,
+            read: { [self] in try keyIO.optionalRead($0) })
     }
 
     /// ACLC capability is separate from the charge-control protocol profile.
@@ -75,26 +98,11 @@ public final class SMCController {
     }
 
     private func optionalKey(_ key: String) throws -> [UInt8]? {
-        do { return try readKey(key) }
-        catch HardwareError.driver(let code, let result) where code == KERN_SUCCESS && result == 132 { return nil }
-    }
-
-    private func info(_ key: String) throws -> Int {
-        let output = try call(key, command: 9)
-        let size = output.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 28, as: UInt32.self) }
-        guard (1...32).contains(size) else { throw HardwareError.invalidData("SMC length: \(key)") }
-        return Int(size)
-    }
-
-    private func readKey(_ key: String) throws -> [UInt8] {
-        let count = try info(key)
-        let output = try call(key, command: 5, count: count)
-        return Array(output[48..<(48 + count)])
+        try keyIO.optionalRead(key)?.bytes
     }
 
     private func writeKey(_ key: String, _ bytes: [UInt8]) throws {
-        guard try info(key) == bytes.count else { throw HardwareError.invalidData("SMC size changed: \(key)") }
-        _ = try call(key, command: 6, count: bytes.count, bytes: bytes)
+        try keyIO.write(key, bytes: bytes)
     }
 
     private func call(_ key: String, command: UInt8, count: Int = 0, bytes: [UInt8] = []) throws -> [UInt8] {
