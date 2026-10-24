@@ -13,6 +13,13 @@ import Foundation
    do { _ = try HelperClient.request(command); preconditionFailure("invalid typed request accepted") }
    catch HelperError.rejected(let message) { precondition(message == "invalid firmware command") }
   }
+  do { _ = try HelperClient.decodeReply(ChargeControlSuspension.reply); preconditionFailure("suspension accepted") }
+  catch ChargeControlSuspension.systemSleep {}
+  for reply in ["ERROR sleep-transition", "SUSPENDED sleep-transition ", "SUSPENDED other", "SUSPENDED sleep-transition\n"] {
+   do { _ = try HelperClient.decodeReply(reply); preconditionFailure("malformed suspension") }
+   catch HelperError.rejected(let message) { precondition(message == reply) }
+  }
+  let recovered = try HelperClient.decodeReply("OK recovered"); precondition(recovered == "recovered")
   print("PASS fixed firmware/LED commands accepted by client whitelist; raw keys/unknown/framed commands rejected without IPC")
  }
 }

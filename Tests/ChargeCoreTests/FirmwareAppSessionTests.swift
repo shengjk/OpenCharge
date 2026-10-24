@@ -18,6 +18,31 @@ private final class AppFixture {
  }
 }
 final class FirmwareAppSessionTests: XCTestCase {
+ func testUnexecutedSleepRejectionDoesNotInventNumericOwnership() {
+  let f = AppFixture(); let p = ChargePolicy()
+  do {
+   do { try f.app.apply(.allowCharge,policy:p,phase:.charging,request:{ _ in throw ChargeControlSuspension.systemSleep }); XCTFail("suspended action") }
+   catch ChargeControlSuspension.systemSleep {} catch { XCTFail("wrong rejection") }
+   XCTAssertFalse(f.app.mayOwnSession); XCTAssertFalse(f.app.cleanupPending); XCTAssertNil(f.app.sleepTarget)
+   try f.app.apply(.allowCharge,policy:p,phase:.charging,request:f.request)
+   XCTAssertTrue(f.app.mayOwnSession); XCTAssertFalse(f.app.cleanupPending)
+  } catch { XCTFail("wake retry failed") }
+ }
+ func testSleepRejectionPreservesExistingSessionWithoutMarkingItAmbiguous() {
+  let f = AppFixture(); let p = ChargePolicy()
+  do {
+   try f.app.apply(.allowCharge,policy:p,phase:.charging,request:f.request)
+   let target = f.app.sleepTarget
+   do { try f.app.apply(.allowCharge,policy:p,phase:.charging,request:{ value in
+    if value == "firmwareSessionStatus" { return "session=active,limit=15,charging=inhibited" }
+    throw ChargeControlSuspension.systemSleep
+   }); XCTFail("suspended action") } catch ChargeControlSuspension.systemSleep {} catch { XCTFail("wrong rejection") }
+   XCTAssertTrue(f.app.mayOwnSession); XCTAssertFalse(f.app.cleanupPending); XCTAssertEqual(f.app.sleepTarget,target)
+   try f.app.apply(.allowCharge,policy:p,phase:.charging,request:f.request)
+   XCTAssertFalse(f.app.cleanupPending)
+  } catch { XCTFail("existing session lost") }
+ }
+
  func testLostRootSessionStopsEveryCachedActionRegardlessOfRegisterValue() {
   for action in [ChargeAction.allowCharge,.inhibitCharge,.forceDischarge] {
    for limit in [15,80] {

@@ -16,8 +16,11 @@ public final class FirmwareAppSession {
  }
  private func send(_ command: FirmwareCommand, request: (String) throws -> String) throws {
   guard let value = command.wireValue else { throw FirmwareSessionError.rejected("Invalid firmware command") }
+  let previouslyOwned = mayOwnSession
   mayOwnSession = true
-  do { _ = try request(value) } catch { cleanupPending = true; throw error }
+  do { _ = try request(value) }
+  catch ChargeControlSuspension.systemSleep { mayOwnSession = previouslyOwned; throw ChargeControlSuspension.systemSleep }
+  catch { cleanupPending = true; throw error }
  }
  private func plan(_ action: FirmwareControlAction, target: UInt8, request: (String) throws -> String) throws {
   try send(.plan(action,sleepTarget:Int(target)),request:request)
@@ -60,7 +63,8 @@ public final class FirmwareAppSession {
    if observed?.limit != 15 { try plan(.inhibit,target:15,request:request); observed = try inspect(request:request) }
    guard let target = FirmwareLimitProjection.onSleep(policy:policy,phase:phase,smcCharging:observed?.chargingAllowed) else { throw FirmwareSessionError.rejected("Firmware charging-control state is unknown") }
    try plan(desired,target:target,request:request)
-  } catch { if mayOwnSession { cleanupPending = true }; throw error }
+  } catch ChargeControlSuspension.systemSleep { throw ChargeControlSuspension.systemSleep }
+  catch { if mayOwnSession { cleanupPending = true }; throw error }
  }
  public func restore(request: (String) throws -> String) throws {
   do { _ = try request("restore"); clear() }

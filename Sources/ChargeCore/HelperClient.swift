@@ -53,7 +53,7 @@ public enum HelperSocketIO {
 }
 public enum HelperClient {
  public static let socketPath = "/var/run/opencharge.sock"
- public static let supportedActions: Set<String> = Set(["sleepOverrideOn", "sleepOverrideDisplayOn", "sleepOverrideRestore", "sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
+ public static let supportedActions: Set<String> = Set(["sleepOverrideOn", "sleepOverrideDisplayOn", "sleepOverrideRestore", "sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "chargeContext", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
          "lowPowerOn", "lowPowerOff", "lowPowerRestore", "lowPowerStatus",
          "lowPowerBatteryOn", "lowPowerBatteryOff", "lowPowerACOn", "lowPowerACOff",
          "magSafeSystem", "magSafeBlinkOrange", "magSafeSleepOn", "magSafeSleepOff", "magSafeStatus", "magSafeOff", "magSafeGreen", "magSafeOrange", "magSafeRestore"]).union(FirmwareCommand.supportedActions)
@@ -62,7 +62,7 @@ public enum HelperClient {
   return try request(value)
  }
  public static func request(_ action: String) throws -> String {
-  guard supportedActions.contains(action) else {
+  guard supportedActions.contains(action) || ChargeRequestContext.parseEnvelope(action) != nil else {
    throw HelperError.rejected("unknown helper action")
   }
   let fd = socket(AF_UNIX, SOCK_STREAM, 0); guard fd >= 0 else { throw HelperError.unavailable }; defer { close(fd) }
@@ -91,6 +91,11 @@ public enum HelperClient {
   try HelperSocketIO.writeLine(action, to: fd, deadline: deadline)
   shutdown(fd, SHUT_WR)
   let reply = try HelperSocketIO.readLine(fd, limit: 4096, deadline: deadline)
+  return try decodeReply(reply)
+ }
+ /// Framing and root-peer authentication precede this decoder in production.
+ public static func decodeReply(_ reply: String) throws -> String {
+  if reply == ChargeControlSuspension.reply { throw ChargeControlSuspension.systemSleep }
   guard reply.hasPrefix("OK ") else { throw HelperError.rejected(reply) }
   return String(reply.dropFirst(3))
  }

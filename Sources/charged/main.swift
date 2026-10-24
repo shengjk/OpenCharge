@@ -31,6 +31,7 @@ var sleepLease = ControlLease()
 var sleepNeedsRestore = false
 var sleepRecoveryPending = false
 func restoreSleep() throws {
+ chargeTransition.invalidate()
  if let sleepOverrides { try sleepOverrides.restore() }
  else if try recoveryStore.sleepStore().load() != nil { throw SleepOverrideError.unavailable("sleep recovery transport") }
  sleepNeedsRestore = false; sleepRecoveryPending = false; sleepLease.clear()
@@ -40,6 +41,7 @@ var ledNeedsRestore = false
 var ledRecoveryPending = false
 func restoreLED() throws { try ledSession?.restore(); ledNeedsRestore = false; ledRecoveryPending = false; ledLease.clear() }
 func restoreSMC() throws {
+ chargeTransition.invalidate()
  var failure: Error?
  do { try controller?.apply(.restore); firmwareSession.reset() } catch { failure = error }
  do { try restoreLED() } catch { failure = failure ?? error }
@@ -53,6 +55,7 @@ func capabilities() -> String {
  if let status = try? magSafe?.status() { values.append("magSafe:" + status); values.append("magSafeEncoding:aclcNativeV2") }
  else { values.append("magSafe:unavailable") }
  if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
+ values.append("chargeTransition:\(powerObserver != nil ? "epochV1" : "unavailable")")
  values.append("firmwareProtocol:fixedV1")
  values.append("firmwarePlan:\(powerObserver != nil ? "atomicSleepV1" : "unavailable")")
  values.append("chargeRecovery:\(restoreBeforeCommands ? "pending" : "ready")")
@@ -74,6 +77,7 @@ let bound = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.
 guard bound == 0, chmod(path, 0o600) == 0, listen(fd, 8) == 0 else { log("socket setup failed"); exit(1) }
 var firmwareMutationGeneration: UInt64 = 0
 var lease = ControlLease()
+var chargeTransition = ChargePowerTransition()
 var needsRestore = false
 var owner: uid_t = 0
 var restoreBeforeCommands = false
@@ -117,6 +121,7 @@ catch { sleepNeedsRestore = true; sleepRecoveryPending = true; log("sleep recove
 func synchronizeConsoleOwner() {
  let active = consoleUID() ?? 0
  if active != owner {
+  chargeTransition.invalidate()
   if sleepNeedsRestore { do { try restoreSleep() } catch { log("sleep console restoration failed: \(error.localizedDescription)"); return } }
   if ledNeedsRestore { do { try restoreLED() } catch { log("LED console restoration failed: \(error.localizedDescription)"); return } }
   restoreBeforeCommands = restoreBeforeCommands || (needsRestore && !lease.retained)
@@ -158,6 +163,7 @@ timer.resume()
 let powerObserver: SystemPowerObserver?
 do {
  powerObserver = try SystemPowerObserver(onSleep: {
+  chargeTransition.willSleep()
   if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   lease.beginSleep(); ledLease.beginSleep()
   if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED sleep update failed: \(error.localizedDescription)") } }
@@ -176,7 +182,7 @@ do {
    do { guard let controller else { return }; needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge }
    catch { log("pause on sleep failed: \(error.localizedDescription)") }
   }
- }, onWake: { lease.wake(at: ProcessInfo.processInfo.systemUptime); ledLease.wake(at: ProcessInfo.processInfo.systemUptime); if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.wake(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED wake update failed: \(error.localizedDescription)") } } })
+ }, onWake: { chargeTransition.didWake(); lease.wake(at: ProcessInfo.processInfo.systemUptime); ledLease.wake(at: ProcessInfo.processInfo.systemUptime); if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.wake(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED wake update failed: \(error.localizedDescription)") } } })
 } catch { powerObserver = nil; log("system sleep observation unavailable: \(error.localizedDescription)") }
 let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
 source.setEventHandler {
@@ -185,8 +191,8 @@ source.setEventHandler {
  guard getpeereid(client, &uid, &gid) == 0, uid > 0, uid == consoleUID() else { return }
  var noSig: Int32 = 1; setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &noSig, socklen_t(MemoryLayout<Int32>.size))
  let deadline = ProcessInfo.processInfo.systemUptime + 2
- let command: String
- do { command = try HelperSocketIO.readLine(client, limit: 128, deadline: deadline) }
+ let receivedCommand: String
+ do { receivedCommand = try HelperSocketIO.readLine(client, limit: 128, deadline: deadline) }
  catch { return }
  // A console switch can happen while reading; a connection is not a persistent authorization.
  synchronizeConsoleOwner()
@@ -195,7 +201,9 @@ source.setEventHandler {
  var attemptedAction = false
  var attemptedLED = false
  do {
-  if command == "capabilities" { response = "OK " + capabilities() }
+  let command = try chargeTransition.admittedCommand(receivedCommand)
+  if command == "chargeContext" { response = "OK " + chargeTransition.contextReply }
+  else if command == "capabilities" { response = "OK " + capabilities() }
   else if let firmware = FirmwareCommand.parse(command) {
    let oldMutation = firmwareMutationGeneration
    do {
@@ -270,6 +278,8 @@ source.setEventHandler {
    if action == .restore { pauseOnSleep = false; lease.clear() }
    response = "OK \(action.rawValue)"
   }
+ } catch ChargeControlSuspension.systemSleep {
+  response = ChargeControlSuspension.reply
  } catch {
   if attemptedAction && needsRestore { restoreBeforeCommands = true }
   if attemptedLED && ledNeedsRestore { ledRecoveryPending = true }

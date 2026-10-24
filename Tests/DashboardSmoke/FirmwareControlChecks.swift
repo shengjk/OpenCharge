@@ -97,3 +97,147 @@ import ChargeHardware
  precondition(exitLoss.calls == ["restore"] && exitLoss.limit == 75 && !cancelled.config.hardwareEnabled && !cancelled.needsQuitPreparation)
  print("Numeric app selection, protected bootstrap, repeated discharge/wake, current Exit target, ambiguous-response recovery and disable use injected actual helper state; no hardware/IOPM/service requests")
 }
+
+
+@MainActor func sleepTransitionChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load(); let provider = PolicyStateRuntime.provider
+ defer { try? original.save(); PolicyStateRuntime.provider = provider }
+ func clean() throws {
+  var config = Configuration(); config.hardwareEnabled = false; config.systemActionsEnabled = false
+  config.notifications = false; config.historyEnabled = false; try config.save()
+ }
+ func model() -> ChargeModel { ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)}) }
+ let openPlan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:.forceDischarge,percent:90,target:80,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:false)
+ for appNotificationFirst in [false,true] {
+  try clean(); let m = model(); var transition = ChargePowerTransition()
+  var actual: ChargeAction = .restore; var accepted: [String] = []
+  func request(_ command: String) throws -> String {
+   do { try transition.requireAdmission(command) }
+   catch ChargeControlSuspension.systemSleep { return try HelperClient.decodeReply(ChargeControlSuspension.reply) }
+   accepted.append(command)
+   if command == "capabilities" { return "chargeControl:fixture" }
+   if let action = ChargeAction(rawValue:command) { actual = action }
+   return "fixture"
+  }
+  m.enableHardware(true,request:request,refresh:{})
+  m.decision = Decision(.forceDischarge,"fixture",limit:80); m.decision.phase = .discharging
+  m.applyHardwareDecision(openPlan,request:request,setIdleSleep:{_ in})
+  precondition(actual == .forceDischarge)
+  if appNotificationFirst { m.sleep(request:request) }
+  transition.willSleep(); actual = .inhibitCharge
+  if !appNotificationFirst { m.sleep(request:request) }
+  accepted = []; m.applyHardwareDecision(openPlan,request:request,setIdleSleep:{_ in})
+  precondition(actual == .inhibitCharge && accepted.isEmpty && m.config.hardwareEnabled && !m.calibrationPending)
+  // App wake can precede the root wake callback. A second suspended refresh must
+  // not permanently suppress the next normal refresh after the root wakes.
+  m.applyHardwareDecision(openPlan,request:request,setIdleSleep:{_ in})
+  precondition(actual == .inhibitCharge && m.config.hardwareEnabled)
+  transition.didWake(); m.applyHardwareDecision(openPlan,request:request,setIdleSleep:{_ in})
+  precondition(actual == .forceDischarge && m.config.hardwareEnabled)
+ }
+ let closedPlan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:.forceDischarge,percent:90,target:80,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:true)
+ for boundary in ["firmwarePlan:inhibit:15","sleepOverrideOn","firmwarePlan:discharge:15"] {
+  try clean(); let m = model(), root = NumericRoot(); var transition = ChargePowerTransition(); var triggered = false
+  func request(_ command: String) throws -> String {
+   if command == boundary && !triggered {
+    triggered = true; transition.willSleep(); root.protected = false
+    if root.helper.active { _ = try root.helper.applySleep(recoveryPending:false) }
+   }
+   do { try transition.requireAdmission(command) }
+   catch ChargeControlSuspension.systemSleep { return try HelperClient.decodeReply(ChargeControlSuspension.reply) }
+   return try root.request(command)
+  }
+  m.enableHardware(true,request:request,refresh:{})
+  m.decision = Decision(.forceDischarge,"fixture",limit:80); m.decision.phase = .discharging
+  m.applyHardwareDecision(closedPlan,request:request,setIdleSleep:{_ in})
+  precondition(triggered && !root.inflow && root.creates == 0 && m.config.hardwareEnabled && !m.needsDischargeExitWait)
+  precondition(!root.calls.contains("restore"),"known unexecuted rejection must not discard a healthy sleeping session")
+  transition.didWake(); root.calls = []
+  m.applyHardwareDecision(closedPlan,request:request,setIdleSleep:{_ in})
+  precondition(root.inflow && root.creates == 1 && root.protected && m.config.hardwareEnabled && m.needsDischargeExitWait)
+ }
+ // A refused protection request can be followed immediately by root wake.
+ // The current refresh must still stop: a later accepted charge request would
+ // otherwise run without reacquiring the protection rejected in this round.
+ for numeric in [false,true] {
+  try clean(); let m = model(), root = NumericRoot(); var denyProtection = true
+  var commands: [String] = []; var protected = false; var forceCount = 0
+  func request(_ command: String) throws -> String {
+   commands.append(command)
+   if command == "capabilities" {
+    return numeric ? root.capabilities : "chargeControl:fixture,sleepOverride:interfacesDetected,sleepRecovery:phasesV1"
+   }
+   if command == "sleepOverrideOn" && denyProtection {
+    denyProtection = false; protected = false; root.protected = false
+    // The helper is awake for every subsequent request, not frozen sleeping.
+    return try HelperClient.decodeReply(ChargeControlSuspension.reply)
+   }
+   if numeric { return try root.request(command) }
+   if command == "sleepOverrideOn" { protected = true }
+   if command == "forceDischarge" { precondition(protected); forceCount += 1 }
+   return "fixture"
+  }
+  m.enableHardware(true,request:request,refresh:{})
+  m.decision = Decision(.forceDischarge,"fixture",limit:80); m.decision.phase = .discharging
+  m.applyHardwareDecision(closedPlan,request:request,setIdleSleep:{_ in})
+  precondition(commands == (numeric ? ["capabilities","firmwarePlan:inhibit:15","sleepOverrideOn"] : ["capabilities","sleepOverrideOn"]))
+  precondition(!root.inflow && forceCount == 0 && m.config.hardwareEnabled && !m.needsDischargeExitWait)
+  commands = []; m.applyHardwareDecision(closedPlan,request:request,setIdleSleep:{_ in})
+  precondition(numeric ? (root.inflow && root.protected && root.creates == 1) : (forceCount == 1 && protected))
+ }
+ print("Helper sleep admission rejects late ordinary/numeric control without mutation; both notification orders, early app wake, protection boundaries and wake retries use production components with injected actuators")
+}
+
+@MainActor func sleepEpochChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load(); let provider = PolicyStateRuntime.provider
+ defer { try? original.save(); PolicyStateRuntime.provider = provider }
+ for numeric in [false,true] {
+ for sleepingCycle in [false,true] {
+  var config = Configuration(); config.hardwareEnabled = false; config.systemActionsEnabled = false
+  config.historyEnabled = false; config.notifications = false; try config.save()
+  let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  let root = NumericRoot(); var transition = ChargePowerTransition(); var cycle = true
+  var protected = false; var forceCount = 0; var accepted: [String] = []; var refused = 0
+  func request(_ wire: String) throws -> String {
+   let command: String
+   do { command = try transition.admittedCommand(wire) }
+   catch ChargeControlSuspension.systemSleep { refused += 1; return try HelperClient.decodeReply(ChargeControlSuspension.reply) }
+   if command == "chargeContext" { return transition.contextReply }
+   if command == "capabilities" {
+    return (numeric ? root.capabilities : "chargeControl:fixture,sleepOverride:interfacesDetected,sleepRecovery:phasesV1")+",chargeTransition:epochV1"
+   }
+   accepted.append(command)
+   let result: String
+   if numeric { result = try root.request(command) }
+   else {
+    // An ordinary session was established by the preceding policy round.
+    if command == "sleepOverrideOn" { protected = true }
+    if command == "forceDischarge" { precondition(protected); forceCount += 1 }
+    result = "fixture"
+   }
+   if command == "sleepOverrideOn" && cycle {
+    cycle = false; protected = false; root.protected = false
+    if sleepingCycle {
+     transition.willSleep()
+     if root.helper.active { _ = try root.helper.applySleep(recoveryPending:false) }
+     transition.didWake()
+    } else { transition.invalidate() }
+   }
+   return result
+  }
+  m.enableHardware(true,request:request,refresh:{})
+  m.decision = Decision(.forceDischarge,"fixture",limit:80); m.decision.phase = .discharging
+  let plan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:.forceDischarge,percent:90,target:80,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:true)
+  m.applyHardwareDecision(plan,request:request,setIdleSleep:{_ in})
+  precondition(refused == 1 && m.config.hardwareEnabled && !m.needsDischargeExitWait)
+  precondition(forceCount == 0 && !root.inflow && root.creates == 0)
+  precondition(accepted == (numeric ? ["firmwarePlan:inhibit:15","sleepOverrideOn"] : ["sleepOverrideOn"]))
+  let beforeNotification = accepted; m.sleep(request:request)
+  precondition(accepted == beforeNotification,"coordinated app notifications must not send a competing unscoped action")
+  accepted = []; m.applyHardwareDecision(plan,request:request,setIdleSleep:{_ in})
+  precondition(m.config.hardwareEnabled && m.needsDischargeExitWait)
+  precondition(numeric ? (root.inflow && root.protected && root.creates == 1) : (forceCount == 1 && protected))
+ }
+ }
+ print("One root event context spans each policy round; a complete sleep/wake between protection and control invalidates both ordinary/numeric requests, and a fresh round reacquires protection before discharge; all actuators injected")
+}

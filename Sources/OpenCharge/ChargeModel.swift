@@ -91,6 +91,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var sleepOverrideSessionActive = false
  private var sleepOverrideFailed = false
  private var sleepOverrideCapability: Bool?
+ private var chargeContextEnabled = false
  private let screenLockRequest: () throws -> Void
  private var lidLockPolicy = LidLockPolicy()
  private var lidObserver: LidStateObserver?
@@ -378,41 +379,56 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
   } catch { self.error = error.localizedDescription; if config.hardwareEnabled { try? restoreChargeControl() }; try? sleepController.setPreventIdleSleep(false) }
  }
- func applyHardwareDecision(_ plan: SleepProtectionPlan, request: (String) throws -> String = HelperClient.request, setIdleSleep: ((Bool) throws -> Void)? = nil) {
+ func applyHardwareDecision(_ plan: SleepProtectionPlan, request: @escaping (String) throws -> String = HelperClient.request, setIdleSleep: ((Bool) throws -> Void)? = nil) {
   let idle = setIdleSleep ?? { try self.sleepController.setPreventIdleSleep($0) }
   guard config.hardwareEnabled else {
    do { try idle(false) } catch { self.error = error.localizedDescription }
    helperStatus = "监测模式 · 未改变充电状态"; return
   }
   var attempted = false
+  let previousDischargeExitPending = dischargeExitPending
   do {
+   let context: ChargeRequestContext?
+   if chargeContextEnabled {
+    guard let current = ChargeRequestContext(reply:try request("chargeContext")) else { throw ChargeContextError.invalidEnvelope }
+    guard !current.sleeping else { throw ChargeControlSuspension.systemSleep }
+    context = current
+   } else { context = nil }
+   let scopedRequest: (String) throws -> String = { command in
+    try request(try context?.envelope(command) ?? command)
+   }
    if plan.preventSystemAndLidSleep {
     guard !sleepOverrideFailed else { throw HelperError.rejected("睡眠控制上次失败，请重新启用硬件控制后重试") }
-    if sleepOverrideCapability == nil { inspectSleepInterfaces(request: request) }
+    if sleepOverrideCapability == nil { inspectSleepInterfaces(request: scopedRequest) }
     guard sleepOverrideCapability == true else { throw HelperError.rejected("此操作需要兼容的睡眠控制服务，请先更新服务") }
     if let firmwareControl {
      attempted = true
-     try firmwareControl.prepareProtection(request:request)
+     try firmwareControl.prepareProtection(request:scopedRequest)
     }
    }
    if plan.preventIdleSleep { try idle(true) }
    if plan.preventSystemAndLidSleep {
     // Wait for required protection before changing charging or adapter input.
-    updateSleepOverride(plan, request: request)
+    let protectionCompleted = updateSleepOverride(plan, request: scopedRequest)
     guard config.hardwareEnabled else { try? idle(false); helperStatus = "控制失败"; return }
+    guard protectionCompleted else { throw ChargeControlSuspension.systemSleep }
    }
    attempted = true
    if decision.action == .forceDischarge { dischargeExitPending = true }
    if let firmwareControl {
-    try firmwareControl.apply(decision.action,policy:config.policy,phase:automationPhase,request:request)
+    try firmwareControl.apply(decision.action,policy:config.policy,phase:automationPhase,request:scopedRequest)
     firmwareInspection = firmwareControl.status
     firmwareStatus = "数值固件通道 · 睡眠目标 \(firmwareControl.sleepTarget.map(String.init) ?? "—")% · 物理效果待验证"
    } else {
-    _ = try request(config.policy.stopInSleep && !plan.preventSystemAndLidSleep ? "sleepPolicyOn" : "sleepPolicyOff")
-    _ = try request(decision.action.rawValue)
+    _ = try scopedRequest(config.policy.stopInSleep && !plan.preventSystemAndLidSleep ? "sleepPolicyOn" : "sleepPolicyOff")
+    _ = try scopedRequest(decision.action.rawValue)
    }
    if !plan.preventIdleSleep { try idle(false) }
    helperStatus = "服务已确认：" + decision.action.displayName; lastHardwareAction = decision.action
+  } catch ChargeControlSuspension.systemSleep {
+   dischargeExitPending = previousDischargeExitPending
+   try? idle(false)
+   helperStatus = ChargeControlSuspension.systemSleep.localizedDescription
   } catch {
    helperStatus = "控制失败"; self.error = error.localizedDescription
    config.hardwareEnabled = false
@@ -469,11 +485,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if sleepOverrideFailed { sleepStatus += "；上次控制失败，需重新启用硬件控制后再试" }
   } catch { sleepOverrideCapability = false; sleepStatus = error.localizedDescription }
  }
- func updateSleepOverride(_ plan: SleepProtectionPlan, request: (String) throws -> String = HelperClient.request) {
-  guard !quitting else { return }
+ @discardableResult func updateSleepOverride(_ plan: SleepProtectionPlan, request: (String) throws -> String = HelperClient.request) -> Bool {
+  guard !quitting else { return false }
+  let previouslyActive = sleepOverrideSessionActive
   do {
    if plan.preventSystemAndLidSleep && config.hardwareEnabled {
-    guard !sleepOverrideFailed else { return }
+    guard !sleepOverrideFailed else { return false }
     if sleepOverrideCapability == nil { inspectSleepInterfaces(request: request) }
     guard sleepOverrideCapability == true else { throw HelperError.rejected("所需睡眠控制接口或恢复协议不可用") }
     sleepOverrideSessionActive = true
@@ -482,6 +499,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false
     sleepStatus = "合盖睡眠控制已释放"
    } else if !config.hardwareEnabled && sleepOverrideCapability == nil { sleepStatus = "监测模式 · 未修改睡眠设置" }
+   return true
+  } catch ChargeControlSuspension.systemSleep {
+   sleepOverrideSessionActive = previouslyActive
+   sleepStatus = ChargeControlSuspension.systemSleep.localizedDescription
+   return false
   } catch {
    sleepOverrideFailed = true; sleepStatus = "睡眠控制失败：" + error.localizedDescription
    config.hardwareEnabled = false
@@ -489,6 +511,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    do { try restoreChargeControl(request:request); sleepOverrideSessionActive = false; lastHardwareAction = .restore }
    catch { sleepStatus += "；恢复待重试：" + error.localizedDescription }
    try? sleepController.setPreventIdleSleep(false); try? config.save()
+   return false
   }
  }
  private func requiresNumericFirmware() throws -> Bool {
@@ -509,6 +532,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
    firmwareControl = nil
   }
+  chargeContextEnabled = ChargeRequestContext.supportsHelper(capabilities)
  }
  func restoreChargeControl(request: (String) throws -> String = HelperClient.request) throws {
   if let firmwareControl {
@@ -528,9 +552,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   save(); (refresh ?? { self.refresh() })()
  }
  func sleep(request: (String) throws -> String = HelperClient.request) { guard !quitting, config.hardwareEnabled else { return }
-  // The root owns the atomically registered numeric target. Never send an
-  // ordinary action from an app notification and switch charge backends here.
-  if firmwareControl != nil { return }
+  // Coordinated helpers own sleep preparation for both charge backends. App
+  // notifications must not race it with an unscoped action after a wake cycle.
+  if firmwareControl != nil || chargeContextEnabled { return }
   // The root observer also reconciles sleep and acknowledges it. Paused/discharging states stay paused.
   let inhibit = config.policy.stopInSleep || decision.action == .inhibitCharge || decision.action == .forceDischarge
   _ = try? request(inhibit ? "inhibitCharge" : "restore")
