@@ -38,6 +38,7 @@ public final class SMCController {
         read: { [unowned self] in try self.keyIO.optionalRead($0) },
         write: { [unowned self] in try self.keyIO.writeFirmwareByte($0, value: $1) },
         recoveryStore: firmwareStore, bootSession: bootSession)
+    private lazy var firmwareInflow = FirmwareInflowAssertion()
     private lazy var chargeSession = ChargeBackendSession(
         ordinaryPending: { [unowned self] in try self.recoveryStore?.load() != nil },
         firmwarePending: { [unowned self] in try self.firmwareStore?.load() != nil },
@@ -46,7 +47,7 @@ public final class SMCController {
         firmwareLimit: { [unowned self] in try self.firmwareController.setLimit($0) },
         firmwareInhibit: { [unowned self] in try self.firmwareController.inhibitCharging() },
         firmwareExit: { [unowned self] in try self.firmwareController.finishExit(limit: $0) },
-        firmwareRestore: { [unowned self] in try self.firmwareController.restore() })
+        firmwareRestore: { [unowned self] in try self.firmwareController.restore() }, inflow: firmwareInflow)
 
     public init(recoveryStore: ChargeRecoveryStore? = nil, firmwareStore: ChargeRecoveryStore? = nil, bootSession: String = "") throws {
         self.recoveryStore = recoveryStore; self.firmwareStore = firmwareStore; self.bootSession = bootSession
@@ -75,6 +76,8 @@ public final class SMCController {
             values.append("firmwareCharging:\(status.chargingAllowed.map { $0 ? "allowed" : "inhibited" } ?? "unknown")")
         } else { values.append("firmwareRead:unavailable") }
         values.append(numericStatus != nil && firmwareStore != nil ? "firmwareWrite:fixedV1" : "firmwareWrite:unavailable")
+        // Compiled request protocol, not evidence that powerd honors the assertion.
+        values.append(numericStatus != nil && firmwareStore != nil ? "firmwareDischarge:inflowV1" : "firmwareDischarge:unavailable")
         return values + chargeController.capabilities()
     }
 
@@ -120,6 +123,9 @@ public final class SMCController {
     }
     public func inhibitFirmware() throws {
         lock.lock(); defer { lock.unlock() }; try requireFirmwareWriter(); try chargeSession.inhibitFirmware()
+    }
+    public func dischargeFirmware() throws {
+        lock.lock(); defer { lock.unlock() }; try requireFirmwareWriter(); try chargeSession.dischargeFirmware()
     }
     public func finishFirmwareExit(_ percent: Int) throws {
         lock.lock(); defer { lock.unlock() }; try requireFirmwareWriter(); try chargeSession.finishFirmwareExit(percent)

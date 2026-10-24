@@ -4,8 +4,16 @@ import Foundation
 /// numeric profile. Ordinary charge support is never a numeric fallback.
 public enum FirmwareHelperCapabilities {
  public static func supportsNumericControl(_ reply: String) -> Bool {
+  supports(reply, discharge: false)
+ }
+ /// A distinct command extension; fixedV1 alone predates inflow control.
+ public static func supportsNumericDischarge(_ reply: String) -> Bool {
+  supports(reply, discharge: true)
+ }
+ private static func supports(_ reply: String, discharge: Bool) -> Bool {
   guard reply.utf8.count <= 4096, !reply.contains("\n"), !reply.contains("\r") else { return false }
-  let expected = ["firmwareProtocol":"fixedV1", "firmwareRead":"CH0B+BCLM", "firmwareWrite":"fixedV1", "chargeRecovery":"ready", "internalBattery":"present"]
+  var expected = ["firmwareProtocol":"fixedV1", "firmwareRead":"CH0B+BCLM", "firmwareWrite":"fixedV1", "chargeRecovery":"ready", "internalBattery":"present"]
+  if discharge { expected["firmwareDischarge"] = "inflowV1" }
   var found: [String:String] = [:]
   for part in reply.split(separator:",",omittingEmptySubsequences:false) {
    let item = part.trimmingCharacters(in:.whitespaces)

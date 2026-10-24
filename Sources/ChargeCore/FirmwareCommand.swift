@@ -2,13 +2,14 @@ import Foundation
 
 /// Canonical finite commands; no key names, paths, arbitrary bytes or reset records.
 public enum FirmwareCommand: Equatable, Sendable {
- case status, allow, inhibit, sleepOff
+ case status, allow, inhibit, discharge, sleepOff
  case limit(Int), exit(Int), sleepTarget(Int)
  public var wireValue: String? {
   switch self {
   case .status: return "firmwareStatus"
   case .allow: return "firmwareAllow"
   case .inhibit: return "firmwareInhibit"
+  case .discharge: return "firmwareDischarge"
   case .sleepOff: return "firmwareSleepOff"
   case .limit(let n): return (20...100).contains(n) ? "firmwareLimit:\(n)" : nil
   case .exit(let n): return (20...100).contains(n) ? "firmwareExit:\(n)" : nil
@@ -20,6 +21,7 @@ public enum FirmwareCommand: Equatable, Sendable {
   case "firmwareStatus": return .status
   case "firmwareAllow": return .allow
   case "firmwareInhibit": return .inhibit
+  case "firmwareDischarge": return .discharge
   case "firmwareSleepOff": return .sleepOff
   default: break
   }
@@ -33,7 +35,7 @@ public enum FirmwareCommand: Equatable, Sendable {
   return result.wireValue == value ? result : nil
  }
  public static var supportedActions: Set<String> {
-  var values = Set([Self.status, .allow, .inhibit, .sleepOff, .sleepTarget(15)].compactMap(\.wireValue))
+  var values = Set([Self.status, .allow, .inhibit, .discharge, .sleepOff, .sleepTarget(15)].compactMap(\.wireValue))
   for n in 20...100 { for item in [Self.limit(n), .exit(n), .sleepTarget(n)] { values.insert(item.wireValue!) } }
   return values
  }

@@ -3,6 +3,16 @@ import XCTest
 
 final class FirmwareHelperStateTests: XCTestCase {
  let fields = ["firmwareProtocol:fixedV1","firmwareRead:CH0B+BCLM","firmwareWrite:fixedV1","chargeRecovery:ready","internalBattery:present"]
+ func testDischargeRequiresItsIndependentProtocolExtension() {
+  let old = fields.joined(separator:",")
+  XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge(old))
+  XCTAssertTrue(FirmwareHelperCapabilities.supportsNumericDischarge(old+",firmwareDischarge:inflowV1"))
+  for value in ["unavailable","inflowV2","","inflowV1,firmwareDischarge:inflowV1","inflowV1,firmwareDischarge:unavailable","inflowV1\n"] {
+   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge(old+",firmwareDischarge:"+value))
+  }
+  XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge("firmwareDischarge:inflowV1"))
+  for index in fields.indices { var missing = fields; missing.remove(at:index); XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge((missing+["firmwareDischarge:inflowV1"]).joined(separator:","))) }
+ }
  func testNumericAvailabilityRequiresEveryIndependentCapability() {
   let ordinary = "chargeControl:CHTE, profile:recognizedFormat, physicalEffects:unverified"
   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericControl(ordinary))

@@ -3,7 +3,7 @@ import XCTest
 
 final class FirmwareCommandTests: XCTestCase {
  func testEveryFiniteCommandRoundTrips() {
-  XCTAssertEqual(FirmwareCommand.supportedActions.count, 248)
+  XCTAssertEqual(FirmwareCommand.supportedActions.count, 249)
   for value in FirmwareCommand.supportedActions { XCTAssertEqual(FirmwareCommand.parse(value)?.wireValue, value) }
   for n in 20...100 { XCTAssertEqual(FirmwareCommand.parse("firmwareLimit:\(n)"), .limit(n)); XCTAssertEqual(FirmwareCommand.parse("firmwareExit:\(n)"), .exit(n)); XCTAssertEqual(FirmwareCommand.parse("firmwareSleep:\(n)"), .sleepTarget(n)) }
   XCTAssertEqual(FirmwareCommand.parse("firmwareSleep:15"), .sleepTarget(15))

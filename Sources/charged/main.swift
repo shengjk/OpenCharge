@@ -99,6 +99,8 @@ let firmwareSession = FirmwareControlSession(status: {
  guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.setFirmwareLimit(value)
 }, inhibit: {
  guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.inhibitFirmware()
+}, discharge: {
+ guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.dischargeFirmware()
 }, beforeExit: { try restoreSleep() }, exit: { value in
  guard let controller else { throw HelperError.rejected("SMC unavailable") }; try controller.finishFirmwareExit(value)
 })
@@ -158,9 +160,17 @@ do {
   if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   lease.beginSleep(); ledLease.beginSleep()
   if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED sleep update failed: \(error.localizedDescription)") } }
-  if firmwareSession.active && !restoreBeforeCommands {
-   do { try firmwareSession.applySleep(recoveryPending: restoreBeforeCommands) }
-   catch { restoreBeforeCommands = true; log("firmware sleep update failed: \(error.localizedDescription)") }
+  if firmwareSession.active || restoreBeforeCommands {
+   do {
+    let result = try firmwareSession.reconcileSleep(recoveryPending:restoreBeforeCommands,restore:restoreSMC)
+    if result == .restored {
+     needsRestore = false; restoreBeforeCommands = false; currentAction = nil; pauseOnSleep = false; lease.clear()
+     log("charge session restored at sleep entry")
+    }
+   }
+   catch {
+    restoreBeforeCommands = true; log("firmware sleep update failed: \(error.localizedDescription)")
+   }
   } else if !restoreBeforeCommands && (pauseOnSleep || currentAction == .forceDischarge) {
    do { guard let controller else { return }; needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge }
    catch { log("pause on sleep failed: \(error.localizedDescription)") }
@@ -191,7 +201,7 @@ source.setEventHandler {
     response = "OK " + (try firmwareSession.execute(firmware, recoveryPending: restoreBeforeCommands, sleepObserverAvailable: powerObserver != nil))
    } catch {
     // A rejected preflight must not tear down a healthy ordinary charge session.
-    if firmwareMutationGeneration != oldMutation { attemptedAction = true }
+    if firmwareMutationGeneration != oldMutation || firmwareSession.requiresRecoveryAfterFailure(firmware) { attemptedAction = true }
     throw error
    }
    if case .exit = firmware { needsRestore = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
