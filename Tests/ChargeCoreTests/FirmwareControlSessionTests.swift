@@ -11,6 +11,40 @@ private final class FirmwareFixture {
  func execute(_ value: FirmwareCommand, pending: Bool = false, observer: Bool = true) throws { _ = try session.execute(value,recoveryPending:pending,sleepObserverAvailable:observer) }
 }
 final class FirmwareControlSessionTests: XCTestCase {
+ func testReadOnlySessionStatusDoesNotCreateOrRenewOwnership() {
+  let f = FirmwareFixture()
+  do {
+   let inactive = try f.session.execute(.sessionStatus,recoveryPending:true,sleepObserverAvailable:false)
+   XCTAssertTrue(inactive.hasPrefix("session=inactive,")); XCTAssertEqual(f.events,["status"]); XCTAssertFalse(f.session.active)
+   try f.execute(.plan(.inhibit,sleepTarget:15)); let last = f.lease.lastRequest; f.events = []; f.now = 150
+   let active = try f.session.execute(.sessionStatus,recoveryPending:true,sleepObserverAvailable:false)
+   XCTAssertTrue(active.hasPrefix("session=active,")); XCTAssertEqual(f.events,["status"]); XCTAssertEqual(f.lease.lastRequest,last)
+  } catch { XCTFail("\(error)") }
+ }
+ func testAtomicPlanCreatesFirstSessionWithTargetAndRequiresObserver() {
+  let f = FirmwareFixture()
+  do { try f.execute(.plan(.allow,sleepTarget:80),observer:false); XCTFail("observer") } catch {}
+  XCTAssertTrue(f.events.isEmpty); XCTAssertFalse(f.session.active)
+  do {
+   try f.execute(.plan(.inhibit,sleepTarget:15)); XCTAssertTrue(f.session.active); XCTAssertEqual(f.session.sleepTarget,15)
+   f.events = []; try f.execute(.plan(.discharge,sleepTarget:65)); XCTAssertTrue(f.session.discharging); XCTAssertEqual(f.session.sleepTarget,65)
+   XCTAssertEqual(f.events,["preflight","arm","discharge"])
+   f.events = []; _ = try f.session.applySleep(recoveryPending:false); XCTAssertEqual(f.events,["preflight","arm","limit:65"])
+   XCTAssertFalse(f.session.discharging)
+  } catch { XCTFail("\(error)") }
+ }
+ func testAtomicPlanFailureKeepsPreviousStateForRecovery() {
+  let f = FirmwareFixture()
+  do { try f.execute(.plan(.discharge,sleepTarget:65)); XCTFail("inactive") } catch {}
+  XCTAssertTrue(f.events.isEmpty)
+  do {
+   try f.execute(.plan(.inhibit,sleepTarget:15)); f.failure = "limit:100"
+   do { try f.execute(.plan(.allow,sleepTarget:80)); XCTFail("failed action") } catch {}
+   XCTAssertEqual(f.session.sleepTarget,15); XCTAssertTrue(f.session.active)
+   f.failure = nil; try f.execute(.plan(.discharge,sleepTarget:65))
+   XCTAssertTrue(f.session.requiresRecoveryAfterFailure(.plan(.allow,sleepTarget:80)))
+  } catch { XCTFail("\(error)") }
+ }
  func testPendingSleepRetriesCleanupAndRetainsStateOnFailure() {
   let f = FirmwareFixture()
   do {

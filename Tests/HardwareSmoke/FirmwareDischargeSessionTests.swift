@@ -131,6 +131,16 @@ private final class Fixture {
   check(root.events.isEmpty && root.token == 31)
   _ = try root.helper.reconcileSleep(recoveryPending:true,restore:root.backend.restore)
   check(root.token == nil && root.values["BCLM"] == [80] && !root.helper.active)
+  let atomic = try Fixture()
+  _ = try atomic.helper.execute(.plan(.allow,sleepTarget:80),recoveryPending:false,sleepObserverAvailable:true)
+  check(atomic.values["BCLM"] == [100] && atomic.helper.active && atomic.helper.sleepTarget == 80)
+  check(try atomic.record())
+  _ = try atomic.helper.execute(.plan(.inhibit,sleepTarget:15),recoveryPending:false,sleepObserverAvailable:true)
+  _ = try atomic.helper.execute(.plan(.discharge,sleepTarget:65),recoveryPending:false,sleepObserverAvailable:true)
+  check(atomic.values["BCLM"] == [15] && atomic.token == 31 && atomic.helper.sleepTarget == 65)
+  let result = try atomic.helper.reconcileSleep(recoveryPending:false,restore:atomic.backend.restore)
+  check(result == .applied && atomic.token == nil && atomic.values["BCLM"] == [65])
+  try atomic.backend.restore(); check(atomic.values["BCLM"] == [80]); check(try !atomic.record())
   print("Firmware discharge composition: \(checks) helper/backend/ownership checks passed; injected SMC and IOPM only")
  }
 }

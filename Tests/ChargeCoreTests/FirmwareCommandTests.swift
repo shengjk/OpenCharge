@@ -3,7 +3,7 @@ import XCTest
 
 final class FirmwareCommandTests: XCTestCase {
  func testEveryFiniteCommandRoundTrips() {
-  XCTAssertEqual(FirmwareCommand.supportedActions.count, 249)
+  XCTAssertEqual(FirmwareCommand.supportedActions.count, 496)
   for value in FirmwareCommand.supportedActions { XCTAssertEqual(FirmwareCommand.parse(value)?.wireValue, value) }
   for n in 20...100 { XCTAssertEqual(FirmwareCommand.parse("firmwareLimit:\(n)"), .limit(n)); XCTAssertEqual(FirmwareCommand.parse("firmwareExit:\(n)"), .exit(n)); XCTAssertEqual(FirmwareCommand.parse("firmwareSleep:\(n)"), .sleepTarget(n)) }
   XCTAssertEqual(FirmwareCommand.parse("firmwareSleep:15"), .sleepTarget(15))
@@ -14,5 +14,9 @@ final class FirmwareCommandTests: XCTestCase {
  func testInvalidConstructedValuesHaveNoWireRepresentation() {
   for value in [Int.min,0,15,19,101,Int.max] { XCTAssertNil(FirmwareCommand.limit(value).wireValue); XCTAssertNil(FirmwareCommand.exit(value).wireValue) }
   for value in [Int.min,0,14,16,19,101,Int.max] { XCTAssertNil(FirmwareCommand.sleepTarget(value).wireValue) }
+  for value in [Int.min,0,14,16,19,101,Int.max] { for action in FirmwareControlAction.allCases { XCTAssertNil(FirmwareCommand.plan(action,sleepTarget:value).wireValue) } }
+ }
+ func testAtomicPlanRejectsNoncanonicalAndUnboundedForms() {
+  for value in ["firmwarePlan:allow:080","firmwarePlan:allow:19","firmwarePlan:limit:80","firmwarePlan:allow:80:15","firmwarePlan:allow:+80","firmwarePlan:allow:80\nrestore","firmwarePlan:allow:1000","firmwarePlan:Allow:80"] { XCTAssertNil(FirmwareCommand.parse(value)); XCTAssertFalse(FirmwareCommand.supportedActions.contains(value)) }
  }
 }

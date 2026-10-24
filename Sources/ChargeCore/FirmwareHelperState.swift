@@ -10,10 +10,14 @@ public enum FirmwareHelperCapabilities {
  public static func supportsNumericDischarge(_ reply: String) -> Bool {
   supports(reply, discharge: true)
  }
- private static func supports(_ reply: String, discharge: Bool) -> Bool {
+ public static func supportsAtomicSleepPlan(_ reply: String) -> Bool {
+  supports(reply, discharge:false, atomic:true)
+ }
+ private static func supports(_ reply: String, discharge: Bool, atomic: Bool = false) -> Bool {
   guard reply.utf8.count <= 4096, !reply.contains("\n"), !reply.contains("\r") else { return false }
   var expected = ["firmwareProtocol":"fixedV1", "firmwareRead":"CH0B+BCLM", "firmwareWrite":"fixedV1", "chargeRecovery":"ready", "internalBattery":"present"]
   if discharge { expected["firmwareDischarge"] = "inflowV1" }
+  if atomic { expected["firmwarePlan"] = "atomicSleepV1" }
   var found: [String:String] = [:]
   for part in reply.split(separator:",",omittingEmptySubsequences:false) {
    let item = part.trimmingCharacters(in:.whitespaces)

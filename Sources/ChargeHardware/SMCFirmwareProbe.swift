@@ -2,8 +2,8 @@ import Foundation
 
 /// A bounded initial selection, not a claim that all other Intel models lack support.
 /// Exact model selection and typed runtime values are both required.
-enum SMCFirmwareProbe {
- static func eligible(model: String, architecture: String, internalBattery: Bool) -> Bool {
+public enum SMCFirmwareProbe {
+ public static func eligible(model: String, architecture: String, internalBattery: Bool) -> Bool {
   architecture == "x86_64" && internalBattery &&
    ["MacBookAir8,1", "MacBookAir8,2", "MacBookAir9,1"].contains(model)
  }

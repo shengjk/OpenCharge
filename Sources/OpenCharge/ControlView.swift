@@ -44,8 +44,9 @@ struct ControlView: View {
    Text("仅在完整睡眠控制已确认启用且当前用户处于前台时请求锁屏；每次合盖最多请求一次。私有接口不可用时不会模拟锁屏或隐藏窗口，系统锁定效果仍需实测。").font(.caption).foregroundStyle(.secondary)
    Text(m.sleepStatus).font(.caption).foregroundStyle(.secondary)
    Button("检测睡眠接口") { m.inspectSleepInterfaces() }
-   Toggle("睡眠时停止充电", isOn: m.chargeSetting(\.stopInSleep)).disabled(m.config.policy.keepAwakeWithLidClosed == true).disabled(m.settingsLocked)
-   Toggle("退出应用后保持停充", isOn: m.chargeSetting(\.stopOnQuit)).disabled(m.settingsLocked)
+   Toggle("睡眠时停止充电", isOn: m.chargeSetting(\.stopInSleep)).disabled(m.config.policy.keepAwakeWithLidClosed == true || m.usesNumericFirmware).disabled(m.settingsLocked)
+   Toggle("退出应用后保持停充", isOn: m.chargeSetting(\.stopOnQuit)).disabled(m.usesNumericFirmware).disabled(m.settingsLocked)
+   if m.usesNumericFirmware { Text("此通道按当前状态设置睡眠目标，退出时保留数值充电上限；以上两项普通停充选项不适用。").font(.caption).foregroundStyle(.secondary) }
    Text("退出后停充是显式持久状态，可重新打开应用并关闭硬件控制来恢复。服务重启或机器关机后的恢复能力依硬件而定。").font(.caption).foregroundStyle(.secondary)
    Text("普通充放电的空闲睡眠由上方选项控制。合盖主动放电需要系统睡眠保护；校准全程需要系统保护并保持显示器开启。启用充到上限保护后，温控暂停仍保留保护，航行保持和手动暂停则释放。所需保护必须在充放电命令前确认；接口不可用或控制失败时停止硬件控制并尝试恢复。物理效果仍待实测；拔线、完成、退出或心跳超时会尝试释放。").font(.caption).foregroundStyle(.secondary)
   }

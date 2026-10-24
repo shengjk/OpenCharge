@@ -3,6 +3,12 @@ import XCTest
 
 final class FirmwareHelperStateTests: XCTestCase {
  let fields = ["firmwareProtocol:fixedV1","firmwareRead:CH0B+BCLM","firmwareWrite:fixedV1","chargeRecovery:ready","internalBattery:present"]
+ func testAtomicAppPlanNeedsIndependentExtensionAndRecoveredProfile() {
+  let old = fields.joined(separator:",")
+  XCTAssertFalse(FirmwareHelperCapabilities.supportsAtomicSleepPlan(old))
+  XCTAssertTrue(FirmwareHelperCapabilities.supportsAtomicSleepPlan(old+",firmwarePlan:atomicSleepV1"))
+  for extra in ["unavailable","atomicSleepV2","atomicSleepV1,firmwarePlan:atomicSleepV1","atomicSleepV1\n"] { XCTAssertFalse(FirmwareHelperCapabilities.supportsAtomicSleepPlan(old+",firmwarePlan:"+extra)) }
+ }
  func testDischargeRequiresItsIndependentProtocolExtension() {
   let old = fields.joined(separator:",")
   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge(old))

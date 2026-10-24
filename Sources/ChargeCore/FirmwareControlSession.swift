@@ -32,13 +32,25 @@ public final class FirmwareControlSession {
  /// even when it failed before the mutation/watchdog callback was reached.
  public func requiresRecoveryAfterFailure(_ command: FirmwareCommand) -> Bool {
   guard discharging else { return false }
-  switch command { case .allow, .inhibit, .discharge, .limit, .exit: return true
+  switch command { case .allow, .inhibit, .discharge, .limit, .exit, .plan: return true
   default: return false }
  }
  public func execute(_ command: FirmwareCommand, recoveryPending: Bool, sleepObserverAvailable: Bool) throws -> String {
   guard command.wireValue != nil else { throw FirmwareSessionError.rejected("Invalid firmware command") }
   switch command {
+  case .plan(let action, let target):
+   guard !recoveryPending, sleepObserverAvailable else { throw FirmwareSessionError.rejected("Atomic firmware plan requires a recovered helper and sleep observer") }
+   if action == .discharge { guard active else { throw FirmwareSessionError.rejected("Firmware discharge requires a current session") } }
+   try preflight(); try beforeMutation()
+   // Serialized with the root sleep observer: it cannot run between the action
+   // and target assignment, including when creating the first charge session.
+   switch action { case .allow: try limit(100)
+   case .inhibit: try inhibit()
+   case .discharge: try discharge() }
+   active = true; discharging = action == .discharge; sleepTarget = target
+   return "firmware action and sleep target accepted; physical effects unverified"
   case .status: return try status()
+  case .sessionStatus: return "session=\(active ? "active" : "inactive")," + (try status())
   case .sleepOff:
    guard !discharging else { throw FirmwareSessionError.rejected("Stop firmware discharge before clearing its sleep target") }
    sleepTarget = nil; return "firmware sleep policy cleared"

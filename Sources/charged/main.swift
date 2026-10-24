@@ -54,6 +54,7 @@ func capabilities() -> String {
  else { values.append("magSafe:unavailable") }
  if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
  values.append("firmwareProtocol:fixedV1")
+ values.append("firmwarePlan:\(powerObserver != nil ? "atomicSleepV1" : "unavailable")")
  values.append("chargeRecovery:\(restoreBeforeCommands ? "pending" : "ready")")
  return values.joined(separator: ", ")
 }
@@ -207,7 +208,8 @@ source.setEventHandler {
    if case .exit = firmware { needsRestore = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
    else if firmwareSession.active {
     currentAction = nil; pauseOnSleep = false
-    if case .status = firmware {} else { lease.request(at: ProcessInfo.processInfo.systemUptime) }
+    switch firmware { case .status, .sessionStatus: break
+    default: lease.request(at: ProcessInfo.processInfo.systemUptime) }
    }
   }
   else if command == "sleepOverrideRestore" { try restoreSleep(); response = "OK sleep override released" }
