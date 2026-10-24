@@ -27,13 +27,19 @@ let magSafe = controller?.magSafeController(recoveryStore: recoveryStore.magSafe
 let ledSession = magSafe.map { MagSafeSession(controller: $0) }
 let sleepIO = try? SleepOverrideIO()
 let sleepOverrides = sleepIO.map { SleepOverrideController(transport: $0.transport, store: recoveryStore.sleepStore(), bootSession: recoveryBootSession) }
+let userActivity = UserActivityController()
 var sleepLease = ControlLease()
 var sleepNeedsRestore = false
 var sleepRecoveryPending = false
 func restoreSleep() throws {
- chargeTransition.invalidate()
- if let sleepOverrides { try sleepOverrides.restore() }
- else if try recoveryStore.sleepStore().load() != nil { throw SleepOverrideError.unavailable("sleep recovery transport") }
+ chargeTransition.invalidate(); dischargeSleepEntry.clear()
+ var failure: Error?
+ do { try userActivity.restore() } catch { failure = error }
+ do {
+  if let sleepOverrides { try sleepOverrides.restore() }
+  else if try recoveryStore.sleepStore().load() != nil { throw SleepOverrideError.unavailable("sleep recovery transport") }
+ } catch { failure = failure ?? error }
+ if let failure { throw failure }
  sleepNeedsRestore = false; sleepRecoveryPending = false; sleepLease.clear()
 }
 var ledLease = ControlLease()
@@ -56,6 +62,7 @@ func capabilities() -> String {
  else { values.append("magSafe:unavailable") }
  if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
  values.append("chargeTransition:\(powerObserver != nil ? "epochV1" : "unavailable")")
+ values.append("dischargeSleep:\(powerObserver != nil && sleepOverrides != nil ? "displaySnapshotV1" : "unavailable")")
  values.append("firmwareProtocol:fixedV1")
  values.append("firmwarePlan:\(powerObserver != nil ? "atomicSleepV1" : "unavailable")")
  values.append("chargeRecovery:\(restoreBeforeCommands ? "pending" : "ready")")
@@ -78,6 +85,7 @@ guard bound == 0, chmod(path, 0o600) == 0, listen(fd, 8) == 0 else { log("socket
 var firmwareMutationGeneration: UInt64 = 0
 var lease = ControlLease()
 var chargeTransition = ChargePowerTransition()
+var dischargeSleepEntry = DischargeSleepEntry()
 var needsRestore = false
 var owner: uid_t = 0
 var restoreBeforeCommands = false
@@ -121,7 +129,7 @@ catch { sleepNeedsRestore = true; sleepRecoveryPending = true; log("sleep recove
 func synchronizeConsoleOwner() {
  let active = consoleUID() ?? 0
  if active != owner {
-  chargeTransition.invalidate()
+  chargeTransition.invalidate(); dischargeSleepEntry.clear()
   if sleepNeedsRestore { do { try restoreSleep() } catch { log("sleep console restoration failed: \(error.localizedDescription)"); return } }
   if ledNeedsRestore { do { try restoreLED() } catch { log("LED console restoration failed: \(error.localizedDescription)"); return } }
   restoreBeforeCommands = restoreBeforeCommands || (needsRestore && !lease.retained)
@@ -163,10 +171,43 @@ timer.resume()
 let powerObserver: SystemPowerObserver?
 do {
  powerObserver = try SystemPowerObserver(onSleep: {
+  synchronizeConsoleOwner()
   chargeTransition.willSleep()
-  if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   lease.beginSleep(); ledLease.beginSleep()
   if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.sleep(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED sleep update failed: \(error.localizedDescription)") } }
+  let special = dischargeSleepEntry.qualifies(at:ProcessInfo.processInfo.systemUptime,
+   discharging:firmwareSession.discharging || currentAction == .forceDischarge,
+   connected:(try? BatteryReader.read())?.physicalAdapterConnected, lidClosed:LidStateObserver.currentState(),
+   recoveryPending:restoreBeforeCommands || sleepRecoveryPending || sleepOverrides == nil)
+  let preventDisplaySleep = dischargeSleepEntry.preventDisplaySleep
+  dischargeSleepEntry.clear()
+  if special {
+   let outcome = DischargeSleepEntry.perform(allow: {
+    if firmwareSession.active {
+     _ = try firmwareSession.execute(.allow,recoveryPending:false,sleepObserverAvailable:true)
+    } else {
+     guard let controller else { throw HelperError.rejected("SMC unavailable") }
+     needsRestore = true; try controller.apply(.allowCharge); currentAction = .allowCharge
+    }
+   }, protect: {
+    guard let sleepOverrides else { throw HelperError.rejected("sleep protection unavailable") }
+    sleepNeedsRestore = true; sleepLease.request(at:ProcessInfo.processInfo.systemUptime)
+    do { try sleepOverrides.apply(preventDisplaySleep:preventDisplaySleep) }
+    catch { sleepRecoveryPending = true; throw error }
+   }, activity: {
+    sleepNeedsRestore = true
+    try userActivity.request()
+   })
+   for step in DischargeSleepEntry.Step.allCases {
+    if let failure = outcome.failures[step] { log("multi-display sleep \(step.rawValue) failed: \(failure)") }
+   }
+   if !outcome.succeeded {
+    do { try restoreSMC(); needsRestore = false; restoreBeforeCommands = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
+    catch { restoreBeforeCommands = true; sleepRecoveryPending = true; log("multi-display sleep cleanup pending: \(error.localizedDescription)") }
+   }
+   return
+  }
+  if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   if firmwareSession.active || restoreBeforeCommands {
    do {
     let result = try firmwareSession.reconcileSleep(recoveryPending:restoreBeforeCommands,restore:restoreSMC)
@@ -182,7 +223,9 @@ do {
    do { guard let controller else { return }; needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge }
    catch { log("pause on sleep failed: \(error.localizedDescription)") }
   }
- }, onWake: { chargeTransition.didWake(); lease.wake(at: ProcessInfo.processInfo.systemUptime); ledLease.wake(at: ProcessInfo.processInfo.systemUptime); if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.wake(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED wake update failed: \(error.localizedDescription)") } } })
+ }, onWake: { chargeTransition.didWake(); dischargeSleepEntry.clear()
+  if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("wake sleep restoration failed: \(error.localizedDescription)") } }
+  lease.wake(at: ProcessInfo.processInfo.systemUptime); ledLease.wake(at: ProcessInfo.processInfo.systemUptime); if !ledRecoveryPending && ledNeedsRestore { do { try ledSession?.wake(now: ProcessInfo.processInfo.systemUptime) } catch { ledRecoveryPending = true; log("LED wake update failed: \(error.localizedDescription)") } } })
 } catch { powerObserver = nil; log("system sleep observation unavailable: \(error.localizedDescription)") }
 let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
 source.setEventHandler {
@@ -201,7 +244,9 @@ source.setEventHandler {
  var attemptedAction = false
  var attemptedLED = false
  do {
-  let command = try chargeTransition.admittedCommand(receivedCommand)
+  let admitted = try chargeTransition.admittedCommand(receivedCommand)
+  let multiDisplayAction = DischargeSleepRequest.underlying(admitted)
+  let command = multiDisplayAction ?? admitted
   if command == "chargeContext" { response = "OK " + chargeTransition.contextReply }
   else if command == "capabilities" { response = "OK " + capabilities() }
   else if let firmware = FirmwareCommand.parse(command) {
@@ -212,6 +257,11 @@ source.setEventHandler {
     // A rejected preflight must not tear down a healthy ordinary charge session.
     if firmwareMutationGeneration != oldMutation || firmwareSession.requiresRecoveryAfterFailure(firmware) { attemptedAction = true }
     throw error
+   }
+   switch firmware {
+   case .plan, .allow, .inhibit, .discharge, .limit, .exit:
+    dischargeSleepEntry.accept(multipleDisplays:multiDisplayAction != nil,at:ProcessInfo.processInfo.systemUptime,preventDisplaySleep:DischargeSleepRequest.preventsDisplaySleep(admitted))
+   default: break
    }
    if case .exit = firmware { needsRestore = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
    else if firmwareSession.active {
@@ -236,7 +286,7 @@ source.setEventHandler {
    guard !restoreBeforeCommands, let controller else { throw HelperError.rejected("SMC or cleanup unavailable") }
    try restoreSleep()
    attemptedAction = true; needsRestore = true; lease.request(at: ProcessInfo.processInfo.systemUptime)
-   try controller.apply(.inhibitCharge); firmwareSession.reset(); currentAction = .inhibitCharge; lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
+   try controller.apply(.inhibitCharge); firmwareSession.reset(); currentAction = .inhibitCharge; dischargeSleepEntry.clear(); lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
    response = "OK retainedChargeInhibit"
   }
   else if command == "magSafeStatus" { guard let magSafe else { throw HelperError.rejected("MagSafe unavailable") }; response = "OK " + (try magSafe.status()) }
@@ -275,6 +325,7 @@ source.setEventHandler {
    lease.request(at: ProcessInfo.processInfo.systemUptime); needsRestore = true
    if action == .restore { try restoreSleep() }
    try controller.apply(action); firmwareSession.reset(); needsRestore = action != .restore; currentAction = action
+   dischargeSleepEntry.accept(multipleDisplays:multiDisplayAction != nil,at:ProcessInfo.processInfo.systemUptime,preventDisplaySleep:DischargeSleepRequest.preventsDisplaySleep(admitted))
    if action == .restore { pauseOnSleep = false; lease.clear() }
    response = "OK \(action.rawValue)"
   }

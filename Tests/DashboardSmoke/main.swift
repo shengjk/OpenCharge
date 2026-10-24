@@ -74,6 +74,7 @@ import ChargeHardware
   try firmwareControlChecks(defaults: defaults)
   try sleepTransitionChecks(defaults: defaults)
   try sleepEpochChecks(defaults: defaults)
+  try multiDisplaySleepChecks(defaults: defaults)
   let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("fixture must never invoke an uninjected lock") })
   precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
   precondition(model.reading != nil && model.dashboard.paused)

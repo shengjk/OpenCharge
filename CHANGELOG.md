@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a coordinated multi-display Discharging sleep-entry path for matching updated app/helper builds: carry bounded display/phase metadata with the accepted discharge action, request allowance and sleep protection independently, then declare local user activity. Preserve recovery and report failures separately. Physical behavior remains unverified.
+
 - Establish a fresh ordinary charge session with inhibition before requesting required sleep protection, then enter the requested charge mode only after protection succeeds. Reuse healthy sessions without repeating bootstrap.
 
 - Bind each updated app policy round to a helper-instance and sleep-event context. Reject stale charge/protection requests across sleep/wake, preserve opt-in and recovery responsibility for confirmed unexecuted requests, and reacquire protection on a fresh round.

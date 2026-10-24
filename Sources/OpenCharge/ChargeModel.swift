@@ -92,6 +92,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var sleepOverrideFailed = false
  private var sleepOverrideCapability: Bool?
  private var chargeContextEnabled = false
+ private var multiDisplaySleepEnabled = false
  private let screenLockRequest: () throws -> Void
  private var lidLockPolicy = LidLockPolicy()
  private var lidObserver: LidStateObserver?
@@ -137,6 +138,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } }
   dashboardPreferences.changed = { [weak self] in self?.syncDashboard() }
   popoverPreferences.changed = { [weak self] in self?.syncDashboard() }
+  if observeLid { observers.append(NotificationCenter.default.addObserver(forName:NSApplication.didChangeScreenParametersNotification,object:nil,queue:.main) { [weak self] _ in Task { @MainActor in
+   guard let self, self.config.hardwareEnabled, !self.quitting else { return }; self.refresh()
+  } }) }
   if observeLid { do { lidObserver = try LidStateObserver { [weak self] in
    Task { @MainActor [weak self] in self?.handleLidStateNotification(LidStateObserver.currentState()) }
   } } catch { lidLockStatus = "合盖监听不可用：" + error.localizedDescription } }
@@ -379,7 +383,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
   } catch { self.error = error.localizedDescription; if config.hardwareEnabled { try? restoreChargeControl() }; try? sleepController.setPreventIdleSleep(false) }
  }
- func applyHardwareDecision(_ plan: SleepProtectionPlan, request: @escaping (String) throws -> String = HelperClient.request, setIdleSleep: ((Bool) throws -> Void)? = nil) {
+ func applyHardwareDecision(_ plan: SleepProtectionPlan, request: @escaping (String) throws -> String = HelperClient.request, setIdleSleep: ((Bool) throws -> Void)? = nil, screenCount: () -> Int = { NSScreen.screens.count }) {
   let idle = setIdleSleep ?? { try self.sleepController.setPreventIdleSleep($0) }
   guard config.hardwareEnabled else {
    do { try idle(false) } catch { self.error = error.localizedDescription }
@@ -394,8 +398,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     guard !current.sleeping else { throw ChargeControlSuspension.systemSleep }
     context = current
    } else { context = nil }
+   let displayCount = multiDisplaySleepEnabled ? screenCount() : 0
+   let phase = automationPhase
    let scopedRequest: (String) throws -> String = { command in
-    try request(try context?.envelope(command) ?? command)
+    let action = self.multiDisplaySleepEnabled ? DischargeSleepRequest.wrap(command,phase:phase,screenCount:displayCount,preventDisplaySleep:plan.preventDisplaySleep) : command
+    return try request(try context?.envelope(action) ?? action)
    }
    if plan.preventSystemAndLidSleep {
     guard !sleepOverrideFailed else { throw HelperError.rejected("睡眠控制上次失败，请重新启用硬件控制后重试") }
@@ -539,6 +546,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    firmwareControl = nil
   }
   chargeContextEnabled = ChargeRequestContext.supportsHelper(capabilities)
+  multiDisplaySleepEnabled = DischargeSleepRequest.supportsHelper(capabilities)
  }
  func restoreChargeControl(request: (String) throws -> String = HelperClient.request) throws {
   if let firmwareControl {

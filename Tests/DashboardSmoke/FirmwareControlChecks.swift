@@ -243,3 +243,60 @@ import ChargeHardware
  }
  print("One root event context spans each policy round; a complete sleep/wake between protection and control invalidates both ordinary/numeric requests, and a fresh round reacquires protection before discharge; all actuators injected")
 }
+
+@MainActor func multiDisplaySleepChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load(); let provider = PolicyStateRuntime.provider
+ defer { try? original.save(); PolicyStateRuntime.provider = provider }
+ for numeric in [false,true] {
+ for phase in [PolicyPhase.discharging,.calibration] {
+ for displays in [1,2] {
+ for preventDisplay in [false,true] {
+  var config = Configuration(); config.hardwareEnabled = false; config.historyEnabled = false
+  config.systemActionsEnabled = false; config.notifications = false; try config.save()
+  let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  let numericRoot = NumericRoot(); var transition = ChargePowerTransition(), entry = DischargeSleepEntry()
+  var ordinaryDischarge = false, protected = false
+  func request(_ wire: String) throws -> String {
+   let admitted = try transition.admittedCommand(wire)
+   if admitted == "chargeContext" { return transition.contextReply }
+   if admitted == "capabilities" { return (numeric ? numericRoot.capabilities : "chargeControl:fixture,sleepOverride:interfacesDetected,sleepRecovery:phasesV1")+",chargeTransition:epochV1,dischargeSleep:displaySnapshotV1" }
+   let special = DischargeSleepRequest.underlying(admitted)
+   let command = special ?? admitted
+   let result: String
+   if numeric { result = try numericRoot.request(command) }
+   else {
+    if command == "sleepOverrideOn" || command == "sleepOverrideDisplayOn" { protected = true }
+    if command == "forceDischarge" { precondition(protected); ordinaryDischarge = true }
+    result = "accepted"
+   }
+   if command == "forceDischarge" || command.hasPrefix("firmwarePlan:") {
+    entry.accept(multipleDisplays:special != nil,at:100,preventDisplaySleep:DischargeSleepRequest.preventsDisplaySleep(admitted))
+   }
+   return result
+  }
+  m.enableHardware(true,request:request,refresh:{})
+  m.decision = Decision(.forceDischarge,"fixture",limit:80); m.decision.phase = phase
+  let plan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:.forceDischarge,percent:90,target:80,calibrating:phase == .calibration,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:!preventDisplay,lidClosed:true)
+  m.applyHardwareDecision(plan,request:request,setIdleSleep:{_ in},screenCount:{displays})
+  precondition(m.config.hardwareEnabled && (numeric ? numericRoot.inflow : ordinaryDischarge))
+  let selected = entry.qualifies(at:101,discharging:numeric ? numericRoot.helper.discharging : ordinaryDischarge,connected:true,lidClosed:true,recoveryPending:false)
+  precondition(selected == (phase == .discharging && displays == 2))
+  if selected {
+   precondition(entry.preventDisplaySleep == plan.preventDisplaySleep)
+   var activity = false
+   let outcome = DischargeSleepEntry.perform(allow:{
+    if numeric { _ = try numericRoot.helper.execute(.allow,recoveryPending:false,sleepObserverAvailable:true) }
+    else { ordinaryDischarge = false }
+   },protect:{ protected = true },activity:{activity = true})
+   precondition(outcome.succeeded && activity && protected && !numericRoot.inflow && !ordinaryDischarge)
+   if numeric { precondition(numericRoot.limit == 100 && numericRoot.helper.active && numericRoot.helper.sleepTarget != nil) }
+  }
+  // A topology edge is republished with the next accepted action, atomically revoking selection.
+  m.applyHardwareDecision(plan,request:request,setIdleSleep:{_ in},screenCount:{1})
+  precondition(!entry.qualifies(at:102,discharging:true,connected:true,lidClosed:true,recoveryPending:false))
+ }
+ }
+ }
+ }
+ print("App phase/NSScreen snapshot travels with accepted ordinary/numeric discharge; calibration/single-screen isolation, selected display preference, allow/protection/activity and topology revocation pass with injected actuators")
+}

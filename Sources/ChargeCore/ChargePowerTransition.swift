@@ -37,6 +37,7 @@ public struct ChargePowerTransition: Sendable {
  }
  private func requireUnscopedAdmission(_ command: String) throws {
   guard sleeping else { return }
+  if DischargeSleepRequest.underlying(command) != nil { throw ChargeControlSuspension.systemSleep }
   if let firmware = FirmwareCommand.parse(command) {
    switch firmware {
    case .status, .sessionStatus, .exit: return

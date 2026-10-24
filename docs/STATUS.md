@@ -26,3 +26,6 @@ The installed development helper was validated only through read-only capabiliti
 
 
 Unreleased source fixes fresh ordinary-session startup when the selected policy requires system/lid sleep protection. It establishes inhibition before protection and enters the requested action only after protection succeeds; subsequent healthy policy rounds reuse the session. This applies to the updated app with the existing sleep-capable helper protocol. An independently restarted helper can still reject a previously cached app session; that failure requires recovery and re-enabling control. No hardware or sleep effects have been physically verified by this increment.
+
+
+Development source includes a matching-app/helper multi-display Discharging sleep-entry path. It combines phase/display metadata atomically with discharge, rechecks root lid/adapter state and snapshot age, and separately attempts allowance, selected sleep protection and local user activity. Failure recovery and wake cleanup are implemented. Display topology is a bounded app snapshot; physical multi-display behavior, exact asynchronous ordering and the wider hardware/profile matrix remain unverified. This source increment has not updated the installed helper or existing release packages.

@@ -29,6 +29,7 @@ public struct ChargeRequestContext: Equatable, Sendable {
   return true
  }
  public static func requiresScope(_ command: String) -> Bool {
+  if DischargeSleepRequest.underlying(command) != nil { return true }
   if let firmware = FirmwareCommand.parse(command) {
    if case .exit = firmware { return false }
    return true

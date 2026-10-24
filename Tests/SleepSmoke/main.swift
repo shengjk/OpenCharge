@@ -211,6 +211,63 @@ struct FilePower {
    let io = FilePower(file: file, crashAt: nil), c = SleepOverrideController(transport: FilePower(file: file, crashAt: nil).transport, store: store.sleepStore(), bootSession: bootA)
    try c.recover(); let values = try io.read(), recovered = try store.sleepStore().load(); precondition(values["global"] == false && values["lid"] == false && recovered == nil); scenarios += 1
   }
+  // Fixed activity ownership; all OS entry points are replaced with closures.
+  do {
+   var declared: [UInt32] = [], released: [UInt32] = []; var failDeclare = false, failRelease = false
+   let activity = UserActivityController(declare: { id in
+    declared.append(id); if id == 0 { id = 41 }
+    if failDeclare { throw FakeError.requested }
+   }, release: { id in
+    released.append(id); if failRelease { throw FakeError.requested }
+   })
+   try activity.request(); try activity.request()
+   precondition(declared == [0,41] && activity.active)
+   failDeclare = true; rejects { try activity.request() }
+   let count = declared.count; rejects { try activity.request() }; precondition(declared.count == count)
+   failRelease = true; rejects { try activity.restore() }; precondition(activity.active)
+   failRelease = false; try activity.restore(); precondition(!activity.active && released == [41,41])
+   failDeclare = false; try activity.request(); try activity.restore(); scenarios += 1
+  }
+  do {
+   let activity = UserActivityController(declare: { id in id = 72; throw FakeError.requested },release: { precondition($0 == 72) })
+   rejects { try activity.request() }; precondition(activity.active); try activity.restore(); precondition(!activity.active); scenarios += 1
+  }
+  do {
+   let activity = UserActivityController(declare: { _ in },release: { _ in preconditionFailure("no identifier to release") })
+   rejects { try activity.request() }; try activity.restore(); precondition(!activity.active); scenarios += 1
+  }
+  for failedID: UInt32 in [0,9] {
+   var call = 0; var released: [UInt32] = []
+   let activity = UserActivityController(declare: { id in
+    call += 1
+    if call == 1 { id = 7 } else { id = failedID; throw FakeError.requested }
+   },release:{ released.append($0) })
+   try activity.request(); rejects { try activity.request() }
+   precondition(activity.active); try activity.restore()
+   precondition(released == (failedID == 0 ? [7] : [7,9]) && !activity.active); scenarios += 1
+  }
+  do {
+   var call = 0; var released: [UInt32] = []
+   let activity = UserActivityController(declare:{ id in call += 1; id = call == 1 ? 7 : 9 },release:{ released.append($0) })
+   try activity.request(); try activity.request(); try activity.restore()
+   precondition(released == [9]); scenarios += 1
+  }
+  for failedStep in ["none","allow","protection","activity"] {
+   let f = FakePower(), store = MemoryStore(), protection = controller(f,store)
+   var released = false
+   let activity = UserActivityController(declare: { id in id = 83; if failedStep == "activity" { throw FakeError.requested } },release: { _ in released = true })
+   var allowed = false
+   let outcome = DischargeSleepEntry.perform(allow: {
+    allowed = true; if failedStep == "allow" { throw FakeError.requested }
+   }, protect: {
+    try protection.apply(preventDisplaySleep:false)
+    if failedStep == "protection" { throw FakeError.requested }
+   }, activity: { try activity.request() })
+   precondition(allowed && f.global && f.lid && activity.active)
+   precondition(outcome.succeeded == (failedStep == "none"))
+   try activity.restore(); try protection.restore()
+   precondition(released && !f.global && !f.lid && store.data == nil); scenarios += 1
+  }
   print("Sleep override:",scenarios,"fake/file scenarios including",crashPoints.count,"abrupt subprocesses; no system power writes or assertions")
  }
 }

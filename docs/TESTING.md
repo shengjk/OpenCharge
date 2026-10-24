@@ -283,3 +283,10 @@ The `chargeTransition:epochV1` extension issues a root-instance and sleep-event 
 ### Unreleased ordinary protection bootstrap
 
 The production-model fixture starts with no ordinary helper session and enforces the current-session prerequisite for sleep protection. It checks inhibition before protection and force, no repeated bootstrap in a healthy session, restoration after ambiguous bootstrap/protection/force replies, and retry after confirmed unexecuted bootstrap or protection suspension. The event-context fixture also starts its ordinary branch without a session. All setters and assertions are injected; this does not validate physical discharge or special multi-display sleep behavior.
+
+
+### Development multi-display sleep-entry checks
+
+Five new canonical core methods (250 total) exercise fixed discharge-only metadata, all policy phases, single/multiple screen counts, exact optional capability parsing, fresh/expired/unknown eligibility, every independent failure combination and event-context rejection before/after sleep. The longest wrapper, including the maximum event counter and numeric sleep target, remains below the 128-byte frame limit.
+
+The production-model fixture covers ordinary and numeric backends, Discharging versus Calibration, one/two screens and selected display protection. It checks selection only after an accepted force/atomic discharge action, temporary numeric allowance without losing the registered sleep target, and revocation on the next accepted single-screen round. Sleep smoke fixtures inject every native function and check the owned activity identifier lifecycle, including failed declarations that change/clear an existing identifier, successful refresh replacement, zero-success rejection, failed release retry, and restoration alongside the existing sleep journal. No default OS setter or assertion callback is invoked. These checks do not prove instantaneous topology, asynchronous completion order, or physical sleep/charging effects.
