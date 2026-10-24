@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.37
+
+- Add experimental numeric firmware control for three selected Intel Air profiles, with typed capability checks and explicit refusal when the required helper protocol is unavailable.
+- Integrate app policy, atomic action/sleep plans, session ownership, sleep/wake handoff and daily-limit exit handling. Refuse ambiguous or expired ownership until cleanup succeeds and control is explicitly enabled again.
+- Add exclusive charge-backend recovery and owned process-local inflow assertions. Preserve pending recovery after ambiguous acknowledgements or failed cleanup; release owned assertions before changing backend or relinquishing control.
+- Explain numeric firmware behavior in the charge-control page and disable ordinary sleep/quit switches that do not apply to that channel.
+- Expand isolated policy, helper, journal, crash and application lifecycle coverage. No physical Intel charging, discharge or sleep effects are claimed; special multi-display behavior and broader hardware coverage remain unverified.
+
 ## 0.3.36
 
 - Read the administrator settingsLock preference, off by default. Restrict interactive charge-policy editors, quick profiles, backup restore and the right-click charging toggle, with a visible lock notice.
