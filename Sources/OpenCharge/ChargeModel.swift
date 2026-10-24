@@ -433,7 +433,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     firmwareInspection = firmwareControl.status
     firmwareStatus = "数值固件通道 · 睡眠目标 \(firmwareControl.sleepTarget.map(String.init) ?? "—")% · 物理效果待验证"
    } else {
-    _ = try scopedRequest(config.policy.stopInSleep && !plan.preventSystemAndLidSleep ? "sleepPolicyOn" : "sleepPolicyOff")
+    _ = try scopedRequest(config.policy.stopInSleep ? "sleepPolicyOn" : "sleepPolicyOff")
     _ = try scopedRequest(decision.action.rawValue)
    }
    if !plan.preventIdleSleep { try idle(false) }
@@ -569,9 +569,17 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   // Coordinated helpers own sleep preparation for both charge backends. App
   // notifications must not race it with an unscoped action after a wake cycle.
   if firmwareControl != nil || chargeContextEnabled { return }
-  // The root observer also reconciles sleep and acknowledges it. Paused/discharging states stay paused.
-  let inhibit = config.policy.stopInSleep || decision.action == .inhibitCharge || decision.action == .forceDischarge
-  _ = try? request(inhibit ? "inhibitCharge" : "restore")
+  // Legacy notifications share the same ordinary ordering as the updated root.
+  // Older helpers may still have their own incompatible forced-discharge fallback.
+  let outcome = OrdinarySleepPreparation.perform(stopInSleep:config.policy.stopInSleep,
+   sessionActive:lastHardwareAction != .restore, inhibit: {
+    _ = try request("inhibitCharge"); lastHardwareAction = .inhibitCharge
+   }, releaseProtection: {
+    _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false
+   })
+  if outcome.succeeded { sleepStatus = config.policy.stopInSleep ? "睡眠充电策略已确认；睡眠保护已释放" : "睡眠保护已释放；充电状态未修改" }
+  else { sleepStatus = OrdinarySleepPreparation.Step.allCases.compactMap { outcome.failures[$0] }.joined(separator:"；") }
+
  }
  func prepareForQuit(request: (String) throws -> String = HelperClient.request) throws {
   quitting = true

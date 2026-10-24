@@ -106,3 +106,51 @@ import ChargeHardware
  }
  print("Fresh ordinary protection bootstraps an owned inhibited session, protects before force, restores ambiguous failures, retries unexecuted suspensions, and avoids repeat bootstrap; injected operations only")
 }
+
+@MainActor func ordinarySleepNotificationChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load(); let provider = PolicyStateRuntime.provider
+ defer { try? original.save(); PolicyStateRuntime.provider = provider }
+ for action in [ChargeAction.allowCharge,.inhibitCharge,.forceDischarge] {
+ for fails in [false,true] {
+  var config = Configuration(); config.hardwareEnabled = false; config.historyEnabled = false
+  config.notifications = false; config.systemActionsEnabled = false; try config.save()
+  let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  model.inspectSleepInterfaces(request:{_ in "sleepOverride:interfacesDetected,sleepRecovery:phasesV1"})
+  model.config.hardwareEnabled = true; model.config.policy.stopInSleep = false
+  model.decision = Decision(action,"fixture",limit:80)
+  let plan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:action,percent:50,target:80,calibrating:true,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true)
+  var actual = ChargeAction.restore; var protected = false
+  model.applyHardwareDecision(plan,request:{command in
+   if let value = ChargeAction(rawValue:command) { actual = value }
+   if command == "sleepOverrideDisplayOn" { protected = true }
+   return "fixture"
+  },setIdleSleep:{_ in})
+  precondition(actual == action && protected && model.config.hardwareEnabled)
+  let before = try Data(contentsOf:Configuration.url); let previousPending = model.needsDischargeExitWait
+  var commands: [String] = []
+  model.sleep(request:{command in
+   commands.append(command)
+   if fails { throw HelperError.unavailable }
+   precondition(command == "sleepOverrideRestore"); protected = false; return "released"
+  })
+  precondition(commands == ["sleepOverrideRestore"] && actual == action && model.needsDischargeExitWait == previousPending)
+  precondition(model.config.hardwareEnabled && protected == fails)
+  let after = try Data(contentsOf:Configuration.url); precondition(before == after)
+  if fails {
+   commands = []; model.sleep(request:{ commands.append($0); protected = false; return "released" })
+   precondition(commands == ["sleepOverrideRestore"] && !protected)
+  }
+  model.config.policy.stopInSleep = true; commands = []
+  model.sleep(request:{ command in commands.append(command); if command == "inhibitCharge" { actual = .inhibitCharge }; return "paused" })
+  precondition(commands == ["inhibitCharge","sleepOverrideRestore"] && actual == .inhibitCharge)
+  commands = []
+  model.sleep(request:{ command in
+   commands.append(command)
+   if command == "inhibitCharge" { throw HelperError.unavailable }
+   precondition(command == "sleepOverrideRestore"); return "released"
+  })
+  precondition(commands == ["inhibitCharge","sleepOverrideRestore"] && model.config.hardwareEnabled)
+ }
+ }
+ print("Ordinary sleep opt-out releases protection without charge mutation, preserves policy and retries release failures; legacy notification stop opt-in still inhibits; all IPC injected")
+}

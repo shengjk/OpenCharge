@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Honor the ordinary pause-on-sleep opt-in independently of the current charge action. With it off, release sleep protection without replacing charge state; with it on, attempt inhibition before releasing protection and recover failed root preparation. Keep numeric projection and the special multi-display path separate.
+
 - Add a coordinated multi-display Discharging sleep-entry path for matching updated app/helper builds: carry bounded display/phase metadata with the accepted discharge action, request allowance and sleep protection independently, then declare local user activity. Preserve recovery and report failures separately. Physical behavior remains unverified.
 
 - Establish a fresh ordinary charge session with inhibition before requesting required sleep protection, then enter the requested charge mode only after protection succeeds. Reuse healthy sessions without repeating bootstrap.

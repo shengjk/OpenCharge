@@ -29,3 +29,6 @@ Unreleased source fixes fresh ordinary-session startup when the selected policy 
 
 
 Development source includes a matching-app/helper multi-display Discharging sleep-entry path. It combines phase/display metadata atomically with discharge, rechecks root lid/adapter state and snapshot age, and separately attempts allowance, selected sleep protection and local user activity. Failure recovery and wake cleanup are implemented. Display topology is a bounded app snapshot; physical multi-display behavior, exact asynchronous ordering and the wider hardware/profile matrix remain unverified. This source increment has not updated the installed helper or existing release packages.
+
+
+Development ordinary sleep preparation now honors pause-on-sleep directly: opt-out releases only sleep protection; opt-in attempts inhibition before release and preserves pending recovery on failure. It does not infer opt-in from a forced-discharge action. The complete change requires matching updated helper source; the validation machine and existing release packages remain unchanged. Software request ordering does not establish physical sleeping charge behavior.

@@ -207,8 +207,8 @@ do {
    }
    return
   }
-  if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
   if firmwareSession.active || restoreBeforeCommands {
+   if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("sleep-entry restoration failed: \(error.localizedDescription)") } }
    do {
     let result = try firmwareSession.reconcileSleep(recoveryPending:restoreBeforeCommands,restore:restoreSMC)
     if result == .restored {
@@ -219,9 +219,19 @@ do {
    catch {
     restoreBeforeCommands = true; log("firmware sleep update failed: \(error.localizedDescription)")
    }
-  } else if !restoreBeforeCommands && (pauseOnSleep || currentAction == .forceDischarge) {
-   do { guard let controller else { return }; needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge }
-   catch { log("pause on sleep failed: \(error.localizedDescription)") }
+  } else {
+   let outcome = OrdinarySleepPreparation.perform(stopInSleep:pauseOnSleep,
+    sessionActive:currentAction != nil && currentAction != .restore, inhibit: {
+     guard let controller else { throw HelperError.rejected("SMC unavailable") }
+     needsRestore = true; try controller.apply(.inhibitCharge); currentAction = .inhibitCharge
+    }, releaseProtection: { if sleepNeedsRestore { try restoreSleep() } })
+   for step in OrdinarySleepPreparation.Step.allCases {
+    if let failure = outcome.failures[step] { log("ordinary sleep \(step.rawValue) failed: \(failure)") }
+   }
+   if !outcome.succeeded {
+    do { try restoreSMC(); needsRestore = false; restoreBeforeCommands = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
+    catch { restoreBeforeCommands = true; sleepRecoveryPending = true; log("ordinary sleep cleanup pending: \(error.localizedDescription)") }
+   }
   }
  }, onWake: { chargeTransition.didWake(); dischargeSleepEntry.clear()
   if sleepNeedsRestore { do { try restoreSleep() } catch { sleepRecoveryPending = true; log("wake sleep restoration failed: \(error.localizedDescription)") } }
