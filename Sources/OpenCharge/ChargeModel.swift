@@ -194,6 +194,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func toggleTopUp() { changeMode(automationPhase == .topUp ? .paused : .topUp) }
  func toggleDischarge() { changeMode(automationPhase == .discharging ? .paused : .discharge) }
+ func toggleDischargeFromPopover() {
+  guard !config.policy.automaticDischarge else { return }
+  toggleDischarge()
+ }
  func toggleChargingFromMenu() {
   guard !quitting, allowChargeSettingsEdit() else { return }
   guard !calibrationPending else { error = "校准已中断，请先选择继续或取消"; return }

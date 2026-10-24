@@ -43,6 +43,27 @@ import ChargeHardware
  discharge.toggleDischarge()
  precondition(discharge.config.policy.mode == .paused && discharge.automationPhase == .pause)
  precondition(discharge.config.policy.limit == 80 && discharge.config.policy.pauseAtCurrent != true)
+ // The dedicated popover control has a narrower contract than explicit mode requests.
+ for percent in [50.0, 90.0] {
+  sample = BatteryReading(percent: percent, temperature: 30, connected: true, charging: false)
+  let guarded = try fixture()
+  let staleClick = { guarded.toggleDischargeFromPopover() }
+  guarded.config.policy.automaticDischarge = true; guarded.save(); guarded.refresh()
+  let before = guarded.config.policy; let phase = guarded.automationPhase
+  precondition((phase == .discharging) == (percent == 90), "cover both the idle and Stop presentations")
+  let disk = try Data(contentsOf: Configuration.url)
+  staleClick()
+  precondition(guarded.config.policy == before && guarded.automationPhase == phase)
+  let after = try Data(contentsOf: Configuration.url); precondition(after == disk)
+  guarded.config.policy.automaticDischarge = false; guarded.save()
+  sample = BatteryReading(percent: 90, temperature: 30, connected: true, charging: false)
+  guarded.changeMode(.paused)
+  guarded.toggleDischargeFromPopover()
+  precondition(guarded.config.policy.mode == .discharge && guarded.automationPhase == .discharging)
+  guarded.toggleDischargeFromPopover()
+  precondition(guarded.config.policy.mode == .paused && guarded.config.policy.limit == 80)
+ }
+ sample = BatteryReading(percent: 90, temperature: 30, connected: true, charging: false)
  let automatic = try fixture(automaticDischarge: true)
  precondition(automatic.config.policy.mode == .automatic && automatic.automationPhase == .discharging)
  automatic.toggleDischarge()

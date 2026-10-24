@@ -46,21 +46,21 @@ The production planner and file store are tested with disposable fake registers,
 Recovery-directory safety/locking or boot-identity failures refuse daemon startup before its socket is changed. The directory lock stays held for the entire daemon lifetime, including when SMC is unavailable but power-mode service remains available.
 
 
-## Unreleased numeric firmware backend
+## Experimental numeric firmware backend — 0.3.37
 
 An injected controller implements only the fixed CH0B/BCLM profile for a caller-established eligible host with an internal battery. It requires one-byte `ui8 ` metadata, accepts recognized current values, and exposes bounded limits from 20 through 100 plus a separate internal inhibit target of 15. Read-only status uses CH0B and BCLM, consulting BSIn bit 0 only when CH0B is zero and BCLM is 15; unavailable BSIn leaves that control state unknown. It does not substitute OS charging or measured power flow.
 
 Transactions save owned original/expected/previous values before writes and validate readback and the final full profile. Crash recovery compares owned values before restoring originals. Orderly exit applies a separate explicit target and relinquishes ownership only after validation and successful journal removal; subsequent restore must preserve that target. Malformed recovery data and incomplete rollback block further mutation. The recovery schema is distinct from the ordinary charge journal and uses the fixed `firmware-recovery.json` view in the same locked root directory. Compare-and-restore remains subject to external-writer races and cannot identify an identical external value.
 
-The unreleased helper and app source connect these mutations through fixed requests and exclusive backend ownership. Process-crash fixtures establish recovery behavior for injected registers and local file operations only; real sleep, shutdown, charging effects, reboot and power-loss behavior remain unverified.
+The 0.3.37 helper and app connect these mutations through fixed requests and exclusive backend ownership. Process-crash fixtures establish recovery behavior for injected registers and local file operations only; real sleep, shutdown, charging effects, reboot and power-loss behavior remain unverified.
 
 
 The production SMC client now shares metadata/payload decoding with raw 80-byte frame fixtures. Its read-only numeric probe selects only MacBookAir8,1, MacBookAir8,2 and MacBookAir9,1 in an x86_64 process with an internal battery, then validates CH0B/BCLM metadata and recognized values. These are the initial selected models, not an exhaustive hardware matrix. Model identity alone does not establish physical effects. Rosetta on an Apple Silicon model does not select this profile. `chargectl diagnose-smc` reports numeric read availability, limit and firmware charging-control state separately from ordinary charge capabilities. Direct diagnostic clients have no firmware recovery store and cannot use numeric write methods.
 
-A fixed numeric byte-write primitive rechecks metadata immediately before command 6. The unreleased helper advertises `firmwareProtocol:fixedV1`, `chargeRecovery:ready` or `pending`, and `firmwareWrite:fixedV1` only for a readable selected profile with a recovery store. On the current MacBookPro17,1, the new native read-only diagnostic preserves recognized CHTE/CHIE observation and reports numeric read/write unavailable. This is a refusal check on Apple Silicon, not an Intel firmware validation.
+A fixed numeric byte-write primitive rechecks metadata immediately before command 6. The 0.3.37 helper advertises `firmwareProtocol:fixedV1`, `chargeRecovery:ready` or `pending`, and `firmwareWrite:fixedV1` only for a readable selected profile with a recovery store. On the current MacBookPro17,1, the new native read-only diagnostic preserves recognized CHTE/CHIE observation and reports numeric read/write unavailable. This is a refusal check on Apple Silicon, not an Intel firmware validation.
 
 
-## Unreleased helper ownership and fixed numeric protocol
+## Experimental helper ownership and fixed numeric protocol — 0.3.37
 
 The fixed inflow extension is advertised separately as `firmwareDischarge:inflowV1` for a readable selected numeric profile with a recovery store. It requests journaled CH0B/BCLM inhibition before acquiring the process-local `DisableInflow` assertion. The assertion is released before limits, inhibition, orderly exit, restoration or an ordinary backend switch. Failed release preserves ownership and prevents subsequent writes; failed acquisition attempts restoration. No caller can supply an assertion type or identifier. The helper requires an existing numeric session and a system sleep observer before accepting discharge, and refuses removal of a registered sleep target during discharge. Pending recovery is retried at sleep entry; failed sleep policy application also attempts cleanup immediately. Lease, console and shutdown cleanup use the same owned backend. The advertisement describes the implemented request protocol, not observed power flow or physical support.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Disable the dedicated popover manual-discharge button while automatic discharge is enabled, including its Stop presentation. Check the current setting before accepting a captured click.
+
 ## 0.3.37
 
 - Add experimental numeric firmware control for three selected Intel Air profiles, with typed capability checks and explicit refusal when the required helper protocol is unavailable.
