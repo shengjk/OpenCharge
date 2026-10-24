@@ -33,7 +33,7 @@ import ChargeCore
   }
   let action = index == 3 ? "allowCharge" : "inhibitCharge"
   let expected = index < 4 ? ["sleepOverrideOn", "sleepPolicyOff", action, "idle:false"] : ["sleepPolicyOff", action, "idle:false", "sleepOverrideRestore"]
-  precondition(events == expected && model.config.hardwareEnabled)
+  precondition(events == (index == 0 ? ["inhibitCharge"] : []) + expected && model.config.hardwareEnabled)
  }
  model.config.hardwareEnabled = false
  print("Confirmed heat wait survives the Sailing band and unavailable temperature, retains selected protection, resumes on cooling and releases at target; all actuators injected")

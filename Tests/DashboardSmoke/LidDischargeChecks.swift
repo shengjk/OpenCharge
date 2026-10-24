@@ -47,7 +47,7 @@ import ChargeCore
  active.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
  active.config.hardwareEnabled = true
  var events: [String] = []
- for lid in [true, false, true] {
+ for (index, lid) in [true, false, true].enumerated() {
   events = []; active.decision = Decision(.forceDischarge, "fixture", limit: 80)
   let protection = plan(.forceDischarge, lid: lid)
   active.applyHardwareDecision(protection, request: { events.append($0); return "fixture" }, setIdleSleep: { events.append("idle:\($0)") })
@@ -55,7 +55,7 @@ import ChargeCore
    active.updateSleepOverride(protection, request: { events.append($0); return "fixture release" })
   }
   let expected = lid ? ["sleepOverrideOn", "sleepPolicyOff", "forceDischarge", "idle:false"] : ["sleepPolicyOff", "forceDischarge", "idle:false", "sleepOverrideRestore"]
-  precondition(events == expected)
+  precondition(events == (index == 0 ? ["inhibitCharge"] : []) + expected)
  }
  events = []; active.decision = Decision(.inhibitCharge, "fixture complete", limit: 80)
  let complete = plan(.inhibitCharge, lid: true)

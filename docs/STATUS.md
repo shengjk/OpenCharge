@@ -23,3 +23,6 @@ This is a development release. Implemented policy, OS integration and physical h
 Unsupported or incomplete: BCLM-only firmware control, guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
 
 The installed development helper was validated only through read-only capabilities. Hardware control and scheduled system actions remain disabled on the validation machine. No physical effects are claimed from capability detection or fake-backend tests.
+
+
+Unreleased source fixes fresh ordinary-session startup when the selected policy requires system/lid sleep protection. It establishes inhibition before protection and enters the requested action only after protection succeeds; subsequent healthy policy rounds reuse the session. This applies to the updated app with the existing sleep-capable helper protocol. An independently restarted helper can still reject a previously cached app session; that failure requires recovery and re-enabling control. No hardware or sleep effects have been physically verified by this increment.

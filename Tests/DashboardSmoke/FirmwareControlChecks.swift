@@ -180,7 +180,7 @@ import ChargeHardware
   m.enableHardware(true,request:request,refresh:{})
   m.decision = Decision(.forceDischarge,"fixture",limit:80); m.decision.phase = .discharging
   m.applyHardwareDecision(closedPlan,request:request,setIdleSleep:{_ in})
-  precondition(commands == (numeric ? ["capabilities","firmwarePlan:inhibit:15","sleepOverrideOn"] : ["capabilities","sleepOverrideOn"]))
+  precondition(commands == (numeric ? ["capabilities","firmwarePlan:inhibit:15","sleepOverrideOn"] : ["capabilities","inhibitCharge","sleepOverrideOn"]))
   precondition(!root.inflow && forceCount == 0 && m.config.hardwareEnabled && !m.needsDischargeExitWait)
   commands = []; m.applyHardwareDecision(closedPlan,request:request,setIdleSleep:{_ in})
   precondition(numeric ? (root.inflow && root.protected && root.creates == 1) : (forceCount == 1 && protected))
@@ -197,7 +197,7 @@ import ChargeHardware
   config.historyEnabled = false; config.notifications = false; try config.save()
   let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
   let root = NumericRoot(); var transition = ChargePowerTransition(); var cycle = true
-  var protected = false; var forceCount = 0; var accepted: [String] = []; var refused = 0
+  var ordinarySession = false; var protected = false; var forceCount = 0; var accepted: [String] = []; var refused = 0
   func request(_ wire: String) throws -> String {
    let command: String
    do { command = try transition.admittedCommand(wire) }
@@ -210,7 +210,9 @@ import ChargeHardware
    let result: String
    if numeric { result = try root.request(command) }
    else {
-    // An ordinary session was established by the preceding policy round.
+    // Require the same fresh-session bootstrap as the production helper.
+    if command == "inhibitCharge" { ordinarySession = true }
+    if command == "sleepOverrideOn" { precondition(ordinarySession) }
     if command == "sleepOverrideOn" { protected = true }
     if command == "forceDischarge" { precondition(protected); forceCount += 1 }
     result = "fixture"
@@ -231,7 +233,7 @@ import ChargeHardware
   m.applyHardwareDecision(plan,request:request,setIdleSleep:{_ in})
   precondition(refused == 1 && m.config.hardwareEnabled && !m.needsDischargeExitWait)
   precondition(forceCount == 0 && !root.inflow && root.creates == 0)
-  precondition(accepted == (numeric ? ["firmwarePlan:inhibit:15","sleepOverrideOn"] : ["sleepOverrideOn"]))
+  precondition(accepted == (numeric ? ["firmwarePlan:inhibit:15","sleepOverrideOn"] : ["inhibitCharge","sleepOverrideOn"]))
   let beforeNotification = accepted; m.sleep(request:request)
   precondition(accepted == beforeNotification,"coordinated app notifications must not send a competing unscoped action")
   accepted = []; m.applyHardwareDecision(plan,request:request,setIdleSleep:{_ in})

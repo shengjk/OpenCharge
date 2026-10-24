@@ -56,6 +56,7 @@ import ChargeHardware
   try await automationReloadChecks(defaults: defaults)
   try await policyStateChecks(defaults: defaults)
   try sleepOrderingChecks(defaults: defaults)
+  try ordinaryProtectionBootstrapChecks(defaults: defaults)
   try lidDischargeChecks(defaults: defaults)
   try thermalProtectionChecks(defaults: defaults)
   try thermalExitChecks(defaults: defaults)
@@ -100,7 +101,7 @@ import ChargeHardware
   var protectedCommands: [String] = []
   model.decision = Decision(.allowCharge, "fixture", limit: 80)
   model.applyHardwareDecision(sleepPlan, request: { protectedCommands.append($0); return "fixture acknowledgement" })
-  precondition(protectedCommands == ["sleepOverrideOn", "sleepPolicyOff", "allowCharge"], "required full protection must succeed before suppressing sleep-entry policy and charging")
+  precondition(protectedCommands == ["inhibitCharge", "sleepOverrideOn", "sleepPolicyOff", "allowCharge"], "required full protection must succeed before suppressing sleep-entry policy and charging")
   model.config.policy.stopInSleep = false
   model.updateSleepOverride(sleepPlan, request: { _ in "fixture acknowledgement" })
   model.handleLidState(true, consoleActive: false, request: { lockRequests += 1 }); precondition(lockRequests == 0)

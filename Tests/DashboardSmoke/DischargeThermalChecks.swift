@@ -26,7 +26,7 @@ import ChargeCore
    var events: [String] = []
    model.applyHardwareDecision(protection, request: { events.append($0); return "fixture acknowledgement" },
     setIdleSleep: { events.append("idle:\($0)") })
-   precondition(events == (closed ? ["sleepOverrideOn", "sleepPolicyOff", "forceDischarge", "idle:false"] : ["sleepPolicyOff", "forceDischarge", "idle:false"]))
+   precondition(events == (closed ? ["inhibitCharge", "sleepOverrideOn", "sleepPolicyOff", "forceDischarge", "idle:false"] : ["sleepPolicyOff", "forceDischarge", "idle:false"]))
    model.config.hardwareEnabled = false
    let released = SleepProtectionPlan.evaluate(controlEnabled: false, connected: true, physicalAdapterConnected: true,
     action: .restore, percent: 90, target: 80, calibrating: false,
@@ -64,7 +64,7 @@ import ChargeCore
    model.applyHardwareDecision(plan, request: { events.append($0); return "fixture acknowledgement" },
     setIdleSleep: { events.append("idle:\($0)") })
    if !plan.preventSystemAndLidSleep { model.updateSleepOverride(plan, request: { events.append($0); return "fixture release" }) }
-   let expected = running ? ["idle:true", "sleepOverrideOn", "sleepPolicyOff", "forceDischarge"] : ["sleepPolicyOff", "inhibitCharge", "idle:false", "sleepOverrideRestore"]
+   let expected = running ? ["inhibitCharge", "idle:true", "sleepOverrideOn", "sleepPolicyOff", "forceDischarge"] : ["sleepPolicyOff", "inhibitCharge", "idle:false", "sleepOverrideRestore"]
    precondition(events == expected && model.config.hardwareEnabled)
   }
   model.config.hardwareEnabled = false

@@ -404,6 +404,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     if let firmwareControl {
      attempted = true
      try firmwareControl.prepareProtection(request:scopedRequest)
+    } else if lastHardwareAction == .restore {
+     // The helper requires an owned charge session before sleep protection.
+     // Bootstrap with inhibition, never with charging or adapter cutoff.
+     attempted = true
+     _ = try scopedRequest(ChargeAction.inhibitCharge.rawValue)
+     lastHardwareAction = .inhibitCharge
     }
    }
    if plan.preventIdleSleep { try idle(true) }

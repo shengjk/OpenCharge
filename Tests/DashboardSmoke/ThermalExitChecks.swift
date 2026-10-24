@@ -51,7 +51,7 @@ import ChargeCore
   }
   let expected: [String]
   switch index {
-  case 0: expected = ["idle:true", "sleepOverrideOn", "sleepPolicyOff", "inhibitCharge"]
+  case 0: expected = ["inhibitCharge", "idle:true", "sleepOverrideOn", "sleepPolicyOff", "inhibitCharge"]
   case 1: expected = ["sleepPolicyOff", "inhibitCharge", "idle:false", "sleepOverrideRestore"]
   case 4: expected = ["idle:true", "sleepOverrideOn", "sleepPolicyOff", "allowCharge"]
   default: expected = ["sleepPolicyOff", "inhibitCharge", "idle:false"]

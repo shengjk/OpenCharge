@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Establish a fresh ordinary charge session with inhibition before requesting required sleep protection, then enter the requested charge mode only after protection succeeds. Reuse healthy sessions without repeating bootstrap.
+
 - Bind each updated app policy round to a helper-instance and sleep-event context. Reject stale charge/protection requests across sleep/wake, preserve opt-in and recovery responsibility for confirmed unexecuted requests, and reacquire protection on a fresh round.
 - Disable the dedicated popover manual-discharge button while automatic discharge is enabled, including its Stop presentation. Check the current setting before accepting a captured click.
 

@@ -278,3 +278,8 @@ Twelve additional canonical core methods (245 total) cover finite command admiss
 
 
 The `chargeTransition:epochV1` extension issues a root-instance and sleep-event context. Each updated app policy round queries it once and wraps its finite charge/protection/status requests with the same token. Sleep, recovery and console-owner changes invalidate the context. A full sleep/wake between two IPC requests invalidates the remaining requests even after the root is awake again. The envelope is bounded to the existing 128-byte frame and a fixed command alphabet; peer and foreground-console checks still run before dispatch. Core checks cover stale rounds, helper restart, canonical syntax, duplicate events, all numeric command forms and independent capability parsing. A production-model fixture simulates an entire sleep/wake after protection succeeds and before ordinary/numeric control, verifying rejection without discharge and a fresh protected retry. An awake cleanup variant retires protection without a sleep cycle and must reject the same stale round. Cleanup and explicit exit remain unscoped and available.
+
+
+### Unreleased ordinary protection bootstrap
+
+The production-model fixture starts with no ordinary helper session and enforces the current-session prerequisite for sleep protection. It checks inhibition before protection and force, no repeated bootstrap in a healthy session, restoration after ambiguous bootstrap/protection/force replies, and retry after confirmed unexecuted bootstrap or protection suspension. The event-context fixture also starts its ordinary branch without a session. All setters and assertions are injected; this does not validate physical discharge or special multi-display sleep behavior.

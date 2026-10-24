@@ -30,7 +30,7 @@ import ChargeCore
     setIdleSleep: { events.append("idle:\($0)") })
    if !plan.preventSystemAndLidSleep { model.updateSleepOverride(plan, request: { events.append($0); return "fixture release" }) }
    let expected = full ? ["sleepPolicyOff", "allowCharge", "idle:false", "sleepOverrideRestore"] : ["idle:true", "sleepOverrideOn", "sleepPolicyOff", "allowCharge"]
-   precondition(events == expected && model.config.hardwareEnabled)
+   precondition(events == (percent == 90 ? ["inhibitCharge"] : []) + expected && model.config.hardwareEnabled)
   }
   model.config.hardwareEnabled = false
   let released = SleepProtectionPlan.evaluate(controlEnabled: false, connected: true, physicalAdapterConnected: true,
