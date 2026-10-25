@@ -57,16 +57,16 @@ public enum ReleaseUpdateError: Error, LocalizedError {
  case invalidVersion, invalidFeed, invalidURL, missingChecksum, invalidChecksum, transferTooLarge, http(Int), digestMismatch, sizeMismatch, releaseLimit
  public var errorDescription: String? {
   switch self {
-  case .invalidVersion: return String(localized:"无法识别当前应用版本")
-  case .invalidFeed: return String(localized:"发布信息格式不受支持")
-  case .invalidURL: return String(localized:"发布下载地址不属于受支持的官方地址")
-  case .missingChecksum: return String(localized:"发布版本未提供适用的校验文件")
-  case .invalidChecksum: return String(localized:"校验文件格式无效或存在重复条目")
-  case .transferTooLarge: return String(localized:"下载内容超过允许大小")
-  case .http(let status): return status == 403 || status == 429 ? String(localized:"GitHub 请求受限，请稍后重试") : String(localized:"GitHub 返回 HTTP \(status)")
-  case .digestMismatch: return String(localized:"下载内容与发布校验和不一致，文件未保留")
-  case .sizeMismatch: return String(localized:"下载大小与发布记录不一致")
-  case .releaseLimit: return String(localized:"发布列表超过检查范围，请在 GitHub 查看")
+  case .invalidVersion: return NSLocalizedString("无法识别当前应用版本", comment: "")
+  case .invalidFeed: return NSLocalizedString("发布信息格式不受支持", comment: "")
+  case .invalidURL: return NSLocalizedString("发布下载地址不属于受支持的官方地址", comment: "")
+  case .missingChecksum: return NSLocalizedString("发布版本未提供适用的校验文件", comment: "")
+  case .invalidChecksum: return NSLocalizedString("校验文件格式无效或存在重复条目", comment: "")
+  case .transferTooLarge: return NSLocalizedString("下载内容超过允许大小", comment: "")
+  case .http(let status): return status == 403 || status == 429 ? NSLocalizedString("GitHub 请求受限，请稍后重试", comment: "") : String.localizedStringWithFormat(NSLocalizedString("GitHub 返回 HTTP %lld", comment: ""), Int64(status))
+  case .digestMismatch: return NSLocalizedString("下载内容与发布校验和不一致，文件未保留", comment: "")
+  case .sizeMismatch: return NSLocalizedString("下载大小与发布记录不一致", comment: "")
+  case .releaseLimit: return NSLocalizedString("发布列表超过检查范围，请在 GitHub 查看", comment: "")
   }
  }
 }

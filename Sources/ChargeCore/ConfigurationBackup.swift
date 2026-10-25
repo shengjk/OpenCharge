@@ -4,9 +4,9 @@ public enum ConfigurationBackupError: LocalizedError {
  case tooLarge, unsupportedVersion, invalidSchedules
  public var errorDescription: String? {
   switch self {
-  case .tooLarge: return String(localized:"备份超过 1 MB，无法导入")
-  case .unsupportedVersion: return String(localized:"此备份版本尚不受支持")
-  case .invalidSchedules: return String(localized:"备份中的任务数量、标识或数值无效")
+  case .tooLarge: return NSLocalizedString("备份超过 1 MB，无法导入", comment: "")
+  case .unsupportedVersion: return NSLocalizedString("此备份版本尚不受支持", comment: "")
+  case .invalidSchedules: return NSLocalizedString("备份中的任务数量、标识或数值无效", comment: "")
   }
  }
 }

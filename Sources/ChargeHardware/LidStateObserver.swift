@@ -13,16 +13,16 @@ public final class LidStateObserver {
  private var notification: io_object_t = 0
  private let callback: Callback
  public static func currentState() -> Bool? {
-  let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+  let root = IOServiceGetMatchingService(RegistryPort.defaultValue, IOServiceMatching("IOPMrootDomain"))
   guard root != 0 else { return nil }; defer { IOObjectRelease(root) }
   guard let value = IORegistryEntryCreateCFProperty(root, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue(), CFGetTypeID(value) == CFBooleanGetTypeID() else { return nil }
   return value as? Bool
  }
  public init(receive: @escaping () -> Void) throws {
   callback = Callback(receive)
-  let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
-  guard root != 0 else { throw HardwareError.unavailable(String(localized:"合盖状态不可用")) }; defer { IOObjectRelease(root) }
-  guard let port = IONotificationPortCreate(kIOMainPortDefault) else { throw HardwareError.unavailable(String(localized:"无法监听合盖状态")) }
+  let root = IOServiceGetMatchingService(RegistryPort.defaultValue, IOServiceMatching("IOPMrootDomain"))
+  guard root != 0 else { throw HardwareError.unavailable(NSLocalizedString("合盖状态不可用", comment: "")) }; defer { IOObjectRelease(root) }
+  guard let port = IONotificationPortCreate(RegistryPort.defaultValue) else { throw HardwareError.unavailable(NSLocalizedString("无法监听合盖状态", comment: "")) }
   self.port = port
   let result = IOServiceAddInterestNotification(port, root, kIOGeneralInterest, { ref, _, message, _ in
    guard message == opencharge_clamshell_state_changed(), let ref else { return }

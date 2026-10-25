@@ -313,3 +313,9 @@ Injected-byte and journal checks select 29 known model identifiers under arm64 a
 ## Direct CLI charge boundary
 
 Five core regression methods inject model-selection and request callbacks to check invalid/internal/unconfirmed actions, refusal of ordinary commands on numeric firmware models, model-inspection failure, exact ordinary request/reply forwarding and transport failure, and restore without model discovery. The CLI configuration script also invokes malformed/internal hardware requests and checks that they fail with the usage error while preserving configuration. No accepted live hardware action is invoked by these checks; physical control and authenticated IPC require separate validation.
+
+## Shared-module macOS availability
+
+`Scripts/test-shared-availability.sh` compiles the complete ChargeCore and ChargeHardware modules and the C power-message bridge with a macOS 11 deployment target for arm64 and x86_64. It runs during `Scripts/check.sh` and does not execute hardware code. Shared localization uses Foundation's older lookup API with the same source keys; the HTTP error preserves its signed 64-bit format argument. Native language fixtures check translated policy/domain/error strings and the HTTP status in six language selections.
+
+The IOKit default-port accessor selects the SDK's modern constant on macOS 12 or later and its legacy name on macOS 11. Compilation with a deployment target establishes API availability only. The packaged application still requires macOS 13; SwiftUI, Charts, App Intents, service/login registration and actual older-system behavior need separate compatibility work and runtime validation.

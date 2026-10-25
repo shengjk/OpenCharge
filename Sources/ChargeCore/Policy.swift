@@ -136,17 +136,17 @@ public struct ChargeEngine: Sendable {
   if p.mode != previousMode {
    modeChanged(to: p.mode); reportedPhase = phase
   }
-  guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, String(localized:"无效电池读数，恢复系统控制")) }
+  guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, NSLocalizedString("无效电池读数，恢复系统控制", comment: "")) }
   // Cutting adapter input can make the OS report battery power. An acknowledged own cut
   // must not be mistaken for unplugging and immediately undone. Prefer raw presence when available.
   let adapterPresent = sample.physicalAdapterConnected ?? (sample.connected || sample.ownAdapterInhibited)
   guard adapterPresent else {
    if p.mode == .topUp || p.mode == .discharge { completedMode = p.mode; reportedPhase = p.sailing ? .sailing : .pause }
-   return result(.restore, String(localized:"未连接电源，恢复系统控制"))
+   return result(.restore, NSLocalizedString("未连接电源，恢复系统控制", comment: ""))
   }
   if p.mode == .paused {
-   guard p.pauseAtCurrent == true else { return result(.inhibitCharge, String(localized:"已手动暂停充电"), phase: .pause) }
-   if Int(Float(sample.percent)) >= Int(Float(limit)) { return result(.inhibitCharge, String(localized:"已按当前电量暂停充电"), phase: .pause) }
+   guard p.pauseAtCurrent == true else { return result(.inhibitCharge, NSLocalizedString("已手动暂停充电", comment: ""), phase: .pause) }
+   if Int(Float(sample.percent)) >= Int(Float(limit)) { return result(.inhibitCharge, NSLocalizedString("已按当前电量暂停充电", comment: ""), phase: .pause) }
    p.mode = .automatic; p.pauseAtCurrent = nil; previousMode = .automatic; completedMode = .paused
   }
   var target = p.mode == .topUp ? 100.0 : limit
@@ -158,7 +158,7 @@ public struct ChargeEngine: Sendable {
    targetChangePending = false
    if p.automaticDischarge && Float(sample.percent) > Float(target) && sample.percent > p.reserve {
     targetChangeHold = false
-    return result(.forceDischarge, String(localized:"上限变更：放电至目标"), target, phase: .discharging)
+    return result(.forceDischarge, NSLocalizedString("上限变更：放电至目标", comment: ""), target, phase: .discharging)
    }
   }
   if targetChangeHold && p.mode == .automatic {
@@ -166,7 +166,7 @@ public struct ChargeEngine: Sendable {
    let overTarget = Int(Float(sample.percent)) > Int(Float(target))
    if p.automaticDischarge && overTarget { targetChangeHold = false }
    else if (p.sailing && aboveLower) || Int(Float(sample.percent)) >= Int(Float(target)) {
-    return result(.inhibitCharge, String(localized:"上限变更后保持目标区间"), target, sailingHold: p.sailing, phase: p.sailing ? .sailing : .pause)
+    return result(.inhibitCharge, NSLocalizedString("上限变更后保持目标区间", comment: ""), target, sailingHold: p.sailing, phase: p.sailing ? .sailing : .pause)
    } else { targetChangeHold = false }
   }
   // A confirmed five-minute wait has its own transition order. Ordinary
@@ -174,32 +174,32 @@ public struct ChargeEngine: Sendable {
   if p.mode == .automatic && thermalTargetPaused {
    if Int(Float(sample.percent)) < Int(Float(target)) || (p.automaticDischarge && Int(Float(sample.percent)) > Int(Float(target))) {
     thermalTargetPaused = false
-   } else { return result(.inhibitCharge, String(localized:"热保护结束：保持目标暂停"), target, phase: .pause) }
+   } else { return result(.inhibitCharge, NSLocalizedString("热保护结束：保持目标暂停", comment: ""), target, phase: .pause) }
   }
   if continuingThermalWindow && p.mode == .automatic {
    if !p.heatProtection {
     heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = true
-    return result(.inhibitCharge, String(localized:"已退出热保护暂停"), target, phase: .pause)
+    return result(.inhibitCharge, NSLocalizedString("已退出热保护暂停", comment: ""), target, phase: .pause)
    }
    if Float(sample.percent) < 15 {
     heatPaused = false; nextThermalCheck = nil; sailingPaused = false
-    return result(.allowCharge, String(localized:"热保护低电量保底：恢复充电"), target, phase: .charging)
+    return result(.allowCharge, NSLocalizedString("热保护低电量保底：恢复充电", comment: ""), target, phase: .charging)
    }
    if Float(sample.percent) >= Float(target) {
     heatPaused = false; nextThermalCheck = nil; thermalTargetPaused = true
-    return result(.inhibitCharge, String(localized:"热保护结束：达到目标"), target, phase: .pause)
+    return result(.inhibitCharge, NSLocalizedString("热保护结束：达到目标", comment: ""), target, phase: .pause)
    }
    guard let temperature = sample.temperature, temperature.isFinite else {
-    return result(.inhibitCharge, String(localized:"热保护：等待可靠温度读数"), target, thermalHold: true, phase: .heatProtect)
+    return result(.inhibitCharge, NSLocalizedString("热保护：等待可靠温度读数", comment: ""), target, thermalHold: true, phase: .heatProtect)
    }
    if sample.date >= (nextThermalCheck ?? sample.date) {
     if temperature < p.maxTemperature {
      heatPaused = false; nextThermalCheck = nil; sailingPaused = false
-     return result(.allowCharge, String(localized:"热保护窗口结束：恢复充电"), target, phase: .charging)
+     return result(.allowCharge, NSLocalizedString("热保护窗口结束：恢复充电", comment: ""), target, phase: .charging)
     }
     nextThermalCheck = sample.date.addingTimeInterval(300)
    }
-   return result(.inhibitCharge, String(localized:"热保护：五分钟暂停窗口"), target, thermalHold: true, phase: .heatProtect)
+   return result(.inhibitCharge, NSLocalizedString("热保护：五分钟暂停窗口", comment: ""), target, thermalHold: true, phase: .heatProtect)
   }
   // Ordinary target decisions compare whole percentages from single-precision
   // readings. Sailing's lower boundary remains a fractional comparison.
@@ -207,7 +207,7 @@ public struct ChargeEngine: Sendable {
   let wholeTarget = Int(Float(target))
   let sailingFloor = max(Float(20), Float(target) - Float(p.sailingWidth))
   if sailingPaused && p.sailing && p.mode == .automatic && wholePercent < wholeTarget && Float(sample.percent) > sailingFloor {
-   return result(.inhibitCharge, String(localized:"航行模式：电量处于保持区间"), target, sailingHold: true, phase: .sailing)
+   return result(.inhibitCharge, NSLocalizedString("航行模式：电量处于保持区间", comment: ""), target, sailingHold: true, phase: .sailing)
   }
   let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
   let ordinaryDischargeRequested = p.mode != .calibration && (p.mode == .discharge || (p.automaticDischarge && wholePercent > wholeTarget))
@@ -220,14 +220,14 @@ public struct ChargeEngine: Sendable {
     heatPaused = false; nextThermalCheck = nil
     if wholePercent <= wholeTarget {
      if p.mode == .discharge { completedMode = .discharge }
-     return result(.inhibitCharge, String(localized:"已放电至目标"), target, phase: p.sailing ? .sailing : .pause)
+     return result(.inhibitCharge, NSLocalizedString("已放电至目标", comment: ""), target, phase: p.sailing ? .sailing : .pause)
     }
-    return result(.forceDischarge, String(localized:"主动放电至目标"), target, phase: .discharging)
+    return result(.forceDischarge, NSLocalizedString("主动放电至目标", comment: ""), target, phase: .discharging)
    }
   }
   if p.mode == .automatic && wholeTarget < 100 && !ordinaryDischargeRequested && wholePercent >= wholeTarget {
    sailingPaused = true
-   return result(.inhibitCharge, String(localized:"达到充电上限"), target, phase: p.sailing ? .sailing : .pause)
+   return result(.inhibitCharge, NSLocalizedString("达到充电上限", comment: ""), target, phase: p.sailing ? .sailing : .pause)
   }
   reportedPhase = p.mode == .calibration ? .calibration : p.mode == .topUp ? .topUp : .charging
   // Entry and emergency exit are separate boundaries. An existing five-minute
@@ -235,7 +235,7 @@ public struct ChargeEngine: Sendable {
   let thermalPercentEligible = sample.percent > 20 || (continuingThermalWindow && p.mode != .calibration && Float(sample.percent) >= 15)
   let thermalActive = p.heatProtection && thermalPercentEligible && (p.mode != .calibration || p.protectDuringCalibration == true) && (p.mode != .topUp || p.topUpThermalProtection)
   if thermalActive {
-   guard let t = sample.temperature, t.isFinite else { return result(.inhibitCharge, String(localized:"温度不可用，等待可靠读数"), target) }
+   guard let t = sample.temperature, t.isFinite else { return result(.inhibitCharge, NSLocalizedString("温度不可用，等待可靠读数", comment: ""), target) }
    switch thermal {
    case .degreeHysteresis:
     if t >= p.maxTemperature { heatPaused = true }
@@ -245,44 +245,44 @@ public struct ChargeEngine: Sendable {
      if sample.date >= check { heatPaused = t >= p.maxTemperature; nextThermalCheck = sample.date.addingTimeInterval(300) }
     } else if t >= p.maxTemperature { heatPaused = true; nextThermalCheck = sample.date.addingTimeInterval(300) }
    }
-   if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? String(localized:"热保护：等待降温至阈值以下 2°C") : String(localized:"热保护：五分钟暂停窗口"), target, thermalHold: true, phase: p.mode == .calibration ? .calibration : .heatProtect) }
+   if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? NSLocalizedString("热保护：等待降温至阈值以下 2°C", comment: "") : NSLocalizedString("热保护：五分钟暂停窗口", comment: ""), target, thermalHold: true, phase: p.mode == .calibration ? .calibration : .heatProtect) }
   } else { heatPaused = false; nextThermalCheck = nil }
   if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || ordinaryDischargeRequested) {
    if p.mode == .calibration { calibration = .refilling }
    if p.mode == .discharge { completedMode = .discharge }
    let charge = wholePercent < wholeTarget || p.mode == .calibration
-   return result(charge ? .allowCharge : .inhibitCharge, charge ? String(localized:"低电量保底：停止放电并充电") : String(localized:"低电量保底：停止主动放电"), target, phase: p.mode == .calibration ? .calibration : charge ? .charging : p.sailing ? .sailing : .pause)
+   return result(charge ? .allowCharge : .inhibitCharge, charge ? NSLocalizedString("低电量保底：停止放电并充电", comment: "") : NSLocalizedString("低电量保底：停止主动放电", comment: ""), target, phase: p.mode == .calibration ? .calibration : charge ? .charging : p.sailing ? .sailing : .pause)
   }
   if p.mode == .calibration {
    if calibration == .idle { calibration = .filling }
    switch calibration {
    case .filling:
     if sample.percent >= 100 { calibration = .draining }
-    return result(.allowCharge, String(localized:"校准：充至满电"), 100)
+    return result(.allowCharge, NSLocalizedString("校准：充至满电", comment: ""), 100)
    case .holding:
     if sample.date.timeIntervalSince(holdingSince ?? sample.date) >= 3600 { calibration = .returning }
-    return result(.allowCharge, String(localized:"校准：满电保持一小时"), 100)
+    return result(.allowCharge, NSLocalizedString("校准：满电保持一小时", comment: ""), 100)
    case .draining:
-    return result(.forceDischarge, String(localized:"校准：放电至 10%"), 10)
+    return result(.forceDischarge, NSLocalizedString("校准：放电至 10%", comment: ""), 10)
    case .refilling:
     if sample.percent >= 100 { calibration = .holding; holdingSince = sample.date }
-    return result(.allowCharge, String(localized:"校准：重新充满电"), 100)
+    return result(.allowCharge, NSLocalizedString("校准：重新充满电", comment: ""), 100)
    case .returning:
-    if sample.percent <= limit { calibration = .complete; return result(.inhibitCharge, String(localized:"校准完成"), phase: p.sailing ? .sailing : .pause) }
-    return result(.forceDischarge, String(localized:"校准：恢复日常上限"))
+    if sample.percent <= limit { calibration = .complete; return result(.inhibitCharge, NSLocalizedString("校准完成", comment: ""), phase: p.sailing ? .sailing : .pause) }
+    return result(.forceDischarge, NSLocalizedString("校准：恢复日常上限", comment: ""))
    case .complete:
-    return result(sample.percent < limit ? .allowCharge : .inhibitCharge, String(localized:"校准完成，日常上限控制"), phase: sample.percent < limit ? .charging : p.sailing ? .sailing : .pause)
+    return result(sample.percent < limit ? .allowCharge : .inhibitCharge, NSLocalizedString("校准完成，日常上限控制", comment: ""), phase: sample.percent < limit ? .charging : p.sailing ? .sailing : .pause)
    case .idle: break
    }
   }
   if (p.mode == .automatic || p.mode == .topUp) && wholeTarget == 100 && wholePercent == 100 {
    sailingPaused = false
-   return result(.allowCharge, String(localized:"满电保持：由系统管理补电"), target, fullChargeHold: true, phase: p.mode == .topUp ? .topUp : .charging)
+   return result(.allowCharge, NSLocalizedString("满电保持：由系统管理补电", comment: ""), target, fullChargeHold: true, phase: p.mode == .topUp ? .topUp : .charging)
   }
   let reachedTarget = p.mode == .automatic || p.mode == .discharge ? wholePercent >= wholeTarget : sample.percent >= target
-  if reachedTarget { sailingPaused = true; return result(.inhibitCharge, String(localized:"达到充电上限"), target, phase: p.sailing ? .sailing : .pause) }
+  if reachedTarget { sailingPaused = true; return result(.inhibitCharge, NSLocalizedString("达到充电上限", comment: ""), target, phase: p.sailing ? .sailing : .pause) }
   sailingPaused = false
-  return result(.allowCharge, target != limit ? String(localized:"临时目标充电") : String(localized:"低于目标，允许充电"), target, phase: p.mode == .topUp ? .topUp : .charging)
+  return result(.allowCharge, target != limit ? NSLocalizedString("临时目标充电", comment: "") : NSLocalizedString("低于目标，允许充电", comment: ""), target, phase: p.mode == .topUp ? .topUp : .charging)
  }
 }
 
@@ -408,14 +408,14 @@ public struct Configuration: Codable {
 }
 
 public extension ScheduleAction {
- var displayName: String { switch self { case .limit: return String(localized:"设置充电上限"); case .topUp: return String(localized:"充至满电"); case .pause: return String(localized:"暂停充电"); case .discharge: return String(localized:"放电至目标"); case .calibrate: return String(localized:"校准电池"); case .automatic: return String(localized:"恢复自动模式"); case .lowPowerOn: return String(localized:"开启低电量模式"); case .lowPowerOff: return String(localized:"关闭低电量模式") } }
+ var displayName: String { switch self { case .limit: return NSLocalizedString("设置充电上限", comment: ""); case .topUp: return NSLocalizedString("充至满电", comment: ""); case .pause: return NSLocalizedString("暂停充电", comment: ""); case .discharge: return NSLocalizedString("放电至目标", comment: ""); case .calibrate: return NSLocalizedString("校准电池", comment: ""); case .automatic: return NSLocalizedString("恢复自动模式", comment: ""); case .lowPowerOn: return NSLocalizedString("开启低电量模式", comment: ""); case .lowPowerOff: return NSLocalizedString("关闭低电量模式", comment: "") } }
 }
 public extension RepeatRule {
- var displayName: String { switch self { case .once: return String(localized:"不重复"); case .daily: return String(localized:"每天"); case .weekdays: return String(localized:"工作日"); case .weekly: return String(localized:"每周"); case .biweekly: return String(localized:"每两周"); case .monthly: return String(localized:"每月"); case .yearly: return String(localized:"每年") } }
+ var displayName: String { switch self { case .once: return NSLocalizedString("不重复", comment: ""); case .daily: return NSLocalizedString("每天", comment: ""); case .weekdays: return NSLocalizedString("工作日", comment: ""); case .weekly: return NSLocalizedString("每周", comment: ""); case .biweekly: return NSLocalizedString("每两周", comment: ""); case .monthly: return NSLocalizedString("每月", comment: ""); case .yearly: return NSLocalizedString("每年", comment: "") } }
 }
 public extension CalibrationStage {
- var displayName: String { switch self { case .idle: return String(localized:"未启动"); case .filling: return String(localized:"首次充满"); case .draining: return String(localized:"放电至10%"); case .refilling: return String(localized:"再次充满"); case .holding: return String(localized:"保持满电一小时"); case .returning: return String(localized:"恢复日常电量"); case .complete: return String(localized:"已完成") } }
+ var displayName: String { switch self { case .idle: return NSLocalizedString("未启动", comment: ""); case .filling: return NSLocalizedString("首次充满", comment: ""); case .draining: return NSLocalizedString("放电至10%", comment: ""); case .refilling: return NSLocalizedString("再次充满", comment: ""); case .holding: return NSLocalizedString("保持满电一小时", comment: ""); case .returning: return NSLocalizedString("恢复日常电量", comment: ""); case .complete: return NSLocalizedString("已完成", comment: "") } }
 }
 public extension ChargeAction {
- var displayName: String { switch self { case .allowCharge: return String(localized:"允许充电"); case .inhibitCharge: return String(localized:"暂停充电"); case .forceDischarge: return String(localized:"主动放电"); case .restore: return String(localized:"恢复系统控制") } }
+ var displayName: String { switch self { case .allowCharge: return NSLocalizedString("允许充电", comment: ""); case .inhibitCharge: return NSLocalizedString("暂停充电", comment: ""); case .forceDischarge: return NSLocalizedString("主动放电", comment: ""); case .restore: return NSLocalizedString("恢复系统控制", comment: "") } }
 }

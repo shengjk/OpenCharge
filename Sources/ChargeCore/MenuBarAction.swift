@@ -5,10 +5,10 @@ public enum MenuBarRightClickAction: String, CaseIterable, Codable, Identifiable
  public var id: Self { self }
  public var title: String {
   switch self {
-  case .toggleCharging: return String(localized:"切换充电开始／暂停")
-  case .toggleLowPower: return String(localized:"切换低电量模式")
-  case .popover: return String(localized:"显示菜单栏弹窗")
-  case .settings: return String(localized:"打开设置")
+  case .toggleCharging: return NSLocalizedString("切换充电开始／暂停", comment: "")
+  case .toggleLowPower: return NSLocalizedString("切换低电量模式", comment: "")
+  case .popover: return NSLocalizedString("显示菜单栏弹窗", comment: "")
+  case .settings: return NSLocalizedString("打开设置", comment: "")
   }
  }
  public static func stored(_ value: String?) -> Self { value.flatMap(Self.init(rawValue:)) ?? .popover }
@@ -16,7 +16,7 @@ public enum MenuBarRightClickAction: String, CaseIterable, Codable, Identifiable
 public enum MenuBarChargeToggleResult: Equatable, Sendable { case pausedAtCurrent(Double), chargingToFull }
 public enum MenuBarChargeToggleError: LocalizedError {
  case unavailablePercentage
- public var errorDescription: String? { String(localized:"无法读取有效电池百分比，未更改充电策略") }
+ public var errorDescription: String? { NSLocalizedString("无法读取有效电池百分比，未更改充电策略", comment: "") }
 }
 public enum MenuBarChargeToggleRequest {
  public static func apply(phase: PolicyPhase, percent: Double, policy: inout ChargePolicy) throws -> MenuBarChargeToggleResult {

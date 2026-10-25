@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove macOS 12-only localization and default IOKit port references from shared policy/hardware paths. Preserve translation keys and HTTP formatting, and add dual-architecture macOS 11 availability compilation. The packaged app still requires macOS 13 pending UI, automation and registration compatibility work.
+
 - Restrict direct CLI charge actions to the four public verbs. Reject internal lifecycle commands and ordinary direct control on selected numeric firmware models before helper IPC; preserve model-independent recovery and app-owned numeric policy control.
 
 - Include MacBookPro13,1–13,3 and MacBookPro14,1–14,3 in numeric firmware protocol selection. Reuse the fixed transaction, inflow ownership and sleep/exit paths; retain byte-format, internal-battery and service compatibility checks. This does not extend the app deployment target to older macOS versions.

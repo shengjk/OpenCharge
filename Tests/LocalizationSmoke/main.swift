@@ -55,6 +55,11 @@ import ChargeHardware
   precondition(decoded.mode == policy.mode && decoded.limit == policy.limit && decoded.stopInSleep == policy.stopInSleep)
   let error = ChargeControlSuspension.systemSleep
   precondition(error.localizedDescription == translated("系统睡眠或控制阶段已变化，稍后重新确认"))
+  let httpError = ReleaseUpdateError.http(503).localizedDescription
+  precondition(httpError == expected("GitHub returned HTTP 503", "GitHub 返回 HTTP 503", "GitHub 返回 HTTP 503"), "HTTP format argument changed: \(httpError)")
+  for status in [403, 429] {
+   precondition(ReleaseUpdateError.http(status).localizedDescription == translated("GitHub 请求受限，请稍后重试"))
+  }
   print("POLICY_BASE64 " + encoded.base64EncodedString())
   print("PASS native bundle language \(language): domain labels, policy reason, error, interpolation, literal percent and stable persisted identifiers; no hardware or app UI executed")
  }

@@ -56,7 +56,7 @@ public final class SMCController {
         // Ordinary charge profiles require an internal battery and recognized key layout.
         // Numeric firmware probing additionally requires an explicitly selected model.
         internalBattery = (try? BatteryReader.read()) != nil
-        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
+        let service = IOServiceGetMatchingService(RegistryPort.defaultValue, IOServiceMatching("AppleSMC"))
         guard service != 0 else { throw HardwareError.unavailable("AppleSMC") }
         defer { IOObjectRelease(service) }
         let result = IOServiceOpen(service, mach_task_self_, 0, &connection)

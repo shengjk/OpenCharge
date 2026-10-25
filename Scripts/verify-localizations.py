@@ -44,6 +44,20 @@ for key,value in phrases['en'].items():
   assert key.count('${applicationName}')==phrases[language][key].count('${applicationName}')==1
  assert phrases['zh-Hans'][key]==key and not re.search('[\u4e00-\u9fff]',value)
 extracted=set()
+# Swift's localization emitter does not report these legacy Foundation calls.
+# Accept only literal keys in the fixed call form; never evaluate Swift code or
+# silently skip a dynamic lookup when validating the full translation tables.
+foundation_keys=set()
+literal_lookup=re.compile(r'\bNSLocalizedString\s*\(\s*("(?:[^"\\]|\\.)*")\s*,\s*comment:\s*""\s*\)')
+for path in (root/'Sources').rglob('*.swift'):
+ text=path.read_text()
+ matches=list(literal_lookup.finditer(text))
+ assert len(matches)==len(re.findall(r'\bNSLocalizedString\s*\(',text)),'Unvalidated Foundation lookup: '+str(path)
+ for match in matches:
+  key=json.loads(match.group(1))
+  assert '\\(' not in key,'Interpolated Foundation key: '+str(path)
+  if re.search('[\u4e00-\u9fff]',key):foundation_keys.add(key)
+assert not foundation_keys-set(english),'Missing Foundation translations: '+repr(sorted(foundation_keys-set(english)))
 for folder in sys.argv[1:]:
  for path in Path(folder).glob('*.stringsdata'):
   data=json.loads(path.read_text())
@@ -53,4 +67,5 @@ for folder in sys.argv[1:]:
 if sys.argv[1:]:
  assert extracted,'Compiler extraction produced no Chinese source keys'
  assert not extracted-set(english),'Missing translations: '+repr(sorted(extracted-set(english)))
-print('PASS native localization tables:',len(english),'keys in three languages, matching Chinese source and format placeholders;',len(extracted),'compiler-extracted keys covered')
+ assert not set(english)-(extracted|foundation_keys),'Translation keys lack source coverage: '+repr(sorted(set(english)-(extracted|foundation_keys)))
+print('PASS native localization tables:',len(english),'keys in three languages, matching Chinese source and format placeholders;',len(extracted),'compiler-extracted and',len(foundation_keys),'literal Foundation keys covered')

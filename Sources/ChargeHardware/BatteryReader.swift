@@ -2,10 +2,19 @@ import Foundation
 import IOKit
 import IOKit.ps
 
+/// The default IOKit port was renamed in macOS 12. Keep the SDK's legacy
+/// constant on older systems; both branches request the same default port.
+enum RegistryPort {
+    static var defaultValue: mach_port_t {
+        if #available(macOS 12.0, *) { return kIOMainPortDefault }
+        else { return kIOMasterPortDefault }
+    }
+}
+
 public enum BatteryTemperatureSource: String, Codable, Sendable {
     case smc = "smc.TB0T"
     case registry = "ioregistry.Temperature"
-    public var displayName: String { self == .smc ? "SMC TB0T" : String(localized:"系统电池传感器") }
+    public var displayName: String { self == .smc ? "SMC TB0T" : NSLocalizedString("系统电池传感器", comment: "") }
 }
 
 public struct BatteryReading: Codable, Sendable {
@@ -203,7 +212,7 @@ public enum BatteryReader {
 }
 
 func registryProperties(_ className: String) throws -> [String: Any] {
-    let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(className))
+    let service = IOServiceGetMatchingService(RegistryPort.defaultValue, IOServiceMatching(className))
     guard service != 0 else { throw HardwareError.unavailable(className) }
     defer { IOObjectRelease(service) }
     var properties: Unmanaged<CFMutableDictionary>?

@@ -7,9 +7,9 @@ public enum ScreenLockClient {
  private typealias Lock = @convention(c) () -> Void
  private static let path = "/System/Library/PrivateFrameworks/login.framework/Versions/Current/login"
  private static func withEntry<T>(_ body: (Lock) throws -> T) throws -> T {
-  guard let library = dlopen(path, RTLD_NOW | RTLD_LOCAL) else { throw HardwareError.unavailable(String(localized:"锁屏接口不可用")) }
+  guard let library = dlopen(path, RTLD_NOW | RTLD_LOCAL) else { throw HardwareError.unavailable(NSLocalizedString("锁屏接口不可用", comment: "")) }
   defer { dlclose(library) }
-  guard let symbol = dlsym(library, "SACLockScreenImmediate") else { throw HardwareError.unavailable(String(localized:"锁屏入口不可用")) }
+  guard let symbol = dlsym(library, "SACLockScreenImmediate") else { throw HardwareError.unavailable(NSLocalizedString("锁屏入口不可用", comment: "")) }
   return try body(unsafeBitCast(symbol, to: Lock.self))
  }
  public static func inspect() throws { try withEntry { _ in } }
@@ -21,7 +21,7 @@ public enum ScreenLockClient {
   return uid.uint32Value == getuid()
  }
  public static func requestLock() throws {
-  guard consoleSessionActive else { throw HardwareError.unavailable(String(localized:"当前用户不是前台登录会话")) }
+  guard consoleSessionActive else { throw HardwareError.unavailable(NSLocalizedString("当前用户不是前台登录会话", comment: "")) }
   try withEntry { lock in lock() }
  }
 }

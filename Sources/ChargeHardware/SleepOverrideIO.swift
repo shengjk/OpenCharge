@@ -21,7 +21,7 @@ public final class SleepOverrideIO {
   SleepOverrideTransport(captureGlobal: { try self.captureGlobal() }, readGlobal: { try self.readGlobal() }, setGlobal: { try self.setGlobal($0) }, setLid: { try self.setLid($0) }, setDisplay: { try self.setDisplay($0) })
  }
  private func root() throws -> io_registry_entry_t {
-  let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+  let service = IOServiceGetMatchingService(RegistryPort.defaultValue, IOServiceMatching("IOPMrootDomain"))
   guard service != 0 else { throw SleepOverrideError.unavailable("power root domain") }; return service
  }
  private func readGlobal() throws -> Bool {

@@ -4,18 +4,18 @@ public enum DashboardWidget: String, Codable, CaseIterable, Identifiable {
  case battery, metrics, profiles, powerFlow, specifications, adapter, energyApps, trend
  public var id: Self { self }
  public var title: String { switch self {
- case .battery: return String(localized:"当前电量"); case .metrics: return String(localized:"温度、功率与循环"); case .profiles: return String(localized:"快速配置")
- case .powerFlow: return String(localized:"能量流向"); case .specifications: return String(localized:"电池规格"); case .adapter: return String(localized:"适配器与功耗")
- case .energyApps: return String(localized:"高耗能应用"); case .trend: return String(localized:"最近趋势")
+ case .battery: return NSLocalizedString("当前电量", comment: ""); case .metrics: return NSLocalizedString("温度、功率与循环", comment: ""); case .profiles: return NSLocalizedString("快速配置", comment: "")
+ case .powerFlow: return NSLocalizedString("能量流向", comment: ""); case .specifications: return NSLocalizedString("电池规格", comment: ""); case .adapter: return NSLocalizedString("适配器与功耗", comment: "")
+ case .energyApps: return NSLocalizedString("高耗能应用", comment: ""); case .trend: return NSLocalizedString("最近趋势", comment: "")
  } }
 }
 public enum DashboardSpecification: String, Codable, CaseIterable, Identifiable {
  case hardwarePercent, health, condition, fullCapacity, designCapacity, timeToFull, timeToEmpty, voltage, current
  public var id: Self { self }
  public var title: String { switch self {
- case .hardwarePercent: return String(localized:"硬件电量"); case .health: return String(localized:"容量健康比例"); case .condition: return String(localized:"电池状况")
- case .fullCapacity: return String(localized:"满充容量"); case .designCapacity: return String(localized:"设计容量"); case .timeToFull: return String(localized:"系统预计充满")
- case .timeToEmpty: return String(localized:"系统预计续航"); case .voltage: return String(localized:"电池电压"); case .current: return String(localized:"电池电流")
+ case .hardwarePercent: return NSLocalizedString("硬件电量", comment: ""); case .health: return NSLocalizedString("容量健康比例", comment: ""); case .condition: return NSLocalizedString("电池状况", comment: "")
+ case .fullCapacity: return NSLocalizedString("满充容量", comment: ""); case .designCapacity: return NSLocalizedString("设计容量", comment: ""); case .timeToFull: return NSLocalizedString("系统预计充满", comment: "")
+ case .timeToEmpty: return NSLocalizedString("系统预计续航", comment: ""); case .voltage: return NSLocalizedString("电池电压", comment: ""); case .current: return NSLocalizedString("电池电流", comment: "")
  } }
 }
 public struct DashboardLayout: Equatable, Codable {

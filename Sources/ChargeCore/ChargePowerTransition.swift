@@ -5,7 +5,7 @@ import Foundation
 public enum ChargeControlSuspension: Error, LocalizedError, Equatable {
  case systemSleep
  public static let reply = "SUSPENDED sleep-transition"
- public var errorDescription: String? { String(localized:"系统睡眠或控制阶段已变化，稍后重新确认") }
+ public var errorDescription: String? { NSLocalizedString("系统睡眠或控制阶段已变化，稍后重新确认", comment: "") }
 }
 
 /// Serialized with charge actions on the helper's main queue. Sleep preparation
