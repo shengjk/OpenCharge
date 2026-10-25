@@ -21,6 +21,8 @@ OpenCharge CLI
                             LED changes expire after 45 awake seconds without renewal
   capabilities              Query the installed root helper
   hardware ACTION --confirm Direct bounded helper action (45s heartbeat lease)
+                            allowCharge|inhibitCharge|forceDischarge|restore
+                            Numeric firmware models use app-owned control; restore remains available
   restore                   Restore system charging using helper
   export                    Print local history as JSON
   help
@@ -62,7 +64,14 @@ do {
   }
  case "diagnose-smc": try output(SMCController().capabilities())
  case "capabilities": print(try HelperClient.request("capabilities"))
- case "hardware": guard args.count == 3, args[2] == "--confirm", HardwareAction(rawValue: args[1]) != nil else { throw HelperError.rejected("hardware allowCharge|inhibitCharge|forceDischarge|restore --confirm") }; print(try HelperClient.request(args[1]))
+ case "hardware":
+  print(try DirectChargeCommand.run(arguments: Array(args.dropFirst()), numericRequired: {
+   #if arch(x86_64)
+   return SMCFirmwareProbe.eligible(model:try HardwareIdentity.model(),architecture:"x86_64",internalBattery:true)
+   #else
+   return false
+   #endif
+  }, request: HelperClient.request))
  case "restore": print(try HelperClient.request("restore"))
  case "export": let url = Configuration.directory.appendingPathComponent("history.json"); print(String(decoding: try Data(contentsOf: url), as: UTF8.self))
  case "help", "--help", "-h": usage()

@@ -39,5 +39,13 @@ assert result.returncode!=0 and '--confirm' in result.stderr
 for arguments in (['magsafe','green'], ['magsafe','orange-blinking'], ['magsafe','blue','--confirm'], ['magsafe','restore']):
  result=subprocess.run([executable]+arguments,capture_output=True,text=True)
  assert result.returncode!=0 and 'requires' in result.stderr
-print('CLI isolated configuration checks passed; no hardware commands executed')
+before_hardware=(root/'configuration.json').read_bytes()
+for arguments in (['hardware'], ['hardware','allowCharge'], ['hardware','restore'],
+                  ['hardware','retainChargeInhibit','--confirm'], ['hardware','firmwareAllow','--confirm'],
+                  ['hardware','sleepPolicyOn','--confirm'], ['hardware','unknown','--confirm'],
+                  ['hardware','allowCharge','--confirm','extra']):
+ result=subprocess.run([executable]+arguments,capture_output=True,text=True)
+ assert result.returncode!=0 and 'hardware allowCharge|inhibitCharge|forceDischarge|restore --confirm' in result.stderr
+ assert (root/'configuration.json').read_bytes()==before_hardware, 'rejected hardware request rewrote settings'
+print('CLI isolated configuration and rejected hardware checks passed; no hardware commands executed')
 PY

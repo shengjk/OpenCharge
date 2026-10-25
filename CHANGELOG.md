@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Restrict direct CLI charge actions to the four public verbs. Reject internal lifecycle commands and ordinary direct control on selected numeric firmware models before helper IPC; preserve model-independent recovery and app-owned numeric policy control.
+
 - Include MacBookPro13,1–13,3 and MacBookPro14,1–14,3 in numeric firmware protocol selection. Reuse the fixed transaction, inflow ownership and sleep/exit paths; retain byte-format, internal-battery and service compatibility checks. This does not extend the app deployment target to older macOS versions.
 
 - Add platform-specific ordinary charge planning for known Apple silicon families. Select legacy CH0C by presence, distinguish pause/discharge/retained values, preserve allowance reset order, and recover owned CH0C=1 states. Keep generic Intel and modern fixed-key validation separate.

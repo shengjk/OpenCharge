@@ -71,3 +71,9 @@ defaults delete org.opencharge.app settingsLock
 Preference observation updates the UI; policy refresh also re-reads it, and protected setters always re-read before writing. The app never saves the lock into the portable configuration backup or clears it on import. Managed-profile deployment still needs its own environment validation.
 
 This is a restriction on selected interactive charge settings. Temporary Top Up, explicit mode selection, calibration continuation/cancellation, Low Power Mode, MagSafe, appearance and read-only inspection keep their existing paths. Schedules, CLI, URLs, Shortcuts, checkpoints and recovery also retain their contracts; this preference does not replace macOS authorization or provide a system-wide security boundary.
+
+## Direct charge commands
+
+`hardware ACTION --confirm` accepts only `allowCharge`, `inhibitCharge`, `forceDischarge` and `restore`. These are bounded one-shot helper requests, not a continuous charging policy. Internal exit and sleep commands are not public CLI actions.
+
+For selected Intel models requiring numeric firmware control, direct allow/inhibit/discharge is refused before contacting the helper. Configure `mode` and `limit`, then explicitly enable control in the app with a compatible helper; the app maintains the numeric session and sleep target. Model inspection errors also prevent a direct action. `hardware restore --confirm` and the separate `restore` command remain available without model discovery so recovery does not depend on successful inspection.

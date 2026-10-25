@@ -309,3 +309,7 @@ Raw-frame fixtures exercise all seventeen selected numeric models, including Mac
 ### Development Apple silicon ordinary profiles
 
 Injected-byte and journal checks select 29 known model identifiers under arm64 and x86_64 processes, preserve generic selection for other families, and exercise CH0C precedence over coexisting CHTE. They cover the distinct CH0C values for inhibition, discharge and retained inhibition, allowance reset order, CH0C-only layouts, unchanged unused keys, missing or invalid input controls, malformed/read-error refusal without fallback, repeated no-op requests and battery/permission guards. Recovery checks include interrupted generic journals, CH0C=1 crash records, generic-helper refusal without erasing a new record, failed rollback with retry, and partial write cleanup. No AppleSMC connection, helper request or OS assertion is used by these fixtures.
+
+## Direct CLI charge boundary
+
+Five core regression methods inject model-selection and request callbacks to check invalid/internal/unconfirmed actions, refusal of ordinary commands on numeric firmware models, model-inspection failure, exact ordinary request/reply forwarding and transport failure, and restore without model discovery. The CLI configuration script also invokes malformed/internal hardware requests and checks that they fail with the usage error while preserving configuration. No accepted live hardware action is invoked by these checks; physical control and authenticated IPC require separate validation.
