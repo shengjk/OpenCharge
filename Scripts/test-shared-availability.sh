@@ -36,11 +36,14 @@ for TEST_ARCH in arm64 x86_64; do
   Sources/OpenCharge/HelperService.swift -o "$BUILD_DIR/$TEST_ARCH/ServiceRegistration.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -emit-module -module-name PresentationCompatibility \
   -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
-  Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/Components.swift \
+  Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/SelectableStatusText.swift Sources/OpenCharge/Components.swift \
   Sources/OpenCharge/PowerFlowConnections.swift Sources/OpenCharge/PowerFlowArrows.swift Sources/OpenCharge/PowerFlowView.swift \
   Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift \
   Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
   -o "$BUILD_DIR/$TEST_ARCH/PresentationCompatibility.swiftmodule"
+ swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -emit-module -module-name FullAppAvailability \
+  -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" Sources/OpenCharge/*.swift \
+  -o "$BUILD_DIR/$TEST_ARCH/FullAppAvailability.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name StartupCompatibility \
   Sources/OpenCharge/LoginStartup.swift -o "$BUILD_DIR/$TEST_ARCH/StartupCompatibility.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
@@ -60,10 +63,10 @@ print('PASS macOS 11 deployment and weak App Intents load command')
 VERIFY
  OPENCHARGE_ICON_PREVIEW_DIR="" /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/automation-check"
  swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
-  Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/PowerFlowConnections.swift \
+  Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/SelectableStatusText.swift Sources/OpenCharge/PowerFlowConnections.swift \
   Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift \
   Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
-  Tests/DashboardSmoke/PowerFlowConnectionChecks.swift Tests/DashboardSmoke/TrendPlotChecks.swift Tests/PresentationAvailability/main.swift \
+  Tests/DashboardSmoke/PowerFlowConnectionChecks.swift Tests/DashboardSmoke/TrendPlotChecks.swift Tests/DashboardSmoke/SelectableTextChecks.swift Tests/PresentationAvailability/main.swift \
   "$BUILD_DIR/$TEST_ARCH/libChargeCore.a" "$BUILD_DIR/$TEST_ARCH/libChargeHardware.a" \
   "$BUILD_DIR/$TEST_ARCH/ApplePowerConstants.o" -framework IOKit \
   -Xlinker -weak_framework -Xlinker Charts -o "$BUILD_DIR/$TEST_ARCH/presentation-check"
@@ -76,5 +79,5 @@ assert len(frameworks)==1 and 'LC_LOAD_WEAK_DYLIB' in frameworks[0],'Charts must
 print('PASS macOS 11 presentation binary and weak Charts load command')
 VERIFY_CHART
  /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/presentation-check"
- echo "PASS macOS 11 API availability: shared modules, update transport and guarded automation ($TEST_ARCH); fixture runs on current OS only"
+ echo "PASS macOS 11 API availability: complete app sources, shared modules, update transport and guarded automation ($TEST_ARCH); fixture runs on current OS only"
 done

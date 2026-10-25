@@ -95,7 +95,7 @@ struct UpdateView: View {
    Toggle(NSLocalizedString("自动检查更新（每 12 小时）", comment: ""), isOn: $updates.automaticChecks)
    Toggle(NSLocalizedString("包含开发预览版本", comment: ""), isOn: $updates.includePreviews).disabled(updates.busy)
    Text(NSLocalizedString("更新检查会连接 GitHub，不发送电池读数或本机标识。自动检查默认关闭；发现更新时提示，下载需由你明确选择。", comment: "")).font(.caption).presentationSecondary()
-   Text(updates.status).font(.callout).textSelection(.enabled)
+   SelectableStatusText(text: updates.status)
    if let date = updates.checkedAt { Text(String.localizedStringWithFormat(NSLocalizedString("上次成功检查于 %@", comment: ""), DateDisplay.string(date, style:.abbreviated))).font(.caption).presentationSecondary() }
    if let candidate = updates.candidate { Text(String.localizedStringWithFormat(NSLocalizedString("可用版本 %@ · %@ · %@", comment: ""), candidate.version, candidate.filename, ByteCountFormatter.string(fromByteCount: Int64(candidate.size), countStyle: .file))).font(.caption).presentationSecondary() }
    if let progress = updates.progress { ProgressView(value: progress) }

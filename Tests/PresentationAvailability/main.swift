@@ -1,7 +1,8 @@
 import Foundation
 
 @main struct PresentationAvailability {
- static func main() {
+ @MainActor static func main() {
+  selectableTextChecks()
   trendPlotChecks()
   powerFlowConnectionChecks()
  }

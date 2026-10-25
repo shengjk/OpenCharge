@@ -71,7 +71,7 @@ private struct QuitView: View {
  var body: some View {
   VStack(alignment: .leading, spacing: 16) {
    Text(NSLocalizedString("正在退出 OpenCharge", comment: "")).font(.headline)
-   Text(flow.message).font(.callout).textSelection(.enabled)
+   SelectableStatusText(text: flow.message)
    if flow.phase == .preparing || flow.phase == .waiting { ProgressView().controlSize(.small) }
    Text(NSLocalizedString("取消退出后会保留应用并进入监测模式，需要你明确重新启用充电控制。尚未确认恢复时仍然退出，可能导致显示短暂黑屏；服务恢复仍可能等待心跳超时。", comment: "")).font(.caption).presentationSecondary()
    HStack {
