@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Include MacBookPro15,1–15,4 and MacBookPro16,1–16,4 in fixed numeric firmware selection. Retain architecture, internal-battery, typed-key, service-protocol and recovery requirements; physical effects remain unverified.
+
 - Add Traditional Chinese app and App Shortcut translations, including native Taiwan/Hong Kong selection checks. Preserve source keys, interpolation formats and encoded charge policy.
 
 - Add native English and Simplified Chinese app localization: 524 interface/status entries, five App Shortcut phrases, plural rules and system language fallback. Keep persisted enum values and control protocols unchanged. Validate compiler extraction and native bundle lookup during development checks.

@@ -1,11 +1,13 @@
 import Foundation
 
-/// A bounded initial selection, not a claim that all other Intel models lack support.
+/// A bounded numeric firmware selection, not a claim that all Intel models share this protocol.
 /// Exact model selection and typed runtime values are both required.
 public enum SMCFirmwareProbe {
  public static func eligible(model: String, architecture: String, internalBattery: Bool) -> Bool {
   architecture == "x86_64" && internalBattery &&
-   ["MacBookAir8,1", "MacBookAir8,2", "MacBookAir9,1"].contains(model)
+   ["MacBookAir8,1", "MacBookAir8,2", "MacBookAir9,1",
+    "MacBookPro15,1", "MacBookPro15,2", "MacBookPro15,3", "MacBookPro15,4",
+    "MacBookPro16,1", "MacBookPro16,2", "MacBookPro16,3", "MacBookPro16,4"].contains(model)
  }
  static func inspect(model: String, architecture: String, internalBattery: Bool,
                      read: @escaping (String) throws -> SMCByteReading?) throws -> FirmwareChargeStatus {

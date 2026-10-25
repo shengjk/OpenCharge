@@ -300,3 +300,8 @@ Three additional canonical methods (253 total) check that ordinary opt-out relea
 ### Development app localization
 
 The full check includes 524 compiler-extracted Chinese keys with complete English/Simplified Chinese/Traditional Chinese resource coverage, exact printf-placeholder parity, two English plural rules, and five separately localized App Shortcut phrases with intact named tokens. A private native bundle runs the production page/menu/domain labels and policy engine under English, Simplified Chinese, Traditional Chinese, Taiwan/Hong Kong language selections and an unsupported-language fallback. It checks interpolation, literal percent signs, plural forms, localized errors and identical encoded charge policy. Stored page, policy-mode and phase values remain unchanged. No GUI, runtime model, intent, root helper or actuator is launched. Visual English layout and live Shortcuts/Siri localization remain unverified.
+
+
+### Development numeric model selection
+
+Raw-frame fixtures exercise all eleven selected numeric models, including MacBookPro15,1–15,4 and MacBookPro16,1–16,4. Each accepted model reads the same fixed CH0B/BCLM status without writes. Each is rejected before any transport call for an arm64/unknown process architecture or an absent internal battery. Mistyped/neighboring identifiers and Apple Silicon models remain rejected. Invalid CH0B or BCLM metadata is refused independently for each accepted model; model identity never bypasses typed-key checks. These injected checks do not establish physical charging, sleep or recovery on those notebooks.
