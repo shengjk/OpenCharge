@@ -11,14 +11,15 @@ def table(language):
  value=json.loads(output)
  assert isinstance(value,dict) and all(isinstance(k,str) and isinstance(v,str) and v for k,v in value.items())
  return value
-english=table('en');chinese=table('zh-Hans')
-assert set(english)==set(chinese),'Translation tables have different keys'
+english=table('en');chinese=table('zh-Hans');traditional=table('zh-Hant')
+assert set(english)==set(chinese)==set(traditional),'Translation tables have different keys'
 # Only conversions emitted by these source strings; an ordinary percent followed
 # by English prose is not a printf conversion (for example, "100% target").
 formats=re.compile(r'%(?:\d+\$)?(?:\.\d+)?(?:lld|ld|lf|u|d|f|@|%)')
 for key,value in english.items():
  assert chinese[key]==key,'Chinese source text changed: '+key
- assert formats.findall(key)==formats.findall(value),'Format mismatch: '+key
+ for language,translation in [('en',value),('zh-Hant',traditional[key])]:
+  assert formats.findall(key)==formats.findall(translation),'Format mismatch in '+language+': '+key
  assert not re.search('[\u4e00-\u9fff]',value),'Untranslated English value: '+key
 plural=plistlib.loads((resources/'en.lproj/Localizable.stringsdict').read_bytes())
 assert set(plural)<=set(english),'Plural table introduces unknown source keys'
@@ -31,15 +32,16 @@ for key,entry in plural.items():
   assert formats.findall(rule[form])==formats.findall(key),'Plural placeholder mismatch: '+key
   assert not re.search('[\u4e00-\u9fff]',rule[form]),'Untranslated plural: '+key
 phrases={}
-for language in ['en','zh-Hans']:
+for language in ['en','zh-Hans','zh-Hant']:
  path=resources/(language+'.lproj')/'AppShortcuts.strings'
  phrases[language]=json.loads(subprocess.check_output(['/usr/bin/plutil','-convert','json','-o','-',str(path)]))
-assert set(phrases['en'])==set(phrases['zh-Hans'])
+assert set(phrases['en'])==set(phrases['zh-Hans'])==set(phrases['zh-Hant'])
 source=(root/'Sources/OpenCharge/Intents.swift').read_text()
 source_phrases={value.replace('\\(.applicationName)','${applicationName}') for value in re.findall(r'phrases: \["([^"\n]*)"\]',source)}
 assert source_phrases==set(phrases['en']),'App Shortcut phrase coverage mismatch'
 for key,value in phrases['en'].items():
- assert key.count('${applicationName}')==value.count('${applicationName}')==1
+ for language in phrases:
+  assert key.count('${applicationName}')==phrases[language][key].count('${applicationName}')==1
  assert phrases['zh-Hans'][key]==key and not re.search('[\u4e00-\u9fff]',value)
 extracted=set()
 for folder in sys.argv[1:]:
@@ -51,4 +53,4 @@ for folder in sys.argv[1:]:
 if sys.argv[1:]:
  assert extracted,'Compiler extraction produced no Chinese source keys'
  assert not extracted-set(english),'Missing translations: '+repr(sorted(extracted-set(english)))
-print('PASS native localization tables:',len(english),'keys, matching Chinese source and format placeholders;',len(extracted),'compiler-extracted keys covered')
+print('PASS native localization tables:',len(english),'keys in three languages, matching Chinese source and format placeholders;',len(extracted),'compiler-extracted keys covered')

@@ -29,7 +29,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>org.opencharge.app</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
-<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
+<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string><string>zh-Hant</string></array>
 <key>CFBundleName</key><string>OpenCharge</string>
 <key>CFBundleDisplayName</key><string>OpenCharge</string>
 <key>CFBundleExecutable</key><string>OpenCharge</string>
@@ -41,7 +41,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>opencharge</string></array><key>CFBundleURLName</key><string>org.opencharge.app</string></dict></array>
 </dict></plist>
 PLIST
-for language in en zh-Hans; do
+for language in en zh-Hans zh-Hant; do
  cp -R "$PROJECT_DIR/Resources/$language.lproj" "$APP/Contents/Resources/"
 done
 cp "$PROJECT_DIR/docs/HELPER-SETUP.md" "$APP/Contents/Resources/HELPER-SETUP.md"

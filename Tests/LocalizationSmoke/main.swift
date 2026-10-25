@@ -18,18 +18,25 @@ import ChargeHardware
    precondition(value == translated(key),"a domain label bypassed localization: \(key)")
    precondition(language == "zh-Hans" ? value == key : value != key)
   }
+  func expected(_ english: String, _ simplified: String, _ traditional: String) -> String {
+   switch language { case "en": return english; case "zh-Hans": return simplified; case "zh-Hant": return traditional; default: preconditionFailure("unsupported test expectation") }
+  }
+  precondition(Page.settings.title == expected("Settings and Diagnostics", "设置与诊断", "設定與診斷"))
+  precondition(ScheduleAction.calibrate.displayName == expected("Calibrate Battery", "校准电池", "校正電池"))
   let target = String(localized:"目标 \(42)%")
-  precondition(target == (language == "en" ? "Target 42%" : "目标 42%"),"interpolation mismatch: \(target)")
+  precondition(target == expected("Target 42%", "目标 42%", "目標 42%"),"interpolation mismatch: \(target)")
   let oneMinute = String(localized:"\(1) 分钟"), twoMinutes = String(localized:"\(2) 分钟")
   let oneSample = String(localized:"\(1) 个本地采样"), twoSamples = String(localized:"\(2) 个本地采样")
-  precondition(oneMinute == (language == "en" ? "1 minute" : "1 分钟"))
-  precondition(twoMinutes == (language == "en" ? "2 minutes" : "2 分钟"))
-  precondition(oneSample == (language == "en" ? "1 local sample" : "1 个本地采样"))
-  precondition(twoSamples == (language == "en" ? "2 local samples" : "2 个本地采样"))
+  precondition(oneMinute == expected("1 minute", "1 分钟", "1 分鐘"))
+  precondition(twoMinutes == expected("2 minutes", "2 分钟", "2 分鐘"))
+  precondition(oneSample == expected("1 local sample", "1 个本地采样", "1 個本地取樣"))
+  precondition(twoSamples == expected("2 local samples", "2 个本地采样", "2 個本地取樣"))
   let range = String(localized:"充电上限必须在 20–100%")
   precondition(range == translated("充电上限必须在 20–100%"),"literal percent damaged")
   let phrase = bundle.localizedString(forKey:"读取 ${applicationName} 电量",value:nil,table:"AppShortcuts")
-  precondition(phrase == (language == "en" ? "Get the battery level in ${applicationName}" : "读取 ${applicationName} 电量"))
+  precondition(phrase == expected("Get the battery level in ${applicationName}", "读取 ${applicationName} 电量", "讀取 ${applicationName} 電量"))
+  let appStatePhrase = bundle.localizedString(forKey:"读取 ${applicationName} 应用状态",value:nil,table:"AppShortcuts")
+  precondition(appStatePhrase == expected("Get the app state in ${applicationName}", "读取 ${applicationName} 应用状态", "讀取 ${applicationName} 應用程式狀態"))
   var engine = ChargeEngine(); var policy = ChargePolicy(); policy.heatProtection = false
   let decision = engine.decide(ChargeSample(percent:50,temperature:30),policy:policy)
   precondition(decision.action == .allowCharge && decision.phase == .charging)

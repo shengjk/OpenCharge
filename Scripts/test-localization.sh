@@ -25,7 +25,7 @@ swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
 python3 Scripts/verify-localizations.py "$FIXTURE_DIR/core" "$FIXTURE_DIR/hardware" "$FIXTURE_DIR/app"
 APP="$FIXTURE_DIR/LocalizationFixture.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp -R Resources/en.lproj Resources/zh-Hans.lproj "$APP/Contents/Resources/"
+cp -R Resources/en.lproj Resources/zh-Hans.lproj Resources/zh-Hant.lproj "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -35,7 +35,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>check</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
-<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
+<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string><string>zh-Hant</string></array>
 </dict></plist>
 PLIST
 swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
@@ -45,11 +45,11 @@ swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
 python3 - "$APP/Contents/MacOS/check" <<'PYTEST'
 import base64,subprocess,sys
 snapshots=[]
-for requested,expected in [('en','en'),('zh-Hans','zh-Hans'),('fr','en')]:
+for requested,expected in [('en','en'),('zh-Hans','zh-Hans'),('zh-Hant','zh-Hant'),('zh-TW','zh-Hant'),('zh-HK','zh-Hant'),('fr','en')]:
  output=subprocess.check_output([sys.argv[1],'-AppleLanguages','('+requested+')',expected],text=True)
  lines=output.splitlines(); snapshots.append(base64.b64decode(next(line[14:] for line in lines if line.startswith('POLICY_BASE64 '))))
  for line in lines:
   if line.startswith('PASS '):print(line)
-assert snapshots[0]==snapshots[1]==snapshots[2],'Language changed encoded charge policy'
-print('PASS identical encoded charge policy across English, Chinese and fallback language')
+assert all(value==snapshots[0] for value in snapshots),'Language changed encoded charge policy'
+print('PASS identical encoded charge policy across English, Simplified/Traditional Chinese, regional selections and fallback language')
 PYTEST

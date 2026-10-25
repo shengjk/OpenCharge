@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Traditional Chinese app and App Shortcut translations, including native Taiwan/Hong Kong selection checks. Preserve source keys, interpolation formats and encoded charge policy.
+
 - Add native English and Simplified Chinese app localization: 524 interface/status entries, five App Shortcut phrases, plural rules and system language fallback. Keep persisted enum values and control protocols unchanged. Validate compiler extraction and native bundle lookup during development checks.
 
 - Honor the ordinary pause-on-sleep opt-in independently of the current charge action. With it off, release sleep protection without replacing charge state; with it on, attempt inhibition before releasing protection and recover failed root preparation. Keep numeric projection and the special multi-display path separate.
