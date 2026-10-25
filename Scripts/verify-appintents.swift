@@ -21,5 +21,23 @@ guard let shortcuts = root["autoShortcuts"] as? [[String: Any]], shortcuts.count
  fputs("App Shortcuts provider or parameter metadata is incomplete\n", stderr); exit(1)
 }
 let version = try JSONSerialization.jsonObject(with: Data(contentsOf: directory.appendingPathComponent("version.json")))
+func commandOutput(_ path: String, _ arguments: [String]) throws -> String {
+ let process = Process(), pipe = Pipe()
+ process.executableURL = URL(fileURLWithPath:path); process.arguments = arguments; process.standardOutput = pipe
+ try process.run()
+ let output = String(decoding:pipe.fileHandleForReading.readDataToEndOfFile(),as:UTF8.self)
+ process.waitUntilExit()
+ guard process.terminationStatus == 0 else { throw CocoaError(.fileReadCorruptFile) }
+ return output
+}
+let binary = app.appendingPathComponent("Contents/MacOS/OpenCharge").path
+let architectures = try commandOutput("/usr/bin/lipo", ["-archs",binary]).split(whereSeparator: \.isWhitespace)
+let loads = try commandOutput("/usr/bin/otool", ["-arch","all","-l",binary])
+let frameworkLoads = loads.components(separatedBy: "Load command ").filter { $0.contains("/AppIntents.framework/") }
+guard !architectures.isEmpty, frameworkLoads.count == architectures.count,
+      frameworkLoads.allSatisfy({ $0.contains("LC_LOAD_WEAK_DYLIB") }) else {
+ fputs("App Intents framework must load weakly in every architecture\n", stderr); exit(1)
+}
 print("Verified \(expected.count) discoverable intent declarations, 5 App Shortcuts and setter parameters; metadata version \(version)")
+print("Verified weak App Intents framework loading in \(frameworkLoads.count) architecture slice(s)")
 print("Metadata validation does not establish runtime indexing by Shortcuts.")

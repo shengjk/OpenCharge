@@ -63,7 +63,7 @@ struct AppSettingsView: View {
 @main struct OpenChargeApp: App {
  @NSApplicationDelegateAdaptor(OpenChargeDelegate.self) private var delegate
  @StateObject private var model = OpenChargeRuntime.model
- init() { OpenChargeShortcuts.updateAppShortcutParameters() }
+ init() { if #available(macOS 13.0, *) { OpenChargeShortcuts.updateAppShortcutParameters() } }
  var body: some Scene {
   Settings {
    AppSettingsView(model: model)

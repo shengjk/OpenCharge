@@ -7,7 +7,7 @@ export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 swift build -c release --disable-sandbox
 mkdir -p .build/appintents-validation
 swiftc -parse-as-library -I .build/release/Modules -I .build/release/ApplePowerConstants.build \
- Sources/OpenCharge/Intents.swift Tests/AppIntentsValidation/main.swift \
+ Sources/OpenCharge/AutomationRuntime.swift Sources/OpenCharge/Intents.swift Tests/AppIntentsValidation/main.swift \
  .build/release/ChargeCore.build/*.o .build/release/ChargeHardware.build/*.o .build/release/ApplePowerConstants.build/*.o \
  -o .build/appintents-validation/check
 OPENCHARGE_DATA_DIR="$PROJECT_DIR/.build/appintents-validation/fixture" .build/appintents-validation/check

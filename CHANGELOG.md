@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Separate framework-independent automation providers from macOS 13 App Intents declarations. Guard shortcut setup, link App Intents weakly, preserve existing actions/parameters and validate native/universal metadata plus macOS 11-target provider binaries. Full older-system support and runtime indexing remain unverified; the packaged minimum stays macOS 13.
+
 - Use macOS 11-available URLSession delegate streaming for bounded release downloads. Preserve anonymous requests, redirect restrictions, exclusive files and verification; terminate disallowed redirects promptly and propagate cancellation through transfer/hash cleanup. Add injected transport checks and dual-architecture availability compilation. The packaged app minimum remains macOS 13.
 
 - Adapt all app localization lookup calls to macOS 11-available Foundation APIs while preserving the 524 existing translation keys, typed format arguments and plural rules. Add six-language comparisons for all 34 formatted app keys and production minute formatting. App UI/automation/registration compatibility remains incomplete; the packaged minimum stays macOS 13.

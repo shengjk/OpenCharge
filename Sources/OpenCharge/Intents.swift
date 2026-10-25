@@ -4,6 +4,7 @@ import ChargeCore
 import ChargeHardware
 
 // Scripts/build-app.sh extracts these declarations into Metadata.appintents.
+@available(macOS 13.0, *)
 struct SetChargeLimitIntent: AppIntent {
  static var title: LocalizedStringResource = "设置 OpenCharge 充电上限"
  static var openAppWhenRun = true
@@ -13,11 +14,13 @@ struct SetChargeLimitIntent: AppIntent {
   var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected(NSLocalizedString("校准期间不能修改上限", comment: "")) }; config.setChargeLimit(Double(percentage)); config.policy.mode = .automatic; try config.save(); return .result()
  }
 }
+@available(macOS 13.0, *)
 enum AutomationMode: String, AppEnum {
  case automatic, paused, discharge, topUp, calibration
  static var typeDisplayRepresentation: TypeDisplayRepresentation = "充电模式"
  static var caseDisplayRepresentations: [AutomationMode: DisplayRepresentation] = [.automatic: "自动", .paused: "暂停", .discharge: "放电", .topUp: "充满", .calibration: "校准"]
 }
+@available(macOS 13.0, *)
 struct SetChargeModeIntent: AppIntent {
  static var title: LocalizedStringResource = "设置 OpenCharge 模式"
  static var openAppWhenRun = true
@@ -26,18 +29,22 @@ struct SetChargeModeIntent: AppIntent {
   var config = try Configuration.load(); config.policy.mode = ChargeMode(rawValue: mode.rawValue)!; config.policy.pauseAtCurrent = nil; if mode == .calibration { config.calibrationCheckpoint = nil }; try config.save(); return .result()
  }
 }
+@available(macOS 13.0, *)
 struct GetBatteryPercentageIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 电量"
  func perform() async throws -> some IntentResult & ReturnsValue<Double> { let c = try Configuration.load(); return .result(value: try BatteryTelemetryReader.read().controlPercentage(useHardware: c.policy.useHardwarePercent ?? false)) }
 }
+@available(macOS 13.0, *)
 struct GetBatteryTemperatureIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 电池温度"
  func perform() async throws -> some IntentResult & ReturnsValue<Double> { guard let temperature = try BatteryTelemetryReader.read().temperature else { throw HelperError.rejected(NSLocalizedString("温度不可用", comment: "")) }; return .result(value: temperature) }
 }
+@available(macOS 13.0, *)
 struct GetChargeLimitIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 充电上限"
  func perform() async throws -> some IntentResult & ReturnsValue<Double> { .result(value: try Configuration.load().policy.limit) }
 }
+@available(macOS 13.0, *)
 struct GetChargeStateIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 充电状态"
  func perform() async throws -> some IntentResult & ReturnsValue<String> {
@@ -46,13 +53,7 @@ struct GetChargeStateIntent: AppIntent {
  }
 }
 
-@MainActor enum PolicyStateRuntime {
- static var provider: (() throws -> PolicyPhase)?
- static func read() throws -> PolicyPhase {
-  guard let provider else { throw HelperError.rejected(NSLocalizedString("应用策略状态尚不可读，请先打开 OpenCharge", comment: "")) }
-  return try provider()
- }
-}
+@available(macOS 13.0, *)
 struct GetPolicyStateIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 应用状态"
  static var description = IntentDescription("读取运行中策略的当前状态；与电源流向不同，不执行控制操作。")
@@ -62,6 +63,7 @@ struct GetPolicyStateIntent: AppIntent {
  }
 }
 
+@available(macOS 13.0, *)
 struct OpenChargeShortcuts: AppShortcutsProvider {
  static var appShortcuts: [AppShortcut] {
   AppShortcut(intent: SetChargeLimitIntent(), phrases: ["设置 \(.applicationName) 充电上限"], shortTitle: "设置充电上限", systemImageName: "battery.80percent")
@@ -72,14 +74,13 @@ struct OpenChargeShortcuts: AppShortcutsProvider {
  }
 }
 
+@available(macOS 13.0, *)
 struct StartChargingIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 充至满电"
  static var openAppWhenRun = true
  func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .topUp; try c.save(); return .result() }
 }
-@MainActor enum PauseIntentTelemetry {
- static var read: () throws -> BatteryReading = { try BatteryTelemetryReader.read() }
-}
+@available(macOS 13.0, *)
 struct StopChargingIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 暂停充电"
  static var openAppWhenRun = true
@@ -94,11 +95,13 @@ struct StopChargingIntent: AppIntent {
   return .result()
  }
 }
+@available(macOS 13.0, *)
 struct StartDischargeIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 开始放电"
  static var openAppWhenRun = true
  func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .discharge; try c.save(); return .result() }
 }
+@available(macOS 13.0, *)
 struct StartCalibrationIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 开始校准"
  static var openAppWhenRun = true
@@ -106,11 +109,13 @@ struct StartCalibrationIntent: AppIntent {
 }
 
 
+@available(macOS 13.0, *)
 enum AutomationLEDColor: String, AppEnum {
  case system, off, green, orange, orangeBlinking
  static var typeDisplayRepresentation: TypeDisplayRepresentation = "MagSafe 灯光"
  static var caseDisplayRepresentations: [AutomationLEDColor: DisplayRepresentation] = [.system: "系统灯光", .off: "熄灭", .green: "绿色", .orange: "橙色", .orangeBlinking: "橙色闪烁"]
 }
+@available(macOS 13.0, *)
 struct SetMagSafeLEDIntent: AppIntent {
  static var title: LocalizedStringResource = "设置 OpenCharge MagSafe 灯光"
  static var openAppWhenRun = true

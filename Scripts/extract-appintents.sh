@@ -21,14 +21,14 @@ STAGING="$PROJECT_DIR/.build/appintents"
 mkdir -p "$STAGING" "$APP/Contents/Resources"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 printf '%s\n' '["AppIntent", "AppEnum", "AppShortcutsProvider", "AppEntity", "EntityQuery"]' > "$STAGING/protocols.json"
-# Object emission produces Intents.swiftconstvalues with this compiler. No app or intent is executed.
-swiftc -emit-object -parse-as-library -module-name OpenCharge \
+# Whole-module emission includes the shared providers without running an app or intent.
+swiftc -emit-object -whole-module-optimization -parse-as-library -module-name OpenCharge \
  -o "$STAGING/Intents.o" -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" \
  -emit-const-values-path "$STAGING/Intents.swiftconstvalues" \
  -Xfrontend -const-gather-protocols-file -Xfrontend "$STAGING/protocols.json" \
- "$PROJECT_DIR/Sources/OpenCharge/Intents.swift"
+ "$PROJECT_DIR/Sources/OpenCharge/Intents.swift" "$PROJECT_DIR/Sources/OpenCharge/AutomationRuntime.swift"
 test -s "$STAGING/Intents.swiftconstvalues"
-printf '%s\n' "$PROJECT_DIR/Sources/OpenCharge/Intents.swift" > "$STAGING/sources.list"
+printf '%s\n' "$PROJECT_DIR/Sources/OpenCharge/Intents.swift" "$PROJECT_DIR/Sources/OpenCharge/AutomationRuntime.swift" > "$STAGING/sources.list"
 printf '%s\n' "$STAGING/Intents.swiftconstvalues" > "$STAGING/const.list"
 SDK_ROOT="$(xcrun --sdk macosx --show-sdk-path)"
 XCODE_VERSION="${OPENCHARGE_XCODE_BUILD_VERSION:-}"

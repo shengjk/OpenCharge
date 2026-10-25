@@ -316,7 +316,7 @@ Five core regression methods inject model-selection and request callbacks to che
 
 ## Shared-module macOS availability
 
-`Scripts/test-shared-availability.sh` compiles the complete ChargeCore and ChargeHardware modules and the C power-message bridge with a macOS 11 deployment target for arm64 and x86_64. It runs during `Scripts/check.sh` and does not execute hardware code. Shared localization uses Foundation's older lookup API with the same source keys; the HTTP error preserves its signed 64-bit format argument. Native language fixtures check translated policy/domain/error strings and the HTTP status in six language selections.
+`Scripts/test-shared-availability.sh` compiles the complete ChargeCore and ChargeHardware modules and the C power-message bridge with a macOS 11 deployment target for arm64 and x86_64. It runs during `Scripts/check.sh` and does not execute hardware code. The script also links and runs a macOS 11-target automation fixture on the current system with injected providers. Shared localization uses Foundation's older lookup API with the same source keys; the HTTP error preserves its signed 64-bit format argument. Native language fixtures check translated policy/domain/error strings and the HTTP status in six language selections.
 
 The IOKit default-port accessor selects the SDK's modern constant on macOS 12 or later and its legacy name on macOS 11. Compilation with a deployment target establishes API availability only. The packaged application still requires macOS 13; SwiftUI, Charts, App Intents, service/login registration and actual older-system behavior need separate compatibility work and runtime validation.
 
@@ -329,3 +329,7 @@ The app lookup compatibility fixtures compare all 34 unique formatted app keys w
 The macOS 11 availability gate includes the complete update transport for both architectures. This is a compile check, not older-system execution. `Scripts/test-updates-live.sh` separately checks the public release feed and a real published archive without credentials, archive execution, installation or hardware access.
 
 A live anonymous check on the validation machine selected v0.3.37, rejected the archive under a 16-byte transfer limit, then streamed its 2,130,017-byte arm64 ZIP and verified exact size, SHA-256, the API digest and quarantine. The temporary download was removed; no archive, app or privileged service was installed or executed. This checks the current system and public endpoint, not macOS 11 runtime.
+
+## Guarded App Intents availability
+
+The compatibility fixture compiles shared static libraries, provider runtime and all guarded App Intents declarations with a macOS 11 deployment target for both architectures. It verifies the resulting minimum version and weak App Intents framework load command before running each binary on the current system. Missing/failed providers, all typed policy phases and injected pause telemetry are checked; the native policy intent runs only within a macOS 13 availability branch. No app model, configuration setter, hardware service or Shortcuts indexing update is started by this fixture. Native and universal package verification separately checks the metadata and one weak framework load per architecture. These checks do not establish older-system runtime or native Shortcuts discovery.

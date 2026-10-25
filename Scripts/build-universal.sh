@@ -39,6 +39,7 @@ cp "$STAGING/bin/charged" "$STAGING/OpenCharge.app/Contents/MacOS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$STAGING/OpenCharge.app"
 /usr/bin/codesign --verify --deep --strict "$STAGING/OpenCharge.app"
 swift "$PROJECT_DIR/Scripts/verify-helper-package.swift" "$STAGING/OpenCharge.app"
+swift "$PROJECT_DIR/Scripts/verify-appintents.swift" "$STAGING/OpenCharge.app"
 /usr/bin/codesign --verify --strict "$STAGING/bin/charged"
 /usr/bin/codesign --verify --strict "$STAGING/bin/chargectl"
 if [[ -d "$PROJECT_DIR/dist-universal" ]]; then mv "$PROJECT_DIR/dist-universal" "$PROJECT_DIR/.build/previous-universal.$$.dist"; fi
