@@ -50,7 +50,7 @@ struct AppSettingsView: View {
   ScrollView {
    VStack(alignment: .leading, spacing: 24) {
     if let error = model.error {
-     HStack { Image(systemName: "exclamationmark.triangle"); Text(error).font(.callout); Spacer(); Button("关闭") { model.error = nil } }
+     HStack { Image(systemName: "exclamationmark.triangle"); Text(error).font(.callout); Spacer(); Button(String(localized:"关闭")) { model.error = nil } }
       .padding().background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
     }
     SettingsView().environmentObject(model)
@@ -68,12 +68,12 @@ struct AppSettingsView: View {
   Settings {
    AppSettingsView(model: model)
   }.commands {
-   CommandGroup(after: .appInfo) { Button("检查更新…") { model.updates.showAndCheck() } }
-   CommandMenu("窗口") {
-    Button("打开控制台") { model.openDashboardWindow() }.keyboardShortcut("1")
-    Button("预览菜单栏弹窗") { model.openPopoverPreview() }.keyboardShortcut("2")
-    Button("打开菜单栏弹窗") { delegate.menuBar?.clickStatusItem() }.keyboardShortcut("3")
-    Button("编辑菜单栏弹窗") { delegate.menuBar?.openEditor() }.keyboardShortcut("4")
+   CommandGroup(after: .appInfo) { Button(String(localized:"检查更新…")) { model.updates.showAndCheck() } }
+   CommandMenu(String(localized:"窗口")) {
+    Button(String(localized:"打开控制台")) { model.openDashboardWindow() }.keyboardShortcut("1")
+    Button(String(localized:"预览菜单栏弹窗")) { model.openPopoverPreview() }.keyboardShortcut("2")
+    Button(String(localized:"打开菜单栏弹窗")) { delegate.menuBar?.clickStatusItem() }.keyboardShortcut("3")
+    Button(String(localized:"编辑菜单栏弹窗")) { delegate.menuBar?.openEditor() }.keyboardShortcut("4")
    }
   }
  }

@@ -1,0 +1,6 @@
+/* Keep the applicationName token intact for App Shortcuts. */
+"设置 ${applicationName} 充电上限" = "设置 ${applicationName} 充电上限";
+"设置 ${applicationName} 充电模式" = "设置 ${applicationName} 充电模式";
+"读取 ${applicationName} 充电状态" = "读取 ${applicationName} 充电状态";
+"读取 ${applicationName} 应用状态" = "读取 ${applicationName} 应用状态";
+"读取 ${applicationName} 电量" = "读取 ${applicationName} 电量";

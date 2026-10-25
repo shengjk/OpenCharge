@@ -12,9 +12,9 @@ public enum ScheduleApplicationResult: Equatable, Sendable {
  case updated, pausedAtCurrent(Double), skippedPause(ScheduledPauseSkip)
  public var historyMessage: String {
   switch self {
-  case .updated: return "策略已更新"
-  case .pausedAtCurrent(let percent): return String(format: "已接受按当前电量暂停策略：上限 %.2f%%（未确认硬件停充）", percent)
-  case .skippedPause(let reason): return "已跳过暂停：" + reason.historyMessage
+  case .updated: return String(localized:"策略已更新")
+  case .pausedAtCurrent(let percent): return String(format: String(localized:"已接受按当前电量暂停策略：上限 %.2f%%（未确认硬件停充）"), percent)
+  case .skippedPause(let reason): return String(localized:"已跳过暂停：") + reason.historyMessage
   }
  }
 }
@@ -22,11 +22,11 @@ public enum ScheduledPauseSkip: Equatable, Sendable {
  case unavailableContext, interruptedCalibration, ineligiblePhase, unavailablePercentage, belowMinimum
  public var historyMessage: String {
   switch self {
-  case .unavailableContext: return "缺少当前状态与控制电量"
-  case .interruptedCalibration: return "校准已中断，需明确继续或取消"
-  case .ineligiblePhase: return "当前策略状态不适用"
-  case .unavailablePercentage: return "选定控制电量不可读或无效"
-  case .belowMinimum: return "控制电量低于 20%"
+  case .unavailableContext: return String(localized:"缺少当前状态与控制电量")
+  case .interruptedCalibration: return String(localized:"校准已中断，需明确继续或取消")
+  case .ineligiblePhase: return String(localized:"当前策略状态不适用")
+  case .unavailablePercentage: return String(localized:"选定控制电量不可读或无效")
+  case .belowMinimum: return String(localized:"控制电量低于 20%")
   }
  }
 }

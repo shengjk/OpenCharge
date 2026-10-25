@@ -38,7 +38,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func openPopoverPreview() {
   if popoverPreviewController == nil {
    let window = NSWindow(contentViewController: NSHostingController(rootView: MenuView().environmentObject(self)))
-   window.title = "OpenCharge · 弹窗预览"; window.identifier = NSUserInterfaceItemIdentifier("OpenChargePopoverPreview")
+   window.title = String(localized:"OpenCharge · 弹窗预览"); window.identifier = NSUserInterfaceItemIdentifier("OpenChargePopoverPreview")
    window.styleMask = [.titled, .closable]; window.isReleasedWhenClosed = false
    window.center(); popoverPreviewController = NSWindowController(window: window)
   }
@@ -78,15 +78,15 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var settingsPreferenceObservation: SettingsLockObservation?
  @Published var config: Configuration
  @Published var reading: BatteryReading?
- @Published var decision = Decision(.restore, "正在读取电池…", limit: 80)
+ @Published var decision = Decision(.restore, String(localized:"正在读取电池…"), limit: 80)
  @Published var error: String?
- @Published var helperStatus = "监测模式"
+ @Published var helperStatus = String(localized:"监测模式")
  @Published private(set) var firmwareInspection: FirmwareHelperState?
- @Published private(set) var firmwareStatus = "尚未检测数值固件通道"
+ @Published private(set) var firmwareStatus = String(localized:"尚未检测数值固件通道")
  @Published var history: [HistoryPoint] = []
  @Published var calibration = CalibrationStage.idle
  @Published var calibrationPending = false
- @Published var magSafeStatus = "尚未读取灯光能力"
+ @Published var magSafeStatus = String(localized:"尚未读取灯光能力")
  private var magSafeSelection: MagSafeColor?
  private var sleepOverrideSessionActive = false
  private var sleepOverrideFailed = false
@@ -97,11 +97,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var lidLockPolicy = LidLockPolicy()
  private var lidObserver: LidStateObserver?
  private var observedLidState: Bool?
- @Published var lidLockStatus = "默认关闭 · 未请求锁屏"
- @Published var sleepStatus = "尚未使用合盖睡眠控制"
+ @Published var lidLockStatus = String(localized:"默认关闭 · 未请求锁屏")
+ @Published var sleepStatus = String(localized:"尚未使用合盖睡眠控制")
  private var magSafeSessionActive = false
  private var magSafePolicyFailed = false
- @Published var lowPowerStatus = ProcessInfo.processInfo.isLowPowerModeEnabled ? "当前电源：已开启" : "当前电源：已关闭"
+ @Published var lowPowerStatus = ProcessInfo.processInfo.isLowPowerModeEnabled ? String(localized:"当前电源：已开启") : String(localized:"当前电源：已关闭")
  private let readBattery: () throws -> BatteryReading
  private var engine = ChargeEngine()
  private var appliedChargeLimitChangeID: UUID?
@@ -127,7 +127,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
   menuBarActions = MenuBarActionPreferences(defaults: dashboardDefaults)
-  do { config = try Configuration.load() } catch { config = Configuration(); self.error = "配置文件无法读取：\(error.localizedDescription)" }
+  do { config = try Configuration.load() } catch { config = Configuration(); self.error = String(localized:"配置文件无法读取：\(error.localizedDescription)") }
   engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
   appliedChargeLimitChangeID = config.chargeLimitChangeID
   // An explicit opt-in persists; an interrupted calibration prevents resumption.
@@ -143,7 +143,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } }) }
   if observeLid { do { lidObserver = try LidStateObserver { [weak self] in
    Task { @MainActor [weak self] in self?.handleLidStateNotification(LidStateObserver.currentState()) }
-  } } catch { lidLockStatus = "合盖监听不可用：" + error.localizedDescription } }
+  } } catch { lidLockStatus = String(localized:"合盖监听不可用：") + error.localizedDescription } }
   reloadSettingsLock()
   settingsPreferenceObservation = SettingsLockObservation(defaults: dashboardDefaults) { [weak self] in self?.reloadSettingsLock() }
   if config.hardwareEnabled {
@@ -152,7 +152,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   }
   refresh()
   PolicyStateRuntime.provider = { [weak self] in
-   guard let self else { throw HelperError.rejected("应用策略实例已结束") }
+   guard let self else { throw HelperError.rejected(String(localized:"应用策略实例已结束")) }
    return self.automationPhase
   }
   timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in Task { @MainActor in self?.refresh() } }
@@ -194,7 +194,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @discardableResult func allowChargeSettingsEdit() -> Bool {
   guard !quitting else { return false }
   reloadSettingsLock()
-  guard !settingsLocked else { error = "充电设置已锁定，请联系管理员调整配置"; return false }
+  guard !settingsLocked else { error = String(localized:"充电设置已锁定，请联系管理员调整配置"); return false }
   return true
  }
  func toggleTopUp() { changeMode(automationPhase == .topUp ? .paused : .topUp) }
@@ -205,7 +205,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func toggleChargingFromMenu() {
   guard !quitting, allowChargeSettingsEdit() else { return }
-  guard !calibrationPending else { error = "校准已中断，请先选择继续或取消"; return }
+  guard !calibrationPending else { error = String(localized:"校准已中断，请先选择继续或取消"); return }
   do {
    let sample = try readBattery()
    let percent = config.policy.useHardwarePercent == true ? sample.hardwarePercent : sample.percent
@@ -224,7 +224,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func toggleLowPowerFromMenu(request: (String) throws -> String = HelperClient.request,
                              isActive: () -> Bool = { ProcessInfo.processInfo.isLowPowerModeEnabled }) {
   guard !quitting else { return }
-  guard config.systemActionsEnabled == true else { error = "请先允许菜单栏快捷操作改变系统模式"; return }
+  guard config.systemActionsEnabled == true else { error = String(localized:"请先允许菜单栏快捷操作改变系统模式"); return }
   do {
    let status = try request("lowPowerStatus")
    let fields = status.split(separator: " ")
@@ -232,7 +232,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
          ["0", "1", "unknown"].contains(String(fields[0].dropFirst(8))),
          ["0", "1", "unknown"].contains(String(fields[1].dropFirst(3))),
          fields[0] != "battery=unknown" || fields[1] != "ac=unknown" else {
-    throw HelperError.rejected("低电量模式能力不可用")
+    throw HelperError.rejected(String(localized:"低电量模式能力不可用"))
    }
    let enabled = !isActive()
    lowPowerStatus = try request(enabled ? "lowPowerOn" : "lowPowerOff")
@@ -244,9 +244,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func changeMode(_ mode: ChargeMode) {
   guard !quitting else { return }
-  if mode == .calibration && calibrationPending { error = "校准已中断，请先选择继续或取消"; return }
-  if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = "请连接电源后开始此操作"; return }
-  if mode == .topUp && config.policy.mode == .calibration { error = "请先结束校准，再开始充至满电"; return }
+  if mode == .calibration && calibrationPending { error = String(localized:"校准已中断，请先选择继续或取消"); return }
+  if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = String(localized:"请连接电源后开始此操作"); return }
+  if mode == .topUp && config.policy.mode == .calibration { error = String(localized:"请先结束校准，再开始充至满电"); return }
   calibrationPending = false
   if mode != .calibration { config.calibrationCheckpoint = nil }
   engine.modeChanged(to: mode); calibration = engine.calibration
@@ -347,9 +347,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
      var result = outcome.historyMessage
      if task.action == .lowPowerOn || task.action == .lowPowerOff {
       if config.systemActionsEnabled == true {
-       do { lowPowerStatus = try HelperClient.request(task.action == .lowPowerOn ? "lowPowerOn" : "lowPowerOff"); result = "系统模式已读回：" + lowPowerStatus }
-       catch { result = "执行失败：" + error.localizedDescription; self.error = result }
-      } else { result = "只读监测：未改变系统模式" }
+       do { lowPowerStatus = try HelperClient.request(task.action == .lowPowerOn ? "lowPowerOn" : "lowPowerOff"); result = String(localized:"系统模式已读回：") + lowPowerStatus }
+       catch { result = String(localized:"执行失败：") + error.localizedDescription; self.error = result }
+      } else { result = String(localized:"只读监测：未改变系统模式") }
      }
      runs.append(ScheduleExecution(scheduleID: task.id, action: task.action, scheduledAt: task.date, result: result))
     }
@@ -360,10 +360,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     if scheduledLimitChanged { config.sailingCheckpoint = true; config.chargeLimitChangeID = UUID() }
     config.scheduleHistory = Array(((config.scheduleHistory ?? []) + runs).suffix(1000)); save()
    }
-   if calibrationPending { decision = Decision(.restore, "校准已中断：请选择继续或取消", limit: config.policy.limit) }
+   if calibrationPending { decision = Decision(.restore, String(localized:"校准已中断：请选择继续或取消"), limit: config.policy.limit) }
    else {
     let reference: Double
-    if config.policy.useHardwarePercent == true { guard let raw = r.hardwarePercent else { throw HardwareError.unavailable("硬件电量不可读，已停止策略执行") }; reference = raw } else { reference = r.percent }
+    if config.policy.useHardwarePercent == true { guard let raw = r.hardwarePercent else { throw HardwareError.unavailable(String(localized:"硬件电量不可读，已停止策略执行")) }; reference = raw } else { reference = r.percent }
     evaluatePolicy(ChargeSample(percent: reference, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge))
    }
    let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true, fullChargeHold: decision.fullChargeHold == true)
@@ -387,7 +387,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   let idle = setIdleSleep ?? { try self.sleepController.setPreventIdleSleep($0) }
   guard config.hardwareEnabled else {
    do { try idle(false) } catch { self.error = error.localizedDescription }
-   helperStatus = "监测模式 · 未改变充电状态"; return
+   helperStatus = String(localized:"监测模式 · 未改变充电状态"); return
   }
   var attempted = false
   let previousDischargeExitPending = dischargeExitPending
@@ -405,9 +405,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     return try request(try context?.envelope(action) ?? action)
    }
    if plan.preventSystemAndLidSleep {
-    guard !sleepOverrideFailed else { throw HelperError.rejected("睡眠控制上次失败，请重新启用硬件控制后重试") }
+    guard !sleepOverrideFailed else { throw HelperError.rejected(String(localized:"睡眠控制上次失败，请重新启用硬件控制后重试")) }
     if sleepOverrideCapability == nil { inspectSleepInterfaces(request: scopedRequest) }
-    guard sleepOverrideCapability == true else { throw HelperError.rejected("此操作需要兼容的睡眠控制服务，请先更新服务") }
+    guard sleepOverrideCapability == true else { throw HelperError.rejected(String(localized:"此操作需要兼容的睡眠控制服务，请先更新服务")) }
     if let firmwareControl {
      attempted = true
      try firmwareControl.prepareProtection(request:scopedRequest)
@@ -423,7 +423,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if plan.preventSystemAndLidSleep {
     // Wait for required protection before changing charging or adapter input.
     let protectionCompleted = updateSleepOverride(plan, request: scopedRequest)
-    guard config.hardwareEnabled else { try? idle(false); helperStatus = "控制失败"; return }
+    guard config.hardwareEnabled else { try? idle(false); helperStatus = String(localized:"控制失败"); return }
     guard protectionCompleted else { throw ChargeControlSuspension.systemSleep }
    }
    attempted = true
@@ -431,31 +431,31 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if let firmwareControl {
     try firmwareControl.apply(decision.action,policy:config.policy,phase:automationPhase,request:scopedRequest)
     firmwareInspection = firmwareControl.status
-    firmwareStatus = "数值固件通道 · 睡眠目标 \(firmwareControl.sleepTarget.map(String.init) ?? "—")% · 物理效果待验证"
+    firmwareStatus = String(localized:"数值固件通道 · 睡眠目标 \(firmwareControl.sleepTarget.map(String.init) ?? "—")% · 物理效果待验证")
    } else {
     _ = try scopedRequest(config.policy.stopInSleep ? "sleepPolicyOn" : "sleepPolicyOff")
     _ = try scopedRequest(decision.action.rawValue)
    }
    if !plan.preventIdleSleep { try idle(false) }
-   helperStatus = "服务已确认：" + decision.action.displayName; lastHardwareAction = decision.action
+   helperStatus = String(localized:"服务已确认：") + decision.action.displayName; lastHardwareAction = decision.action
   } catch ChargeControlSuspension.systemSleep {
    dischargeExitPending = previousDischargeExitPending
    try? idle(false)
    helperStatus = ChargeControlSuspension.systemSleep.localizedDescription
   } catch {
-   helperStatus = "控制失败"; self.error = error.localizedDescription
+   helperStatus = String(localized:"控制失败"); self.error = error.localizedDescription
    config.hardwareEnabled = false
    try? idle(false)
    if config.policy.mode == .calibration { calibrationPending = true }
    if attempted || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore || sleepOverrideSessionActive {
     do { try restoreChargeControl(request:request); lastHardwareAction = .restore; sleepOverrideSessionActive = false }
-    catch { self.error = (self.error ?? "") + "；恢复待重试：" + error.localizedDescription }
+    catch { self.error = (self.error ?? "") + String(localized:"；恢复待重试：") + error.localizedDescription }
    }
    try? config.save()
   }
  }
  func inspectLidLock(request: () throws -> Void = ScreenLockClient.inspect) {
-  do { try request(); lidLockStatus = "已检测到锁屏入口；" + (ScreenLockClient.consoleSessionActive ? "前台登录会话可用" : "当前前台登录会话不可用") + "；未请求锁屏，实际效果待验证" }
+  do { try request(); lidLockStatus = String(localized:"已检测到锁屏入口；") + (ScreenLockClient.consoleSessionActive ? String(localized:"前台登录会话可用") : String(localized:"当前前台登录会话不可用")) + String(localized:"；未请求锁屏，实际效果待验证") }
   catch { lidLockStatus = error.localizedDescription }
  }
  func handleLidStateNotification(_ closed: Bool?, refresh: (() -> Void)? = nil) {
@@ -471,8 +471,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard !quitting else { return }
   let enabled = config.hardwareEnabled && config.policy.lockScreenWhenClosed == true
   guard lidLockPolicy.shouldRequest(lidClosed: closed, enabled: enabled, sleepOverrideActive: sleepOverrideSessionActive && !sleepOverrideFailed, consoleSessionActive: consoleActive) else { return }
-  do { try (request ?? screenLockRequest)(); lidLockStatus = "已向系统发送锁屏请求；尚未确认锁定结果" }
-  catch { lidLockStatus = "锁屏请求失败：" + error.localizedDescription + "；重新开合盖后可再试" }
+  do { try (request ?? screenLockRequest)(); lidLockStatus = String(localized:"已向系统发送锁屏请求；尚未确认锁定结果") }
+  catch { lidLockStatus = String(localized:"锁屏请求失败：") + error.localizedDescription + String(localized:"；重新开合盖后可再试") }
  }
  func inspectServiceCapabilities(request: (String) throws -> String = HelperClient.request) {
   guard !quitting else { return }
@@ -480,22 +480,22 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   do {
    let capabilities = try request("capabilities"); helperStatus = capabilities
    guard FirmwareHelperCapabilities.supportsNumericControl(capabilities) else {
-    firmwareStatus = "当前服务或硬件未提供已恢复的数值固件通道"; return
+    firmwareStatus = String(localized:"当前服务或硬件未提供已恢复的数值固件通道"); return
    }
    let reply = try request("firmwareStatus")
-   guard let state = FirmwareHelperState(reply: reply) else { throw HelperError.rejected("固件状态回复格式无效") }
+   guard let state = FirmwareHelperState(reply: reply) else { throw HelperError.rejected(String(localized:"固件状态回复格式无效")) }
    firmwareInspection = state
-   let control = state.chargingAllowed.map { $0 ? "允许充电" : "限制充电" } ?? "未知"
-   let usage = usesNumericFirmware && config.hardwareEnabled ? "当前策略使用数值固件通道；物理效果待验证" : "尚未启用数值固件控制"
-   firmwareStatus = "固件上限 \(state.limit)% · 控制状态：\(control) · " + usage
-  } catch { firmwareStatus = "固件检测失败：" + error.localizedDescription; self.error = error.localizedDescription }
+   let control = state.chargingAllowed.map { $0 ? String(localized:"允许充电") : String(localized:"限制充电") } ?? String(localized:"未知")
+   let usage = usesNumericFirmware && config.hardwareEnabled ? String(localized:"当前策略使用数值固件通道；物理效果待验证") : String(localized:"尚未启用数值固件控制")
+   firmwareStatus = String(localized:"固件上限 \(state.limit)% · 控制状态：\(control) · ") + usage
+  } catch { firmwareStatus = String(localized:"固件检测失败：") + error.localizedDescription; self.error = error.localizedDescription }
  }
  func inspectSleepInterfaces(request: (String) throws -> String = HelperClient.request) {
   do {
    let result = try request("capabilities")
    sleepOverrideCapability = SleepProtectionPlan.supportsHelper(result)
-   sleepStatus = sleepOverrideCapability == true ? "已检测到私有接口；物理效果仍待实机验证" : "已安装服务未提供所需睡眠接口或恢复协议，请更新服务"
-   if sleepOverrideFailed { sleepStatus += "；上次控制失败，需重新启用硬件控制后再试" }
+   sleepStatus = sleepOverrideCapability == true ? String(localized:"已检测到私有接口；物理效果仍待实机验证") : String(localized:"已安装服务未提供所需睡眠接口或恢复协议，请更新服务")
+   if sleepOverrideFailed { sleepStatus += String(localized:"；上次控制失败，需重新启用硬件控制后再试") }
   } catch { sleepOverrideCapability = false; sleepStatus = error.localizedDescription }
  }
  @discardableResult func updateSleepOverride(_ plan: SleepProtectionPlan, request: (String) throws -> String = HelperClient.request) -> Bool {
@@ -505,24 +505,24 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if plan.preventSystemAndLidSleep && config.hardwareEnabled {
     guard !sleepOverrideFailed else { return false }
     if sleepOverrideCapability == nil { inspectSleepInterfaces(request: request) }
-    guard sleepOverrideCapability == true else { throw HelperError.rejected("所需睡眠控制接口或恢复协议不可用") }
+    guard sleepOverrideCapability == true else { throw HelperError.rejected(String(localized:"所需睡眠控制接口或恢复协议不可用")) }
     sleepOverrideSessionActive = true
     sleepStatus = try request(plan.preventDisplaySleep ? "sleepOverrideDisplayOn" : "sleepOverrideOn")
    } else if sleepOverrideSessionActive {
     _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false
-    sleepStatus = "合盖睡眠控制已释放"
-   } else if !config.hardwareEnabled && sleepOverrideCapability == nil { sleepStatus = "监测模式 · 未修改睡眠设置" }
+    sleepStatus = String(localized:"合盖睡眠控制已释放")
+   } else if !config.hardwareEnabled && sleepOverrideCapability == nil { sleepStatus = String(localized:"监测模式 · 未修改睡眠设置") }
    return true
   } catch ChargeControlSuspension.systemSleep {
    sleepOverrideSessionActive = previouslyActive
    sleepStatus = ChargeControlSuspension.systemSleep.localizedDescription
    return false
   } catch {
-   sleepOverrideFailed = true; sleepStatus = "睡眠控制失败：" + error.localizedDescription
+   sleepOverrideFailed = true; sleepStatus = String(localized:"睡眠控制失败：") + error.localizedDescription
    config.hardwareEnabled = false
    if config.policy.mode == .calibration { calibrationPending = true }
    do { try restoreChargeControl(request:request); sleepOverrideSessionActive = false; lastHardwareAction = .restore }
-   catch { sleepStatus += "；恢复待重试：" + error.localizedDescription }
+   catch { sleepStatus += String(localized:"；恢复待重试：") + error.localizedDescription }
    try? sleepController.setPreventIdleSleep(false); try? config.save()
    return false
   }
@@ -535,13 +535,13 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   #endif
  }
  func configureHardwareChannel(capabilities: String, numericRequired: Bool = false) throws {
-  guard firmwareControl?.mayOwnSession != true else { throw HelperError.rejected("请先完成上次数值固件会话的恢复") }
+  guard firmwareControl?.mayOwnSession != true else { throw HelperError.rejected(String(localized:"请先完成上次数值固件会话的恢复")) }
   if FirmwareHelperCapabilities.supportsAtomicSleepPlan(capabilities) {
    firmwareControl = try FirmwareAppSession(capabilities:capabilities)
   } else {
    guard !numericRequired, !FirmwareHelperCapabilities.supportsNumericControl(capabilities),
     capabilities.split(separator:",").contains(where: { $0.trimmingCharacters(in:.whitespaces).hasPrefix("chargeControl:") && !$0.contains("unavailable") }) else {
-    throw HelperError.rejected("此硬件需要兼容的充电协议、恢复服务和数值睡眠目标接口")
+    throw HelperError.rejected(String(localized:"此硬件需要兼容的充电协议、恢复服务和数值睡眠目标接口"))
    }
    firmwareControl = nil
   }
@@ -550,7 +550,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func restoreChargeControl(request: (String) throws -> String = HelperClient.request) throws {
   if let firmwareControl {
-   try firmwareControl.restore(request:request); firmwareInspection = nil; firmwareStatus = "数值固件会话已恢复 · 监测模式"
+   try firmwareControl.restore(request:request); firmwareInspection = nil; firmwareStatus = String(localized:"数值固件会话已恢复 · 监测模式")
   }
   else { _ = try request("restore") }
  }
@@ -558,11 +558,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard !quitting else { return }
   if enabled { do {
    sleepOverrideFailed = false
-   guard !calibrationPending else { throw HelperError.rejected("请先选择继续或取消上次校准") }
+   guard !calibrationPending else { throw HelperError.rejected(String(localized:"请先选择继续或取消上次校准")) }
    if firmwareControl?.mayOwnSession == true { try restoreChargeControl(request:request) }
    helperStatus = try request("capabilities"); sleepOverrideCapability = SleepProtectionPlan.supportsHelper(helperStatus)
    try configureHardwareChannel(capabilities:helperStatus,numericRequired:requiresNumericFirmware()); config.hardwareEnabled = true } catch { self.error = error.localizedDescription; config.hardwareEnabled = false } }
-  else { do { try restoreChargeControl(request:request); helperStatus = "服务已确认恢复"; lastHardwareAction = .restore; config.hardwareEnabled = false } catch { self.error = "恢复请求失败；服务会在心跳超时后尝试恢复：\(error.localizedDescription)"; config.hardwareEnabled = false } }
+  else { do { try restoreChargeControl(request:request); helperStatus = String(localized:"服务已确认恢复"); lastHardwareAction = .restore; config.hardwareEnabled = false } catch { self.error = String(localized:"恢复请求失败；服务会在心跳超时后尝试恢复：\(error.localizedDescription)"); config.hardwareEnabled = false } }
   save(); (refresh ?? { self.refresh() })()
  }
  func sleep(request: (String) throws -> String = HelperClient.request) { guard !quitting, config.hardwareEnabled else { return }
@@ -577,7 +577,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }, releaseProtection: {
     _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false
    })
-  if outcome.succeeded { sleepStatus = config.policy.stopInSleep ? "睡眠充电策略已确认；睡眠保护已释放" : "睡眠保护已释放；充电状态未修改" }
+  if outcome.succeeded { sleepStatus = config.policy.stopInSleep ? String(localized:"睡眠充电策略已确认；睡眠保护已释放") : String(localized:"睡眠保护已释放；充电状态未修改") }
   else { sleepStatus = OrdinarySleepPreparation.Step.allCases.compactMap { outcome.failures[$0] }.joined(separator:"；") }
 
  }
@@ -606,8 +606,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   config.hardwareEnabled = false
   if config.policy.mode == .calibration { calibrationPending = true }
   quitting = false; quitCleanupPrepared = false
-  error = "已取消退出，充电控制已关闭；请确认电源状态后手动重新启用。"
-  if let recoveryFailure { error! += "恢复仍待重试：" + recoveryFailure }
+  error = String(localized:"已取消退出，充电控制已关闭；请确认电源状态后手动重新启用。")
+  if let recoveryFailure { error! += String(localized:"恢复仍待重试：") + recoveryFailure }
   save(); refresh()
  }
  func cleanupOnQuit() { if !quitCleanupPrepared { try? prepareForQuit() } }
@@ -617,7 +617,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard url.scheme == "opencharge", let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
   if url.host == "limit", let text = components.queryItems?.first(where: { $0.name == "value" })?.value, let value = Double(text), value.isFinite, (20...100).contains(value) { config.setChargeLimit(value); save(); refresh() }
   else if url.host == "mode", let value = components.queryItems?.first(where: { $0.name == "value" })?.value, let mode = ChargeMode(rawValue: value) { changeMode(mode) }
-  else { error = "自动化 URL 参数无效" }
+  else { error = String(localized:"自动化 URL 参数无效") }
  }
  func export() {
   let panel = NSSavePanel(); panel.nameFieldStringValue = "opencharge-history.csv"; panel.allowedContentTypes = [.commaSeparatedText]
@@ -655,7 +655,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func removeHelperService() async {
   guard !quitting else { return }
   do {
-   guard !helperService.legacyInstalled else { throw HelperServiceError.ineligible("开发脚本服务需使用对应卸载脚本移除") }
+   guard !helperService.legacyInstalled else { throw HelperServiceError.ineligible(String(localized:"开发脚本服务需使用对应卸载脚本移除")) }
    // SMAppService unregister terminates the daemon: restore while its journal is alive.
    if helperService.status == .enabled || firmwareControl?.mayOwnSession == true {
     try restoreChargeControl()
@@ -663,7 +663,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
    config.hardwareEnabled = false; magSafeSessionActive = false; magSafeSelection = nil
    try sleepController.setPreventIdleSleep(false); save()
-   try await helperService.unregister(); helperStatus = "硬件服务已注销"
+   try await helperService.unregister(); helperStatus = String(localized:"硬件服务已注销")
   } catch { self.error = error.localizedDescription }
  }
  func exportDiagnostics() {

@@ -295,3 +295,8 @@ The production-model fixture covers ordinary and numeric backends, Discharging v
 ### Development ordinary sleep opt-in
 
 Three additional canonical methods (253 total) check that ordinary opt-out releases protection without a charge operation, opt-in orders inhibition before release for all failure combinations, and a policy without an owned session cannot start charge control at sleep. The same coordinator is used by the root observer and legacy app notification path. The production-model fixture covers allow/inhibit/discharge states, release failures and retry, unchanged saved configuration and discharge-exit responsibility, and independent release after an inhibition failure. Required protection does not suppress an explicit ordinary sleep policy during app dispatch. Numeric and multi-display checks remain separate. All transport and actuator callbacks are injected; physical sleep/adapter behavior remains unverified.
+
+
+### Development app localization
+
+The full check includes 524 compiler-extracted Chinese keys with complete English/Chinese resource coverage, exact printf-placeholder parity, two English plural rules, and five separately localized App Shortcut phrases with intact named tokens. A private native bundle runs the production page/menu/domain labels and policy engine under English, Simplified Chinese and an unsupported-language fallback. It checks interpolation, literal percent signs, plural forms, localized errors and identical encoded charge policy. Stored page, policy-mode and phase values remain unchanged. No GUI, runtime model, intent, root helper or actuator is launched. Visual English layout and live Shortcuts/Siri localization remain unverified.

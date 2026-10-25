@@ -2,7 +2,7 @@ import Foundation
 import Darwin
 public enum HelperError: Error, LocalizedError {
  case unavailable, rejected(String)
- public var errorDescription: String? { switch self { case .unavailable: return "硬件服务未安装或不可达，请查看安装文档"; case .rejected(let s): return s } }
+ public var errorDescription: String? { switch self { case .unavailable: return String(localized:"硬件服务未安装或不可达，请查看安装文档"); case .rejected(let s): return s } }
 }
 
 /// Bounded newline-framed Unix stream transport. One absolute deadline covers all fragments.

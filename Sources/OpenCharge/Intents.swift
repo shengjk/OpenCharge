@@ -9,8 +9,8 @@ struct SetChargeLimitIntent: AppIntent {
  static var openAppWhenRun = true
  @Parameter(title: "充电上限", default: 80) var percentage: Int
  func perform() async throws -> some IntentResult {
-  guard (20...100).contains(percentage) else { throw HelperError.rejected("充电上限必须在 20–100%") }
-  var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected("校准期间不能修改上限") }; config.setChargeLimit(Double(percentage)); config.policy.mode = .automatic; try config.save(); return .result()
+  guard (20...100).contains(percentage) else { throw HelperError.rejected(String(localized:"充电上限必须在 20–100%")) }
+  var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected(String(localized:"校准期间不能修改上限")) }; config.setChargeLimit(Double(percentage)); config.policy.mode = .automatic; try config.save(); return .result()
  }
 }
 enum AutomationMode: String, AppEnum {
@@ -32,7 +32,7 @@ struct GetBatteryPercentageIntent: AppIntent {
 }
 struct GetBatteryTemperatureIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 电池温度"
- func perform() async throws -> some IntentResult & ReturnsValue<Double> { guard let temperature = try BatteryTelemetryReader.read().temperature else { throw HelperError.rejected("温度不可用") }; return .result(value: temperature) }
+ func perform() async throws -> some IntentResult & ReturnsValue<Double> { guard let temperature = try BatteryTelemetryReader.read().temperature else { throw HelperError.rejected(String(localized:"温度不可用")) }; return .result(value: temperature) }
 }
 struct GetChargeLimitIntent: AppIntent {
  static var title: LocalizedStringResource = "读取 OpenCharge 充电上限"
@@ -49,7 +49,7 @@ struct GetChargeStateIntent: AppIntent {
 @MainActor enum PolicyStateRuntime {
  static var provider: (() throws -> PolicyPhase)?
  static func read() throws -> PolicyPhase {
-  guard let provider else { throw HelperError.rejected("应用策略状态尚不可读，请先打开 OpenCharge") }
+  guard let provider else { throw HelperError.rejected(String(localized:"应用策略状态尚不可读，请先打开 OpenCharge")) }
   return try provider()
  }
 }
@@ -117,7 +117,7 @@ struct SetMagSafeLEDIntent: AppIntent {
  @Parameter(title: "灯光", default: .system) var color: AutomationLEDColor
  func perform() async throws -> some IntentResult {
   var config = try Configuration.load()
-  guard let mode = MagSafeMode(rawValue: color.rawValue) else { throw HelperError.rejected("无效灯光颜色") }
+  guard let mode = MagSafeMode(rawValue: color.rawValue) else { throw HelperError.rejected(String(localized:"无效灯光颜色")) }
   config.magSafeMode = mode; try config.save(); return .result(dialog: "已保存灯光设置，请在 OpenCharge 查看应用结果。")
  }
 }

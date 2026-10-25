@@ -4,7 +4,7 @@ public enum EnergySensitivity: String, CaseIterable, Identifiable {
  case high, balanced, low
  public var id: Self { self }
  public var threshold: Double { switch self { case .high: return 10_000; case .balanced: return 20_000; case .low: return 35_000 } }
- public var displayName: String { switch self { case .high: return "高灵敏度"; case .balanced: return "均衡"; case .low: return "低灵敏度" } }
+ public var displayName: String { switch self { case .high: return String(localized:"高灵敏度"); case .balanced: return String(localized:"均衡"); case .low: return String(localized:"低灵敏度") } }
 }
 public struct EnergyImpact: Equatable, Sendable {
  public let bundleIdentifier: String

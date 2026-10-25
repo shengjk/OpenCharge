@@ -11,8 +11,8 @@ struct PopoverDragHandle: NSViewRepresentable {
  func makeNSView(context: Context) -> PopoverDragSource { PopoverDragSource() }
  func updateNSView(_ view: PopoverDragSource, context: Context) {
   view.widget = widget; view.owner = preferences
-  view.setAccessibilityLabel("拖动 \(widget.title)")
-  view.toolTip = "拖动调整 \(widget.title) 的顺序"
+  view.setAccessibilityLabel(String(localized:"拖动 \(widget.title)"))
+  view.toolTip = String(localized:"拖动调整 \(widget.title) 的顺序")
  }
 }
 

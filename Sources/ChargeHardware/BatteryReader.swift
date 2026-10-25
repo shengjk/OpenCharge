@@ -5,7 +5,7 @@ import IOKit.ps
 public enum BatteryTemperatureSource: String, Codable, Sendable {
     case smc = "smc.TB0T"
     case registry = "ioregistry.Temperature"
-    public var displayName: String { self == .smc ? "SMC TB0T" : "系统电池传感器" }
+    public var displayName: String { self == .smc ? "SMC TB0T" : String(localized:"系统电池传感器") }
 }
 
 public struct BatteryReading: Codable, Sendable {

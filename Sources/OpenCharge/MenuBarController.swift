@@ -94,7 +94,7 @@ import ChargeHardware
  func popoverDidShow(_ notification: Notification) {
   if let window = popover.contentViewController?.view.window {
    window.identifier = NSUserInterfaceItemIdentifier("OpenChargeStatusPopover")
-   window.title = "OpenCharge · 菜单栏弹窗"
+   window.title = String(localized:"OpenCharge · 菜单栏弹窗")
   }
   model.setPopoverVisible(true, consumer: .statusItem)
  }

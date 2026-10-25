@@ -2,7 +2,7 @@ import Foundation
 public enum PopoverWidget: String, Codable, CaseIterable, Identifiable {
  case specifications, powerFlow, energyApps
  public var id: Self { self }
- public var title: String { switch self { case .specifications: return "电池规格"; case .powerFlow: return "能量流向"; case .energyApps: return "高耗能应用" } }
+ public var title: String { switch self { case .specifications: return String(localized:"电池规格"); case .powerFlow: return String(localized:"能量流向"); case .energyApps: return String(localized:"高耗能应用") } }
 }
 public struct PopoverLayout: Codable, Equatable {
  public var widgets: [PopoverWidget]

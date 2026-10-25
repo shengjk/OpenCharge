@@ -23,17 +23,17 @@ struct PowerFlowView: View {
     }.accessibilityHidden(true)
     PowerFlowArrows(snapshot: snapshot, compact: compact, enabled: animationEnabled, reduceMotion: reduceMotion)
      .frame(width: size.width, height: size.height).accessibilityHidden(true).allowsHitTesting(false)
-    node("适配器", icon: "powerplug", detail: adapterConnected ? "已连接" : "未连接").position(left)
+    node(String(localized:"适配器"), icon: "powerplug", detail: adapterConnected ? String(localized:"已连接") : String(localized:"未连接")).position(left)
     node("Mac", icon: "laptopcomputer", detail: watts(snapshot.systemWatts)).position(middle)
-    node("电池", icon: "battery.75percent", detail: batteryLabel).position(right)
+    node(String(localized:"电池"), icon: "battery.75percent", detail: batteryLabel).position(right)
     Text(watts(snapshot.adapterWatts)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).position(x: (left.x + middle.x) / 2, y: 106)
     Text(watts(snapshot.batteryWatts.map(abs))).font(.caption.monospacedDigit()).foregroundStyle(.secondary).position(x: (middle.x + right.x) / 2, y: 106)
    }.frame(height: 135)
-   if !compact { Text("线宽按最新功率缩放；箭头表示供电方向。未知读数显示为 —。各通道可能异步采样，图中不推算能量损耗。").font(.caption).foregroundStyle(.secondary) }
+   if !compact { Text(String(localized:"线宽按最新功率缩放；箭头表示供电方向。未知读数显示为 —。各通道可能异步采样，图中不推算能量损耗。")).font(.caption).foregroundStyle(.secondary) }
   }
  }
  private var batteryLabel: String {
-  switch snapshot.batteryFlow { case .charging: return "正在充电"; case .supplyingSystem: return "向 Mac 供电"; case .idle: return "接近零功率"; case .unknown: return "功率未知" }
+  switch snapshot.batteryFlow { case .charging: return String(localized:"正在充电"); case .supplyingSystem: return String(localized:"向 Mac 供电"); case .idle: return String(localized:"接近零功率"); case .unknown: return String(localized:"功率未知") }
  }
  private func watts(_ value: Double?) -> String { value.map { String(format: "%.1f W", $0) } ?? "—" }
  private func node(_ name: String, icon: String, detail: String) -> some View {

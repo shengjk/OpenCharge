@@ -23,8 +23,8 @@ import ChargeHardware
 }
 @MainActor final class DashboardPresentation: ObservableObject {
  @Published private(set) var reading: BatteryReading?
- @Published private(set) var decision = Decision(.restore, "正在读取电池…", limit: 80)
- @Published private(set) var helperStatus = "监测模式"
+ @Published private(set) var decision = Decision(.restore, String(localized:"正在读取电池…"), limit: 80)
+ @Published private(set) var helperStatus = String(localized:"监测模式")
  @Published private(set) var limit: Double = 80
  @Published private(set) var history: [HistoryPoint] = []
  @Published var paused = true
@@ -51,8 +51,8 @@ enum BatterySpecificationFormatter {
   case .condition: return reading?.condition ?? "—"
   case .fullCapacity: return reading?.fullCapacityMAH.map { String(format: "%.0f mAh", $0) } ?? "—"
   case .designCapacity: return reading?.designCapacityMAH.map { String(format: "%.0f mAh", $0) } ?? "—"
-  case .timeToFull: return reading?.timeToFullMinutes.map { "\(Int($0)) 分钟" } ?? "—"
-  case .timeToEmpty: return reading?.timeToEmptyMinutes.map { "\(Int($0)) 分钟" } ?? "—"
+  case .timeToFull: return reading?.timeToFullMinutes.map { String(localized:"\(Int($0)) 分钟") } ?? "—"
+  case .timeToEmpty: return reading?.timeToEmptyMinutes.map { String(localized:"\(Int($0)) 分钟") } ?? "—"
   case .voltage: return reading?.voltageMV.map { String(format: "%.2f V", $0 / 1000) } ?? "—"
   case .current: return reading?.currentMA.map { String(format: "%+.0f mA", $0) } ?? "—"
   }

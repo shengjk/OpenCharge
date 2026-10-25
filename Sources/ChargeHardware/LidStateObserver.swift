@@ -21,8 +21,8 @@ public final class LidStateObserver {
  public init(receive: @escaping () -> Void) throws {
   callback = Callback(receive)
   let root = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
-  guard root != 0 else { throw HardwareError.unavailable("合盖状态不可用") }; defer { IOObjectRelease(root) }
-  guard let port = IONotificationPortCreate(kIOMainPortDefault) else { throw HardwareError.unavailable("无法监听合盖状态") }
+  guard root != 0 else { throw HardwareError.unavailable(String(localized:"合盖状态不可用")) }; defer { IOObjectRelease(root) }
+  guard let port = IONotificationPortCreate(kIOMainPortDefault) else { throw HardwareError.unavailable(String(localized:"无法监听合盖状态")) }
   self.port = port
   let result = IOServiceAddInterestNotification(port, root, kIOGeneralInterest, { ref, _, message, _ in
    guard message == opencharge_clamshell_state_changed(), let ref else { return }
