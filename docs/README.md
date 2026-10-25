@@ -17,3 +17,5 @@
 - [Verification](TESTING.md)
 - [Hardware protocols](HARDWARE.md) and [service management](SERVICE-MANAGEMENT.md)
 - [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md)
+
+- [Login startup](LOGIN-STARTUP.md)

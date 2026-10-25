@@ -525,3 +525,7 @@
 "；重新开合盖后可再试" = "; reopen and close the lid to retry";
 
 "此系统尚不支持应用内服务注册；可按安装说明使用开发服务。" = "In-app service registration is not implemented for this system. Use the documented development service setup.";
+
+"无法安全配置登录启动；请检查应用位置与现有登录项。" = "Cannot configure login startup safely. Check the app location and existing login item.";
+
+"登录启动设置将在下次登录时生效。" = "Login startup settings take effect at the next login.";

@@ -39,4 +39,6 @@ Shared-module compatibility work: application/policy/hardware lookup calls retai
 
 Date display and effective Low Power Mode observation now use version-gated APIs with explicit legacy formatting and unknown-state handling. The menu icon has a legacy alpha-mask tint path. These changes retain the packaged macOS 13 requirement; other SwiftUI, chart and service/login compatibility work remains.
 
-Hardware-service inspection now separates its application status/preflight from the macOS 13 SMAppService backend. Earlier systems report the missing native route explicitly and can still inspect an existing development installation. Native privileged-service installation before macOS 13, login startup compatibility and the full old-system app remain unfinished; the packaged minimum stays macOS 13.
+Hardware-service inspection now separates its application status/preflight from the macOS 13 SMAppService backend. Earlier systems report the missing native route explicitly and can still inspect an existing development installation. Native privileged-service installation before macOS 13, the full old-system app remain unfinished; the packaged minimum stays macOS 13.
+
+Login-startup development source now separates the macOS 13 native backend from an owned per-user LaunchAgent fallback for earlier systems, with fake-backend and temporary-directory tests. Actual logout/login, launchd overrides, native registration and old-system runtime have not been exercised. See [login startup](LOGIN-STARTUP.md).

@@ -15,7 +15,7 @@ struct SettingsView: View {
  @AppStorage("menuIconStyle") private var menuIconStyle = MenuIconStyle.status
  @AppStorage("menuTintLowPower") private var menuTintLowPower = false
  @AppStorage("showDockIcon") private var showDockIcon = true
- @State private var loginError: String?
+ @StateObject private var loginStartup = LoginStartup()
  var body: some View {
   ChargeSettingsLockNotice(model: m)
   Card(NSLocalizedString("界面与能耗", comment: "")) {
@@ -66,8 +66,12 @@ struct SettingsView: View {
   Card(NSLocalizedString("系统与隐私", comment: "")) {
    Toggle(NSLocalizedString("记录本地电池历史", comment: ""), isOn: $m.config.historyEnabled).onChange(of: m.config.historyEnabled) { _ in m.save() }
    Toggle(NSLocalizedString("状态变化通知", comment: ""), isOn: $m.config.notifications).onChange(of: m.config.notifications) { enabled in m.save(); if enabled { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } } }
-   Button(SMAppService.mainApp.status == .enabled ? NSLocalizedString("关闭登录启动", comment: "") : NSLocalizedString("启用登录启动", comment: "")) { do { if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() } else { try SMAppService.mainApp.register() } } catch { loginError = error.localizedDescription } }
-   if let loginError { Text(loginError).font(.caption).foregroundStyle(.orange) }
+   Button(loginStartup.enabled == true ? NSLocalizedString("关闭登录启动", comment: "") : NSLocalizedString("启用登录启动", comment: "")) { loginStartup.toggle() }
+    .disabled(loginStartup.enabled == nil)
+    .onAppear { loginStartup.reload() }
+    .onReceive(NotificationCenter.default.publisher(for:NSApplication.didBecomeActiveNotification)) { _ in loginStartup.reload() }
+   if let error = loginStartup.error { Text(error).font(.caption).foregroundStyle(.orange) }
+   Text(NSLocalizedString("登录启动设置将在下次登录时生效。", comment: "")).font(.caption).foregroundStyle(.secondary)
    Text(String.localizedStringWithFormat(NSLocalizedString("所有记录保存在本机，不上传遥测。当前系统：%@", comment: ""), ProcessInfo.processInfo.operatingSystemVersionString)).font(.caption).foregroundStyle(.secondary)
   }
   UpdateView(updates: m.updates)
