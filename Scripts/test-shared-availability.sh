@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compile shared modules against the intended compatibility floor. This does not
+# Compile shared modules and update transport against the compatibility floor. This does not
 # declare app support or execute hardware code on an older operating system.
 set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,5 +24,8 @@ for TEST_ARCH in arm64 x86_64; do
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name ChargeHardware \
   -I "$BUILD_DIR/ApplePowerConstants" Sources/ChargeHardware/*.swift \
   -o "$BUILD_DIR/$TEST_ARCH/ChargeHardware.swiftmodule"
- echo "PASS macOS 11 API availability: shared core, hardware and C bridge ($TEST_ARCH); no runtime or hardware action"
+ swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name ReleaseNetwork \
+  -I "$BUILD_DIR/$TEST_ARCH" Sources/OpenCharge/ReleaseHTTP.swift Sources/OpenCharge/ReleaseTransfer.swift \
+  -o "$BUILD_DIR/$TEST_ARCH/ReleaseNetwork.swiftmodule"
+ echo "PASS macOS 11 API availability: shared core, hardware, C bridge and update transport ($TEST_ARCH); no runtime or hardware action"
 done
