@@ -28,7 +28,7 @@ struct PopoverContents: View {
    VStack(alignment: .leading, spacing: 14) {
     HStack { Text("OpenCharge").font(.headline); Spacer(); if preferences.showPercentage { Text(m.title).font(.title2.monospacedDigit()) } }
     ChargeSettingsLockNotice(model: m)
-    ProgressView(value: m.reading?.percent ?? 0, total: 100).tint(PresentationPalette.mint)
+    ProgressView(value: m.reading?.percent ?? 0, total: 100).presentationTint(PresentationPalette.mint)
     Text(String.localizedStringWithFormat(NSLocalizedString("目标 %lld%% · %@", comment: ""), Int64(Int(m.decision.effectiveLimit)), m.decision.reason)).font(.callout)
     Text(m.helperStatus).font(.caption).presentationSecondary()
     HStack { Button(m.automationPhase == .topUp ? NSLocalizedString("停止充满", comment: "") : NSLocalizedString("充至满电", comment: "")) { m.toggleTopUp() }; PopoverDischargeButton(model: m); Button(NSLocalizedString("自动", comment: "")) { m.changeMode(.automatic) } }
@@ -42,7 +42,7 @@ struct PopoverContents: View {
     } else {
      ForEach(preferences.layout.widgets) { widget in
       VStack(alignment: .leading, spacing: 10) { Text(widget.title).font(.subheadline.bold()); content(widget) }
-       .frame(maxWidth: .infinity, alignment: .leading).padding(12).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+       .frame(maxWidth: .infinity, alignment: .leading).padding(12).presentationPrimaryBackground(opacity: 0.04, radius: 12)
        .onLongPressGesture(minimumDuration: 0.6) { setEditing(true) }
      }
     }
@@ -62,7 +62,7 @@ struct PopoverContents: View {
    Spacer()
    Button { preferences.layout.move(widget, by: -1) } label: { Image(systemName: "arrow.up") }.help(String.localizedStringWithFormat(NSLocalizedString("上移 %@", comment: ""), widget.title)).disabled(preferences.layout.widgets.first == widget)
    Button { preferences.layout.move(widget, by: 1) } label: { Image(systemName: "arrow.down") }.help(String.localizedStringWithFormat(NSLocalizedString("下移 %@", comment: ""), widget.title)).disabled(preferences.layout.widgets.last == widget)
-  }.padding(8).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8)).contentShape(Rectangle())
+  }.padding(8).presentationPrimaryBackground(opacity: 0.04, radius: 8).contentShape(Rectangle())
   }.frame(height: 44)
  }
  @ViewBuilder private func content(_ widget: PopoverWidget) -> some View {

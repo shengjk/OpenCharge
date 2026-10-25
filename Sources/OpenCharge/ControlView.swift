@@ -14,10 +14,10 @@ struct ControlView: View {
  var body: some View {
   ChargeSettingsLockNotice(model: m)
   Card(NSLocalizedString("充电上限", comment: "")) { HStack { Text(NSLocalizedString("日常目标", comment: "")); Spacer(); Text("\(Int(m.config.policy.limit))%").font(.title.bold()).presentationMint() }; Slider(value: Binding(get: { m.config.policy.limit }, set: { m.setChargeLimitFromGUI($0) }), in: 20...100, step: 1) { Text(NSLocalizedString("充电上限", comment: "")) } onEditingChanged: { editing in if !editing { m.applyChargeSettingsFromGUI() } }.disabled(m.config.policy.mode == .calibration || m.settingsLocked); HStack { Text("20%"); Spacer(); Text("100%") }.font(.caption).presentationSecondary()
-   HStack { Text(NSLocalizedString("精确上限", comment: "")); TextField("20–100", text: $limitDraft).frame(width: 70).disabled(m.config.policy.mode == .calibration || m.settingsLocked).onAppear { limitDraft = String(Int(m.config.policy.limit)) }.onSubmit {
+   HStack { Text(NSLocalizedString("精确上限", comment: "")); CommitTextField(title: "20–100", text: $limitDraft) {
     guard let value = Double(limitDraft), value.isFinite, (20...100).contains(value) else { m.error = NSLocalizedString("充电上限必须在 20–100%", comment: ""); return }
     m.setChargeLimitFromGUI(value); m.applyChargeSettingsFromGUI()
-   }.onChange(of: m.config.policy.limit) { value in limitDraft = String(Int(value)) }; Text("%"); Spacer() }
+   }.frame(width: 70).disabled(m.config.policy.mode == .calibration || m.settingsLocked).onAppear { limitDraft = String(Int(m.config.policy.limit)) }.onChange(of: m.config.policy.limit) { value in limitDraft = String(Int(value)) }; Text("%"); Spacer() }
   }
   Card(NSLocalizedString("航行与温度", comment: "")) {
    Toggle(NSLocalizedString("航行模式", comment: ""), isOn: m.chargeSetting(\.sailing)).disabled(m.settingsLocked)
@@ -65,7 +65,7 @@ struct ControlView: View {
    Group { if m.config.policy.departure != nil { DatePicker(NSLocalizedString("出发时间", comment: ""), selection: Binding(get: { m.config.policy.departure ?? Date() }, set: { value in m.editChargeSettings { m.config.policy.departure = value } })); Stepper(String.localizedStringWithFormat(NSLocalizedString("出行目标 %lld%%", comment: ""), Int64(Int(m.config.policy.departureTarget))), value: m.chargeSetting(\.departureTarget), in: 20...100); Stepper(String.localizedStringWithFormat(NSLocalizedString("估算充电速度 %lld%% / 小时", comment: ""), Int64(Int(m.config.policy.estimatedPercentPerHour))), value: m.chargeSetting(\.estimatedPercentPerHour), in: 5...100, step: 5) } }.disabled(m.settingsLocked)
    Text(NSLocalizedString("按设定速度估算开始充电时间，预留 30 分钟；无法保证到点充满，电脑必须保持运行。", comment: "")).font(.caption).presentationSecondary()
   }
-  Button(NSLocalizedString("保存并应用策略", comment: "")) { m.applyChargeSettingsFromGUI() }.buttonStyle(.borderedProminent).tint(PresentationPalette.mint).disabled(m.settingsLocked)
+  Button(NSLocalizedString("保存并应用策略", comment: "")) { m.applyChargeSettingsFromGUI() }.presentationProminentButton().presentationTint(PresentationPalette.mint).disabled(m.settingsLocked)
  }
  func modeName(_ mode: ChargeMode) -> String { switch mode { case .automatic: return NSLocalizedString("自动", comment: ""); case .paused: return NSLocalizedString("暂停", comment: ""); case .discharge: return NSLocalizedString("放电", comment: ""); case .topUp: return NSLocalizedString("充满", comment: ""); case .calibration: return NSLocalizedString("校准", comment: "") } }
 }

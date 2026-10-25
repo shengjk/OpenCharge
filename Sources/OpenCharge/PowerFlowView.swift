@@ -37,7 +37,7 @@ struct PowerFlowView: View {
  }
  private func watts(_ value: Double?) -> String { value.map { String(format: "%.1f W", $0) } ?? "—" }
  private func node(_ name: String, icon: String, detail: String) -> some View {
-  VStack(spacing: 6) { Image(systemName: icon).font(compact ? .headline : .title2); Text(name).font(compact ? .caption.bold() : .callout.bold()); Text(detail).font(.caption).presentationSecondary().lineLimit(1).minimumScaleFactor(0.65) }.frame(width: compact ? 64 : 100, height: compact ? 70 : 90).background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(.primary.opacity(0.08)))
+  VStack(spacing: 6) { Image(systemName: icon).font(compact ? .headline : .title2); Text(name).font(compact ? .caption.bold() : .callout.bold()); Text(detail).font(.caption).presentationSecondary().lineLimit(1).minimumScaleFactor(0.65) }.frame(width: compact ? 64 : 100, height: compact ? 70 : 90).presentationControlBackground(radius: 14).presentationBorder(radius: 14, opacity: 0.08)
  }
  private func draw(context: inout GraphicsContext, from: CGPoint, to: CGPoint, watts: Double?, active: Bool, color: Color) {
   let width = active ? min(12, max(3, (watts ?? 0) / 4)) : 2

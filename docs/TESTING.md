@@ -351,3 +351,8 @@ The isolated macOS 11-target fixture checks read-only inspection, exact fixed ar
 ## Shared SwiftUI presentation availability
 
 The shared gate compiles the presentation palette and foreground modifiers with a macOS 11 target for arm64 and x86_64. On macOS 12 and later they retain the system mint and hierarchical foreground styles; the older path uses semantic secondary/orange colors and system teal. Numeric labels apply monospaced digits to their existing font sizes. Full native and universal package builds check integration, while the injected dashboard fixture checks model behavior without hardware actions. These checks do not establish old-system rendering, VoiceOver behavior or complete application compatibility; Charts, navigation and other newer UI APIs still require separate work. The supported application deployment floor remains macOS 13.
+
+
+## Backgrounds and controls on older systems
+
+The presentation module also compiles rounded card/error backgrounds, borders, accent colors, prominent/destructive buttons and Return submission against macOS 11 for both architectures. Current systems retain their existing native background and button APIs. The older path fills/strokes the same rounded shapes, supplies an accent-filled button style with pressed/disabled states, and uses an ordinary native button for destructive actions. Precise-limit validation and its action are unchanged; the older text field uses its Return callback instead of applying on focus or text changes. Full builds and injected model checks do not verify physical keyboard interaction, accessibility announcements, disabled-control rendering or old-system appearance; those remain UI acceptance checks.

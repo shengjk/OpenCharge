@@ -126,7 +126,7 @@ struct HelperServiceView: View {
     Button(NSLocalizedString("刷新状态", comment: "")) { service.refresh() }
     Button(NSLocalizedString("查看安装说明", comment: "")) { if let url = Bundle.main.url(forResource: "HELPER-SETUP", withExtension: "md") { NSWorkspace.shared.open(url) } }
     if service.status == .requiresApproval { Button(NSLocalizedString("打开系统批准设置", comment: "")) { service.openApprovalSettings() } }
-    if !service.legacyInstalled && (service.status == .enabled || service.status == .requiresApproval) { Button(NSLocalizedString("注销服务", comment: ""), role: .destructive) { Task { await m.removeHelperService() } }.disabled(service.busy) }
+    if !service.legacyInstalled && (service.status == .enabled || service.status == .requiresApproval) { DestructiveButton(NSLocalizedString("注销服务", comment: "")) { Task { await m.removeHelperService() } }.disabled(service.busy) }
    }
   }.onAppear { service.refresh() }
  }

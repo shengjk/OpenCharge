@@ -51,7 +51,7 @@ struct AppSettingsView: View {
    VStack(alignment: .leading, spacing: 24) {
     if let error = model.error {
      HStack { Image(systemName: "exclamationmark.triangle"); Text(error).font(.callout); Spacer(); Button(NSLocalizedString("关闭", comment: "")) { model.error = nil } }
-      .padding().background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+      .padding().presentationOrangeBackground(opacity: 0.12, radius: 12)
     }
     SettingsView().environmentObject(model)
    }.padding(24)

@@ -21,7 +21,7 @@ struct ScheduleView: View {
    if draft.action == .limit || draft.action == .discharge { Stepper(String.localizedStringWithFormat(NSLocalizedString("目标 %lld%%", comment: ""), Int64(Int(draft.value))), value: $draft.value, in: 20...100) }
    Picker(NSLocalizedString("重复", comment: ""), selection: $draft.repeatRule) { ForEach(RepeatRule.allCases, id: \.self) { Text($0.displayName).tag($0) } }
    HStack {
-    Button(editing ? NSLocalizedString("保存修改", comment: "") : NSLocalizedString("添加任务", comment: "")) { m.config.saveSchedule(draft); m.save(); draft = ChargeSchedule(); editing = false }.buttonStyle(.borderedProminent).tint(PresentationPalette.mint)
+    Button(editing ? NSLocalizedString("保存修改", comment: "") : NSLocalizedString("添加任务", comment: "")) { m.config.saveSchedule(draft); m.save(); draft = ChargeSchedule(); editing = false }.presentationProminentButton().presentationTint(PresentationPalette.mint)
     if editing { Button(NSLocalizedString("取消编辑", comment: "")) { draft = ChargeSchedule(); editing = false } }
    }
    if !editing { HStack {
@@ -32,8 +32,8 @@ struct ScheduleView: View {
   }
   Card(NSLocalizedString("已安排", comment: "")) {
    if m.config.schedules.isEmpty { Label(NSLocalizedString("没有任务。为下次出行安排一次充满。", comment: ""), systemImage: "calendar.badge.plus").presentationSecondary().padding(.vertical) }
-   ForEach($m.config.schedules) { $s in HStack { Toggle("", isOn: $s.enabled).labelsHidden().onChange(of: s.enabled) { _ in m.save() }; VStack(alignment: .leading) { Text(s.action.displayName).font(.headline); Text("\(DateDisplay.string(s.date)) · \(s.repeatRule.displayName)").font(.caption).presentationSecondary() }; Spacer(); Button(NSLocalizedString("编辑", comment: "")) { draft = s; editing = true }; Button(role: .destructive) { if draft.id == s.id { draft = ChargeSchedule(); editing = false }; m.config.schedules.removeAll { $0.id == s.id }; m.save() } label: { Image(systemName: "trash") } } }
-   Button(NSLocalizedString("清空全部任务", comment: ""), role: .destructive) { m.config.schedules = []; draft = ChargeSchedule(); editing = false; m.save() }
+   ForEach($m.config.schedules) { $s in HStack { Toggle("", isOn: $s.enabled).labelsHidden().onChange(of: s.enabled) { _ in m.save() }; VStack(alignment: .leading) { Text(s.action.displayName).font(.headline); Text("\(DateDisplay.string(s.date)) · \(s.repeatRule.displayName)").font(.caption).presentationSecondary() }; Spacer(); Button(NSLocalizedString("编辑", comment: "")) { draft = s; editing = true }; DestructiveButton { if draft.id == s.id { draft = ChargeSchedule(); editing = false }; m.config.schedules.removeAll { $0.id == s.id }; m.save() } label: { Image(systemName: "trash") } } }
+   DestructiveButton(NSLocalizedString("清空全部任务", comment: "")) { m.config.schedules = []; draft = ChargeSchedule(); editing = false; m.save() }
    Text(NSLocalizedString("应用运行时每 10 秒检查。睡眠期间不执行；唤醒后每个逾期任务仅补执行一次。", comment: "")).font(.caption).presentationSecondary()
   }
   Card(NSLocalizedString("执行历史", comment: "")) {

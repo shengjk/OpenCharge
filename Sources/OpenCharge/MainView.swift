@@ -32,7 +32,7 @@ struct MainView: View {
    ScrollView {
     VStack(alignment: .leading, spacing: 24) {
      HStack { VStack(alignment: .leading, spacing: 6) { Text((m.dashboardPage ?? .overview).title).font(.system(size: 30, weight: .bold, design: .rounded)); Text(NSLocalizedString("电池照顾，清楚可见。", comment: "")).presentationSecondary() }; Spacer(); Button { m.refresh() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.bordered) }
-     if let error = m.error { HStack { Image(systemName: "exclamationmark.triangle"); Text(error).font(.callout); Spacer(); Button(NSLocalizedString("关闭", comment: "")) { m.error = nil } }.padding().background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12)) }
+     if let error = m.error { HStack { Image(systemName: "exclamationmark.triangle"); Text(error).font(.callout); Spacer(); Button(NSLocalizedString("关闭", comment: "")) { m.error = nil } }.padding().presentationOrangeBackground(opacity: 0.12, radius: 12) }
      switch m.dashboardPage ?? .overview { case .overview: OverviewView(m: m, d: m.dashboard, preferences: m.dashboardPreferences); case .control: ControlView(); case .schedules: ScheduleView(); case .history: HistoryView(); case .settings: SettingsView() }
     }.padding(30).frame(maxWidth: 1100, alignment: .leading)
    }.background(Color(NSColor.windowBackgroundColor))
