@@ -12,15 +12,9 @@ struct PowerFlowView: View {
    GeometryReader { geometry in
     let size = geometry.size
     let inset: CGFloat = compact ? 35 : 55
-    let edge: CGFloat = compact ? 34 : 52
     let left = CGPoint(x: inset, y: 70), middle = CGPoint(x: size.width / 2, y: 70), right = CGPoint(x: size.width - inset, y: 70)
-    Canvas { context, _ in
-     draw(context: &context, from: CGPoint(x: left.x + edge, y: left.y), to: CGPoint(x: middle.x - edge, y: middle.y), watts: snapshot.adapterWatts, active: snapshot.adapterSupplying == true, color: PresentationPalette.mint)
-     let charging = snapshot.batteryFlow == .charging
-     let start = charging ? CGPoint(x: middle.x + edge, y: middle.y) : CGPoint(x: right.x - edge, y: right.y)
-     let end = charging ? CGPoint(x: right.x - edge, y: right.y) : CGPoint(x: middle.x + edge, y: middle.y)
-     draw(context: &context, from: start, to: end, watts: snapshot.batteryWatts.map(abs), active: charging || snapshot.batteryFlow == .supplyingSystem, color: charging ? PresentationPalette.mint : .orange)
-    }.accessibilityHidden(true)
+    PowerFlowConnections(snapshot: snapshot, width: size.width, compact: compact)
+     .frame(width: size.width, height: size.height).allowsHitTesting(false)
     PowerFlowArrows(snapshot: snapshot, compact: compact, enabled: animationEnabled, reduceMotion: reduceMotion)
      .frame(width: size.width, height: size.height).accessibilityHidden(true).allowsHitTesting(false)
     node(NSLocalizedString("适配器", comment: ""), icon: "powerplug", detail: adapterConnected ? NSLocalizedString("已连接", comment: "") : NSLocalizedString("未连接", comment: "")).position(left)
@@ -38,10 +32,5 @@ struct PowerFlowView: View {
  private func watts(_ value: Double?) -> String { value.map { String(format: "%.1f W", $0) } ?? "—" }
  private func node(_ name: String, icon: String, detail: String) -> some View {
   VStack(spacing: 6) { Image(systemName: icon).font(compact ? .headline : .title2); Text(name).font(compact ? .caption.bold() : .callout.bold()); Text(detail).font(.caption).presentationSecondary().lineLimit(1).minimumScaleFactor(0.65) }.frame(width: compact ? 64 : 100, height: compact ? 70 : 90).presentationControlBackground(radius: 14).presentationBorder(radius: 14, opacity: 0.08)
- }
- private func draw(context: inout GraphicsContext, from: CGPoint, to: CGPoint, watts: Double?, active: Bool, color: Color) {
-  let width = active ? min(12, max(3, (watts ?? 0) / 4)) : 2
-  var path = Path(); path.move(to: from); path.addLine(to: to)
-  context.stroke(path, with: .color(active ? color.opacity(0.22) : .secondary.opacity(0.18)), style: StrokeStyle(lineWidth: width, lineCap: .round, dash: watts == nil ? [4, 5] : []))
  }
 }

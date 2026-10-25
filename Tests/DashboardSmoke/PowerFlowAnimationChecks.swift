@@ -11,7 +11,16 @@ import ChargeCore
  precondition(layers.count == 2)
  let adapter = layers[0], battery = layers[1]
  func configure(_ watts: Double?, enabled: Bool = true, reduced: Bool = false, compact: Bool = false, input: Double? = 40) {
-  view.configure(snapshot: PowerFlowSnapshot(adapterWatts: input, batteryWatts: watts, systemWatts: 20), compact: compact, enabled: enabled, reduceMotion: reduced)
+  let snapshot = PowerFlowSnapshot(adapterWatts: input, batteryWatts: watts, systemWatts: 20)
+  view.configure(snapshot: snapshot, compact: compact, enabled: enabled, reduceMotion: reduced)
+  let lines = PowerFlowConnection.project(snapshot, width: view.bounds.width, compact: compact)
+  for (layer, line) in zip(layers, lines) {
+   if let motion = layer.animation(forKey: "flow") as? CABasicAnimation {
+    precondition((motion.fromValue as! NSValue).pointValue == line.start)
+    precondition((motion.toValue as! NSValue).pointValue == line.end,
+     "both static renderers must match the independent compositor arrow geometry")
+   }
+  }
  }
  func motion(_ layer: CAShapeLayer) -> CABasicAnimation { layer.animation(forKey: "flow") as! CABasicAnimation }
  configure(nil, input: nil)

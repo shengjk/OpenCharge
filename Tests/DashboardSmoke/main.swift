@@ -4,6 +4,7 @@ import ChargeHardware
 
 @main struct DashboardSmoke {
  @MainActor static func main() async throws {
+  powerFlowConnectionChecks()
   powerFlowAnimationChecks()
   try menuBarAppearanceChecks()
   try updateChecks()

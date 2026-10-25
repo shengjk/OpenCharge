@@ -5,7 +5,7 @@ import AppKit
 enum PresentationPalette {
  static var mint: Color {
   if #available(macOS 12, *) { return .mint }
-  return Color(NSColor.systemTeal)
+  return Color(NSColor.systemMint)
  }
 }
 
@@ -107,5 +107,26 @@ struct CommitTextField: View {
  @ViewBuilder var body: some View {
   if #available(macOS 12, *) { TextField(title, text: $text).onSubmit(onCommit) }
   else { TextField(title, text: $text, onCommit: onCommit) }
+ }
+}
+
+/// All dashboard pages share the same sidebar selection on both navigation hosts.
+struct DashboardNavigation<Sidebar: View, Detail: View>: View {
+ let sidebar: Sidebar
+ let detail: Detail
+ init(@ViewBuilder sidebar: () -> Sidebar, @ViewBuilder detail: () -> Detail) {
+  self.sidebar = sidebar(); self.detail = detail()
+ }
+ var body: some View {
+  if #available(macOS 13, *) {
+   return AnyView(NavigationSplitView {
+    sidebar.navigationSplitViewColumnWidth(220)
+   } detail: { detail })
+  } else {
+   return AnyView(HSplitView {
+    sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300)
+    detail.frame(maxWidth: .infinity, maxHeight: .infinity)
+   })
+  }
  }
 }

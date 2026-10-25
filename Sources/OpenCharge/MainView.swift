@@ -22,12 +22,12 @@ enum Page: String, CaseIterable, Identifiable { case overview = "概览", contro
 struct MainView: View {
  @EnvironmentObject var m: ChargeModel
  var body: some View {
-  NavigationSplitView {
+  DashboardNavigation {
    VStack(alignment: .leading, spacing: 24) {
     HStack(spacing: 12) { Image(systemName: "bolt.circle.fill").font(.largeTitle).presentationMint(); VStack(alignment: .leading) { Text("OpenCharge").font(.headline); Text(NSLocalizedString("让电池从容一点", comment: "")).font(.caption).presentationSecondary() } }.padding(.horizontal, 12).padding(.top, 22)
     List(Page.allCases, selection: $m.dashboardPage) { p in Label(p.title, systemImage: p.icon).padding(.vertical, 6).tag(p) }.listStyle(.sidebar)
     VStack(alignment: .leading, spacing: 6) { Label(m.config.hardwareEnabled ? NSLocalizedString("硬件控制已启用", comment: "") : NSLocalizedString("只读监测", comment: ""), systemImage: m.config.hardwareEnabled ? "checkmark.shield" : "eye").presentationMint(); Text(NSLocalizedString("本地运行 · 无账户 · 开源", comment: "")).presentationSecondary() }.font(.caption).padding(20)
-   }.navigationSplitViewColumnWidth(220)
+   }
   } detail: {
    ScrollView {
     VStack(alignment: .leading, spacing: 24) {
