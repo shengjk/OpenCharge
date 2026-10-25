@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adapt all app localization lookup calls to macOS 11-available Foundation APIs while preserving the 524 existing translation keys, typed format arguments and plural rules. Add six-language comparisons for all 34 formatted app keys and production minute formatting. App UI/automation/registration compatibility remains incomplete; the packaged minimum stays macOS 13.
+
 - Remove macOS 12-only localization and default IOKit port references from shared policy/hardware paths. Preserve translation keys and HTTP formatting, and add dual-architecture macOS 11 availability compilation. The packaged app still requires macOS 13 pending UI, automation and registration compatibility work.
 
 - Restrict direct CLI charge actions to the four public verbs. Reject internal lifecycle commands and ordinary direct control on selected numeric firmware models before helper IPC; preserve model-independent recovery and app-owned numeric policy control.

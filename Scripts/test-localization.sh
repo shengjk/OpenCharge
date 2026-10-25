@@ -5,9 +5,14 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
-swift build -c release --disable-sandbox
-BIN_DIR="$(swift build -c release --disable-sandbox --show-bin-path)"
-TEST_ARCH="$(uname -m)"
+TEST_ARCH="${OPENCHARGE_TEST_ARCH:-$(uname -m)}"
+case "$TEST_ARCH" in arm64|x86_64) ;; *) echo "Unsupported test architecture" >&2; exit 1 ;; esac
+BUILD_ARGS=(-c release --disable-sandbox)
+if [[ "$TEST_ARCH" != "$(uname -m)" ]]; then
+ BUILD_ARGS+=(--scratch-path "$PROJECT_DIR/.build/universal-$TEST_ARCH" --triple "$TEST_ARCH-apple-macosx13.0")
+fi
+swift build "${BUILD_ARGS[@]}"
+BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 mkdir -p .build/localization-validation
 FIXTURE_DIR="$(mktemp -d "$PROJECT_DIR/.build/localization-validation/fixture.XXXXXX")"
 mkdir -p "$FIXTURE_DIR/core" "$FIXTURE_DIR/hardware" "$FIXTURE_DIR/app"
@@ -39,14 +44,14 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
- -DOPENCHARGE_DASHBOARD_SMOKE -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" Sources/OpenCharge/*.swift Tests/LocalizationSmoke/main.swift \
+ -DOPENCHARGE_DASHBOARD_SMOKE -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" Sources/OpenCharge/*.swift Tests/LocalizationSmoke/*.swift \
  "$BIN_DIR"/ChargeCore.build/*.o "$BIN_DIR"/ChargeHardware.build/*.o "$BIN_DIR"/ApplePowerConstants.build/*.o \
  -o "$APP/Contents/MacOS/check"
-python3 - "$APP/Contents/MacOS/check" <<'PYTEST'
+python3 - "$APP/Contents/MacOS/check" "$TEST_ARCH" <<'PYTEST'
 import base64,subprocess,sys
 snapshots=[]
 for requested,expected in [('en','en'),('zh-Hans','zh-Hans'),('zh-Hant','zh-Hant'),('zh-TW','zh-Hant'),('zh-HK','zh-Hant'),('fr','en')]:
- output=subprocess.check_output([sys.argv[1],'-AppleLanguages','('+requested+')',expected],text=True)
+ output=subprocess.check_output(['/usr/bin/arch','-'+sys.argv[2],sys.argv[1],'-AppleLanguages','('+requested+')',expected],text=True)
  lines=output.splitlines(); snapshots.append(base64.b64decode(next(line[14:] for line in lines if line.startswith('POLICY_BASE64 '))))
  for line in lines:
   if line.startswith('PASS '):print(line)

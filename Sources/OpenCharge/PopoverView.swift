@@ -29,16 +29,16 @@ struct PopoverContents: View {
     HStack { Text("OpenCharge").font(.headline); Spacer(); if preferences.showPercentage { Text(m.title).font(.title2.monospacedDigit()) } }
     ChargeSettingsLockNotice(model: m)
     ProgressView(value: m.reading?.percent ?? 0, total: 100).tint(.mint)
-    Text(String(localized:"目标 \(Int(m.decision.effectiveLimit))% · \(m.decision.reason)")).font(.callout)
+    Text(String.localizedStringWithFormat(NSLocalizedString("目标 %lld%% · %@", comment: ""), Int64(Int(m.decision.effectiveLimit)), m.decision.reason)).font(.callout)
     Text(m.helperStatus).font(.caption).foregroundStyle(.secondary)
-    HStack { Button(m.automationPhase == .topUp ? String(localized:"停止充满") : String(localized:"充至满电")) { m.toggleTopUp() }; PopoverDischargeButton(model: m); Button(String(localized:"自动")) { m.changeMode(.automatic) } }
+    HStack { Button(m.automationPhase == .topUp ? NSLocalizedString("停止充满", comment: "") : NSLocalizedString("充至满电", comment: "")) { m.toggleTopUp() }; PopoverDischargeButton(model: m); Button(NSLocalizedString("自动", comment: "")) { m.changeMode(.automatic) } }
     if editing {
-     Text(String(localized:"拖动调整顺序，也可使用上下按钮。关闭勾选隐藏组件。")).font(.caption).foregroundStyle(.secondary)
+     Text(NSLocalizedString("拖动调整顺序，也可使用上下按钮。关闭勾选隐藏组件。", comment: "")).font(.caption).foregroundStyle(.secondary)
      ForEach(preferences.layout.widgets) { widget in editor(widget) }
      ForEach(PopoverWidget.allCases.filter { !preferences.layout.widgets.contains($0) }) { widget in
       Toggle(widget.title, isOn: Binding(get: { false }, set: { preferences.layout.setVisible(widget, visible: $0) }))
      }
-     Button(String(localized:"完成编辑")) { setEditing(false) }
+     Button(NSLocalizedString("完成编辑", comment: "")) { setEditing(false) }
     } else {
      ForEach(preferences.layout.widgets) { widget in
       VStack(alignment: .leading, spacing: 10) { Text(widget.title).font(.subheadline.bold()); content(widget) }
@@ -47,7 +47,7 @@ struct PopoverContents: View {
      }
     }
     Divider()
-    HStack { Button(String(localized:"打开控制台")) { m.openDashboardWindow(); dismiss?() }; Spacer(); Button(editing ? String(localized:"完成编辑") : String(localized:"编辑组件")) { setEditing(!editing) }; Button(String(localized:"退出")) { m.quit() } }
+    HStack { Button(NSLocalizedString("打开控制台", comment: "")) { m.openDashboardWindow(); dismiss?() }; Spacer(); Button(editing ? NSLocalizedString("完成编辑", comment: "") : NSLocalizedString("编辑组件", comment: "")) { setEditing(!editing) }; Button(NSLocalizedString("退出", comment: "")) { m.quit() } }
    }.padding(18)
   }.frame(width: 380, height: height)
    .background(Group { if consumer == .preview { PopoverWindowObserver(model: m, consumer: consumer).frame(width: 0, height: 0) } })
@@ -60,15 +60,15 @@ struct PopoverContents: View {
    PopoverDragHandle(widget: widget, preferences: preferences).frame(width: 20, height: 24)
    Toggle(widget.title, isOn: Binding(get: { preferences.layout.widgets.contains(widget) }, set: { preferences.layout.setVisible(widget, visible: $0) }))
    Spacer()
-   Button { preferences.layout.move(widget, by: -1) } label: { Image(systemName: "arrow.up") }.help(String(localized:"上移 \(widget.title)")).disabled(preferences.layout.widgets.first == widget)
-   Button { preferences.layout.move(widget, by: 1) } label: { Image(systemName: "arrow.down") }.help(String(localized:"下移 \(widget.title)")).disabled(preferences.layout.widgets.last == widget)
+   Button { preferences.layout.move(widget, by: -1) } label: { Image(systemName: "arrow.up") }.help(String.localizedStringWithFormat(NSLocalizedString("上移 %@", comment: ""), widget.title)).disabled(preferences.layout.widgets.first == widget)
+   Button { preferences.layout.move(widget, by: 1) } label: { Image(systemName: "arrow.down") }.help(String.localizedStringWithFormat(NSLocalizedString("下移 %@", comment: ""), widget.title)).disabled(preferences.layout.widgets.last == widget)
   }.padding(8).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8)).contentShape(Rectangle())
   }.frame(height: 44)
  }
  @ViewBuilder private func content(_ widget: PopoverWidget) -> some View {
   switch widget {
   case .specifications:
-   if preferences.layout.specifications.isEmpty { Text(String(localized:"未选择规格指标")).font(.caption).foregroundStyle(.secondary) }
+   if preferences.layout.specifications.isEmpty { Text(NSLocalizedString("未选择规格指标", comment: "")).font(.caption).foregroundStyle(.secondary) }
    ForEach(preferences.layout.specifications) { spec in HStack { Text(spec.title).font(.caption); Spacer(); Text(BatterySpecificationFormatter.value(spec, reading: m.reading)).font(.caption.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.65) } }
   case .powerFlow:
    PowerFlowView(snapshot: PowerFlowSnapshot(adapterWatts: m.reading?.adapterPowerW, batteryWatts: m.watts, systemWatts: m.reading?.systemPowerW), animationEnabled: m.popoverVisible, compact: true, adapterConnected: m.reading?.physicalAdapterConnected ?? (m.reading?.connected ?? false))
@@ -80,9 +80,9 @@ struct PopoverContents: View {
 struct PopoverDischargeButton: View {
  @ObservedObject var model: ChargeModel
  var body: some View {
-  Button(model.automationPhase == .discharging ? String(localized:"停止放电") : String(localized:"放电")) { model.toggleDischargeFromPopover() }
+  Button(model.automationPhase == .discharging ? NSLocalizedString("停止放电", comment: "") : NSLocalizedString("放电", comment: "")) { model.toggleDischargeFromPopover() }
    .disabled(model.config.policy.automaticDischarge)
-   .help(model.config.policy.automaticDischarge ? String(localized:"自动放电已开启；请在充电控制中关闭后使用手动按钮。") : String(localized:"开始或停止手动放电"))
+   .help(model.config.policy.automaticDischarge ? NSLocalizedString("自动放电已开启；请在充电控制中关闭后使用手动按钮。", comment: "") : NSLocalizedString("开始或停止手动放电", comment: ""))
  }
 }
 struct PopoverEnergyView: View {
@@ -101,17 +101,17 @@ struct PopoverSettingsView: View {
  let preview: () -> Void
  let openEditor: () -> Void
  var body: some View {
-  Card(String(localized:"菜单栏弹窗")) {
-   Toggle(String(localized:"弹窗显示当前电量百分比"), isOn: $preferences.showPercentage)
-   Toggle(String(localized:"弹窗动画"), isOn: $preferences.animationsEnabled)
-   Text(String(localized:"系统开启“减少动态效果”时，弹窗也会关闭动画。")).font(.caption).foregroundStyle(.secondary)
-   Button(String(localized:"打开真实弹窗编辑器")) { openEditor() }
+  Card(NSLocalizedString("菜单栏弹窗", comment: "")) {
+   Toggle(NSLocalizedString("弹窗显示当前电量百分比", comment: ""), isOn: $preferences.showPercentage)
+   Toggle(NSLocalizedString("弹窗动画", comment: ""), isOn: $preferences.animationsEnabled)
+   Text(NSLocalizedString("系统开启“减少动态效果”时，弹窗也会关闭动画。", comment: "")).font(.caption).foregroundStyle(.secondary)
+   Button(NSLocalizedString("打开真实弹窗编辑器", comment: "")) { openEditor() }
    ForEach(PopoverWidget.allCases) { widget in Toggle(widget.title, isOn: Binding(get: { preferences.layout.widgets.contains(widget) }, set: { preferences.layout.setVisible(widget, visible: $0) })) }
-   Text(String(localized:"在菜单栏弹窗中点击“编辑组件”或长按组件，可拖动调整顺序。组件设置与主仪表盘分别保存。")).font(.caption).foregroundStyle(.secondary)
-   Divider(); Text(String(localized:"弹窗规格指标")).font(.subheadline.bold())
+   Text(NSLocalizedString("在菜单栏弹窗中点击“编辑组件”或长按组件，可拖动调整顺序。组件设置与主仪表盘分别保存。", comment: "")).font(.caption).foregroundStyle(.secondary)
+   Divider(); Text(NSLocalizedString("弹窗规格指标", comment: "")).font(.subheadline.bold())
    ForEach(DashboardSpecification.allCases) { spec in Toggle(spec.title, isOn: Binding(get: { preferences.layout.specifications.contains(spec) }, set: { value in preferences.layout.specifications.removeAll { $0 == spec }; if value { preferences.layout.specifications.append(spec) } })) }
-   Button(String(localized:"预览弹窗")) { preview() }
-   Button(String(localized:"恢复默认弹窗")) { preferences.layout = PopoverLayout(); preferences.showPercentage = true; preferences.animationsEnabled = true }
+   Button(NSLocalizedString("预览弹窗", comment: "")) { preview() }
+   Button(NSLocalizedString("恢复默认弹窗", comment: "")) { preferences.layout = PopoverLayout(); preferences.showPercentage = true; preferences.animationsEnabled = true }
   }
  }
 }

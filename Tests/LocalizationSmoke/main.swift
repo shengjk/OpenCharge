@@ -60,6 +60,14 @@ import ChargeHardware
   for status in [403, 429] {
    precondition(ReleaseUpdateError.http(status).localizedDescription == translated("GitHub 请求受限，请稍后重试"))
   }
+  for minutes in [1.0, 2.0] {
+   let reading = BatteryReading(percent:50, connected:true, charging:false, timeToFullMinutes:minutes, timeToEmptyMinutes:minutes)
+   let value = minutes == 1 ? expected("1 minute", "1 分钟", "1 分鐘") : expected("2 minutes", "2 分钟", "2 分鐘")
+   precondition(BatterySpecificationFormatter.value(.timeToFull, reading:reading) == value)
+   precondition(BatterySpecificationFormatter.value(.timeToEmpty, reading:reading) == value)
+  }
+  precondition(BatterySpecificationFormatter.value(.timeToFull, reading:nil) == "—")
+  verifyLegacyAppFormatting()
   print("POLICY_BASE64 " + encoded.base64EncodedString())
   print("PASS native bundle language \(language): domain labels, policy reason, error, interpolation, literal percent and stable persisted identifiers; no hardware or app UI executed")
  }

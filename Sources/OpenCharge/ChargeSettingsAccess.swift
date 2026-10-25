@@ -26,7 +26,7 @@ struct ChargeSettingsLockNotice: View {
  @ObservedObject var model: ChargeModel
  var body: some View {
   if model.settingsLocked {
-   Label(String(localized:"充电设置已锁定 · 请联系管理员调整配置"), systemImage: "lock.fill")
+   Label(NSLocalizedString("充电设置已锁定 · 请联系管理员调整配置", comment: ""), systemImage: "lock.fill")
     .font(.caption).foregroundStyle(.secondary)
   }
  }

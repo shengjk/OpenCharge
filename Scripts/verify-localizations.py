@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate native translation tables against compiler-extracted localization keys."""
+"""Validate native translation tables against compiler and literal Foundation source keys."""
 from pathlib import Path
 import json,plistlib,re,subprocess,sys
 

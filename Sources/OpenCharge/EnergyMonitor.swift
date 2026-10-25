@@ -14,12 +14,12 @@ enum SystemEnergyReader {
  private static let library = dlopen("/usr/lib/libsystemstats.dylib", RTLD_LAZY | RTLD_LOCAL)
  static func read(threshold: Double) -> EnergyQueryResult {
   autoreleasepool {
-   guard let library, let symbol = dlsym(library, "systemstats_get_top_coalitions") else { return .unavailable(String(localized:"此系统未提供应用能耗接口")) }
+   guard let library, let symbol = dlsym(library, "systemstats_get_top_coalitions") else { return .unavailable(NSLocalizedString("此系统未提供应用能耗接口", comment: "")) }
    let query = unsafeBitCast(symbol, to: Query.self)
-   guard let object = query(30, 1000)?.takeUnretainedValue(), let dictionary = object as? NSDictionary else { return .unavailable(String(localized:"系统暂未提供应用能耗数据")) }
+   guard let object = query(30, 1000)?.takeUnretainedValue(), let dictionary = object as? NSDictionary else { return .unavailable(NSLocalizedString("系统暂未提供应用能耗数据", comment: "")) }
    guard let identifiers = dictionary["bundle_identifiers"] as? [String],
          let impacts = dictionary["energy_impacts"] as? [Double],
-         let selected = try? EnergyImpactSelection.select(bundleIdentifiers: identifiers, impacts: impacts, threshold: threshold) else { return .unavailable(String(localized:"系统应用能耗数据格式不受支持")) }
+         let selected = try? EnergyImpactSelection.select(bundleIdentifiers: identifiers, impacts: impacts, threshold: threshold) else { return .unavailable(NSLocalizedString("系统应用能耗数据格式不受支持", comment: "")) }
    return .available(selected)
   }
  }
@@ -45,7 +45,7 @@ enum SystemEnergyReader {
   let id: String; let name: String; let icon: NSImage?; let impact: Double; let cpuPercent: Double?
  }
  @Published private(set) var rows: [Row] = []
- @Published private(set) var status = String(localized:"等待应用能耗数据")
+ @Published private(set) var status = NSLocalizedString("等待应用能耗数据", comment: "")
  @Published private(set) var updatedAt: Date?
  @Published var paused = false
  private var pending = false
@@ -73,9 +73,9 @@ enum SystemEnergyReader {
     guard !paused else { pending = false; queuedSensitivity = nil; return }
     rows = zip(apps, cpu).compactMap { pair, percent in
      guard let percent else { return nil }
-     return Row(id: pair.0.bundleIdentifier, name: pair.1.localizedName ?? String(localized:"未知应用"), icon: pair.1.icon, impact: pair.0.impact, cpuPercent: percent)
+     return Row(id: pair.0.bundleIdentifier, name: pair.1.localizedName ?? NSLocalizedString("未知应用", comment: ""), icon: pair.1.icon, impact: pair.0.impact, cpuPercent: percent)
     }
-    status = rows.isEmpty ? String(localized:"当前没有可显示的高耗能应用") : String(localized:"按系统能耗排序 · CPU 为辅助读数")
+    status = rows.isEmpty ? NSLocalizedString("当前没有可显示的高耗能应用", comment: "") : NSLocalizedString("按系统能耗排序 · CPU 为辅助读数", comment: "")
     updatedAt = Date()
    }
    pending = false

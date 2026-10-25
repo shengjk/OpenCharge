@@ -5,13 +5,13 @@ enum MenuIconStyle: String, CaseIterable, Identifiable {
  case status, battery, coloredBattery, openCharge
  var id: String { rawValue }
  var title: String {
-  switch self { case .status: return String(localized:"动态状态"); case .battery: return String(localized:"电池（单色）"); case .coloredBattery: return String(localized:"电池（彩色）"); case .openCharge: return String(localized:"OpenCharge 图标") }
+  switch self { case .status: return NSLocalizedString("动态状态", comment: ""); case .battery: return NSLocalizedString("电池（单色）", comment: ""); case .coloredBattery: return NSLocalizedString("电池（彩色）", comment: ""); case .openCharge: return NSLocalizedString("OpenCharge 图标", comment: "") }
  }
 }
 enum MenuBatteryState: String {
  case unknown, charging, discharging, holding, full, battery
  var title: String {
-  switch self { case .unknown: return String(localized:"状态未知"); case .charging: return String(localized:"充电中"); case .discharging: return String(localized:"接电放电"); case .holding: return String(localized:"接电未充电"); case .full: return String(localized:"已满电 · 系统补电管理"); case .battery: return String(localized:"电池供电") }
+  switch self { case .unknown: return NSLocalizedString("状态未知", comment: ""); case .charging: return NSLocalizedString("充电中", comment: ""); case .discharging: return NSLocalizedString("接电放电", comment: ""); case .holding: return NSLocalizedString("接电未充电", comment: ""); case .full: return NSLocalizedString("已满电 · 系统补电管理", comment: ""); case .battery: return NSLocalizedString("电池供电", comment: "") }
  }
 }
 enum MenuBarTint: Equatable { case monochrome, charging, lowBattery, lowPower
@@ -70,7 +70,7 @@ struct MenuBarLabel: Equatable {
   else if self.style == .coloredBattery && (state == .charging || state == .full) { tint = .charging }
   else if self.style == .coloredBattery && validPercent.map({ $0 <= 20 }) == true { tint = .lowBattery }
   else { tint = .monochrome }
-  accessibilityText = "OpenCharge · \(text.isEmpty ? percent : text) · \(state.title)" + (lowPower ? String(localized:" · 低电量模式") : "")
+  accessibilityText = "OpenCharge · \(text.isEmpty ? percent : text) · \(state.title)" + (lowPower ? NSLocalizedString(" · 低电量模式", comment: "") : "")
  }
 }
 

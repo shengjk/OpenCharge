@@ -1,0 +1,44 @@
+import Foundation
+
+// Compare the macOS 11 formatting path with Foundation's newer interpolation
+// for every unique formatted app key, including plural and unsigned fields.
+func verifyLegacyAppFormatting() {
+ let samples: [(Int64, UInt8, String)] = [(0, 0, ""), (1, 1, "A% · 中文"), (2, 255, "100% %@ %lld"), (-7, 42, "🔋 hello")]
+ for (signed, unsigned, text) in samples {
+  precondition(String.localizedStringWithFormat(NSLocalizedString("%lld 个本地采样", comment: ""), Int64(signed + 0)) == String(localized:"\(signed + 0) 个本地采样"), "Legacy formatting mismatch: %lld 个本地采样")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟", comment: ""), Int64(signed + 0)) == String(localized:"\(signed + 0) 分钟"), "Legacy formatting mismatch: %lld 分钟")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟平均：%@ · 数据覆盖 %@", comment: ""), Int64(signed + 0), text + "[1]", text + "[2]") == String(localized:"\(signed + 0) 分钟平均：\(text + "[1]") · 数据覆盖 \(text + "[2]")"), "Legacy formatting mismatch: %lld 分钟平均：%@ · 数据覆盖 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("OpenCharge %@ · MIT · 本地运行 · 无账户 · 无遥测", comment: ""), text + "[0]") == String(localized:"OpenCharge \(text + "[0]") · MIT · 本地运行 · 无账户 · 无遥测"), "Legacy formatting mismatch: OpenCharge %@ · MIT · 本地运行 · 无账户 · 无遥测")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("macOS %@ · 硬件 %@", comment: ""), text + "[0]", text + "[1]") == String(localized:"macOS \(text + "[0]") · 硬件 \(text + "[1]")"), "Legacy formatting mismatch: macOS %@ · 硬件 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("上次完成：%@", comment: ""), text + "[0]") == String(localized:"上次完成：\(text + "[0]")"), "Legacy formatting mismatch: 上次完成：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("上次成功检查于 %@", comment: ""), text + "[0]") == String(localized:"上次成功检查于 \(text + "[0]")"), "Legacy formatting mismatch: 上次成功检查于 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("上移 %@", comment: ""), text + "[0]") == String(localized:"上移 \(text + "[0]")"), "Legacy formatting mismatch: 上移 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("下移 %@", comment: ""), text + "[0]") == String(localized:"下移 \(text + "[0]")"), "Legacy formatting mismatch: 下移 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("主动放电保底：%lld%%", comment: ""), Int64(signed + 0)) == String(localized:"主动放电保底：\(signed + 0)%"), "Legacy formatting mismatch: 主动放电保底：%lld%%")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("估算充电速度 %lld%% / 小时", comment: ""), Int64(signed + 0)) == String(localized:"估算充电速度 \(signed + 0)% / 小时"), "Legacy formatting mismatch: 估算充电速度 %lld%% / 小时")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("出行目标 %lld%%", comment: ""), Int64(signed + 0)) == String(localized:"出行目标 \(signed + 0)%"), "Legacy formatting mismatch: 出行目标 %lld%%")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("发现新版本 %@", comment: ""), text + "[0]") == String(localized:"发现新版本 \(text + "[0]")"), "Legacy formatting mismatch: 发现新版本 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("可用版本 %@ · %@ · %@", comment: ""), text + "[0]", text + "[1]", text + "[2]") == String(localized:"可用版本 \(text + "[0]") · \(text + "[1]") · \(text + "[2]")"), "Legacy formatting mismatch: 可用版本 %@ · %@ · %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("固件上限 %u%% · 控制状态：%@ · ", comment: ""), UInt32(unsigned), text + "[2]") == String(localized:"固件上限 \(unsigned)% · 控制状态：\(text + "[2]") · "), "Legacy formatting mismatch: 固件上限 %u%% · 控制状态：%@ · ")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("当前渠道已是最新版本（%@）", comment: ""), text + "[0]") == String(localized:"当前渠道已是最新版本（\(text + "[0]")）"), "Legacy formatting mismatch: 当前渠道已是最新版本（%@）")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("当前版本 %@", comment: ""), text + "[0]") == String(localized:"当前版本 \(text + "[0]")"), "Legacy formatting mismatch: 当前版本 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("恢复请求失败；服务会在心跳超时后尝试恢复：%@", comment: ""), text + "[0]") == String(localized:"恢复请求失败；服务会在心跳超时后尝试恢复：\(text + "[0]")"), "Legacy formatting mismatch: 恢复请求失败；服务会在心跳超时后尝试恢复：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("所有记录保存在本机，不上传遥测。当前系统：%@", comment: ""), text + "[0]") == String(localized:"所有记录保存在本机，不上传遥测。当前系统：\(text + "[0]")"), "Legacy formatting mismatch: 所有记录保存在本机，不上传遥测。当前系统：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("拖动 %@", comment: ""), text + "[0]") == String(localized:"拖动 \(text + "[0]")"), "Legacy formatting mismatch: 拖动 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("拖动调整 %@ 的顺序", comment: ""), text + "[0]") == String(localized:"拖动调整 \(text + "[0]") 的顺序"), "Legacy formatting mismatch: 拖动调整 %@ 的顺序")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("数值固件通道 · 睡眠目标 %@%% · 物理效果待验证", comment: ""), text + "[0]") == String(localized:"数值固件通道 · 睡眠目标 \(text + "[0]")% · 物理效果待验证"), "Legacy formatting mismatch: 数值固件通道 · 睡眠目标 %@%% · 物理效果待验证")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("日常上限 %lld%% · 本次目标 %lld%%", comment: ""), Int64(signed + 0), Int64(signed + 2)) == String(localized:"日常上限 \(signed + 0)% · 本次目标 \(signed + 2)%"), "Legacy formatting mismatch: 日常上限 %lld%% · 本次目标 %lld%%")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("更新于 %@", comment: ""), text + "[0]") == String(localized:"更新于 \(text + "[0]")"), "Legacy formatting mismatch: 更新于 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("本机版本高于当前已发布版本（%@）", comment: ""), text + "[0]") == String(localized:"本机版本高于当前已发布版本（\(text + "[0]")）"), "Legacy formatting mismatch: 本机版本高于当前已发布版本（%@）")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("校准阶段：%@", comment: ""), text + "[0]") == String(localized:"校准阶段：\(text + "[0]")"), "Legacy formatting mismatch: 校准阶段：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("正在下载并校验 %@…", comment: ""), text + "[0]") == String(localized:"正在下载并校验 \(text + "[0]")…"), "Legacy formatting mismatch: 正在下载并校验 %@…")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("温度来源：%@", comment: ""), text + "[0]") == String(localized:"温度来源：\(text + "[0]")"), "Legacy formatting mismatch: 温度来源：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("版本 %@ 暂无适用此 Mac 的完整下载包，请在 GitHub 查看", comment: ""), text + "[0]") == String(localized:"版本 \(text + "[0]") 暂无适用此 Mac 的完整下载包，请在 GitHub 查看"), "Legacy formatting mismatch: 版本 %@ 暂无适用此 Mac 的完整下载包，请在 GitHub 查看")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("目标 %lld%%", comment: ""), Int64(signed + 0)) == String(localized:"目标 \(signed + 0)%"), "Legacy formatting mismatch: 目标 %lld%%")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("目标 %lld%% · %@", comment: ""), Int64(signed + 0), text + "[2]") == String(localized:"目标 \(signed + 0)% · \(text + "[2]")"), "Legacy formatting mismatch: 目标 %lld%% · %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("系统维护提示：%@", comment: ""), text + "[0]") == String(localized:"系统维护提示：\(text + "[0]")"), "Legacy formatting mismatch: 系统维护提示：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("能耗指标 %@", comment: ""), text + "[0]") == String(localized:"能耗指标 \(text + "[0]")"), "Legacy formatting mismatch: 能耗指标 %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("配置文件无法读取：%@", comment: ""), text + "[0]") == String(localized:"配置文件无法读取：\(text + "[0]")"), "Legacy formatting mismatch: 配置文件无法读取：%@")
+ }
+ print("PASS legacy app formatting: 34 keys × 4 typed samples match native interpolation")
+}
