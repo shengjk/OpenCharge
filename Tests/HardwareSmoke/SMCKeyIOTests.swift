@@ -93,7 +93,8 @@ private final class MemoryJournal: ChargeRecoveryStore {
   }
   let numericModels = ["MacBookAir8,1","MacBookAir8,2","MacBookAir9,1",
    "MacBookPro15,1","MacBookPro15,2","MacBookPro15,3","MacBookPro15,4",
-   "MacBookPro16,1","MacBookPro16,2","MacBookPro16,3","MacBookPro16,4"]
+   "MacBookPro16,1","MacBookPro16,2","MacBookPro16,3","MacBookPro16,4",
+   "MacBookPro13,1","MacBookPro13,2","MacBookPro13,3","MacBookPro14,1","MacBookPro14,2","MacBookPro14,3"]
   for model in numericModels {
    let f = Frames()
    let state = try SMCFirmwareProbe.inspect(model:model,architecture:"x86_64",internalBattery:true,read:f.io.optionalRead)
@@ -112,7 +113,7 @@ private final class MemoryJournal: ChargeRecoveryStore {
     check(invalid.writes.isEmpty)
    }
   }
-  for (model,arch,battery) in [("MacBookAir8,1","arm64",true),("MacBookAir8,1","unknown",true),("MacBookAir8,1","x86_64",false),("MacBookAir10,1","x86_64",true),("MacBookPro14,3","x86_64",true),("MacBookPro15,5","x86_64",true),("MacBookPro16,5","x86_64",true),("MacBookPro17,1","x86_64",true),("Mac16,1","x86_64",true),("MacBookPro15,1 ","x86_64",true),("unknown","x86_64",true)] {
+  for (model,arch,battery) in [("MacBookAir8,1","arm64",true),("MacBookAir8,1","unknown",true),("MacBookAir8,1","x86_64",false),("MacBookAir10,1","x86_64",true),("MacBookPro12,1","x86_64",true),("MacBookPro13,4","x86_64",true),("MacBookPro14,4","x86_64",true),("MacBookPro15,5","x86_64",true),("MacBookPro16,5","x86_64",true),("MacBookPro17,1","x86_64",true),("Mac16,1","x86_64",true),("MacBookPro15,1 ","x86_64",true),("unknown","x86_64",true)] {
    let f = Frames(); rejects { _ = try SMCFirmwareProbe.inspect(model:model,architecture:arch,internalBattery:battery,read:f.io.optionalRead) }; check(f.calls.isEmpty)
   }
   for bit: UInt8 in [0,1,2,3,254,255] {

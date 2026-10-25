@@ -304,7 +304,7 @@ The full check includes 524 compiler-extracted Chinese keys with complete Englis
 
 ### Development numeric model selection
 
-Raw-frame fixtures exercise all eleven selected numeric models, including MacBookPro15,1–15,4 and MacBookPro16,1–16,4. Each accepted model reads the same fixed CH0B/BCLM status without writes. Each is rejected before any transport call for an arm64/unknown process architecture or an absent internal battery. Mistyped/neighboring identifiers and Apple Silicon models remain rejected. Invalid CH0B or BCLM metadata is refused independently for each accepted model; model identity never bypasses typed-key checks. These injected checks do not establish physical charging, sleep or recovery on those notebooks.
+Raw-frame fixtures exercise all seventeen selected numeric models, including MacBookPro13,1–13,3, MacBookPro14,1–14,3, MacBookPro15,1–15,4 and MacBookPro16,1–16,4. Each accepted model reads the same fixed CH0B/BCLM status without writes. Each is rejected before any transport call for an arm64/unknown process architecture or an absent internal battery. Mistyped/neighboring identifiers and Apple Silicon models remain rejected. Invalid CH0B or BCLM metadata is refused independently for each accepted model; model identity never bypasses typed-key checks. These injected checks do not establish physical charging, sleep or recovery on those notebooks.
 
 ### Development Apple silicon ordinary profiles
 

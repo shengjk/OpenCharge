@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Include MacBookPro13,1–13,3 and MacBookPro14,1–14,3 in numeric firmware protocol selection. Reuse the fixed transaction, inflow ownership and sleep/exit paths; retain byte-format, internal-battery and service compatibility checks. This does not extend the app deployment target to older macOS versions.
+
 - Add platform-specific ordinary charge planning for known Apple silicon families. Select legacy CH0C by presence, distinguish pause/discharge/retained values, preserve allowance reset order, and recover owned CH0C=1 states. Keep generic Intel and modern fixed-key validation separate.
 
 - Include MacBookPro15,1–15,4 and MacBookPro16,1–16,4 in fixed numeric firmware selection. Retain architecture, internal-battery, typed-key, service-protocol and recovery requirements; physical effects remain unverified.

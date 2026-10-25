@@ -4,7 +4,7 @@ This is a development release. Implemented policy, OS integration and physical h
 
 | Area | Implemented | Remaining validation or scope |
 | --- | --- | --- |
-| Firmware limits | Fixed CH0B/BCLM backend, exclusive recovery, atomic action/sleep plans, app policy selection and sleep/wake/exit handoff; development source selects eleven Intel notebooks | Physical Intel validation, special multi-display sleep behavior, broader model matrix and native deployment remain unverified |
+| Firmware limits | Fixed CH0B/BCLM backend, exclusive recovery, atomic action/sleep plans, app policy selection and sleep/wake/exit handoff; development source selects seventeen Intel notebook identifiers | Physical Intel validation, special multi-display sleep behavior, broader model matrix and native deployment remain unverified |
 | Intel inflow assertion | Fixed process-local ownership, backend/helper/app integration, protected startup, sleep-entry recovery and retryable cleanup | Protocol acceptance and readback do not establish physical discharge or OS/model compatibility |
 | Administrator restriction | Scoped charge-setting UI/binding and right-click guards; read-only preference, observation, isolated tests | Managed-profile deployment and broader enterprise/session environments |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
