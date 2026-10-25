@@ -296,7 +296,7 @@ source.setEventHandler {
    guard !restoreBeforeCommands, let controller else { throw HelperError.rejected("SMC or cleanup unavailable") }
    try restoreSleep()
    attemptedAction = true; needsRestore = true; lease.request(at: ProcessInfo.processInfo.systemUptime)
-   try controller.apply(.inhibitCharge); firmwareSession.reset(); currentAction = .inhibitCharge; dischargeSleepEntry.clear(); lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
+   try controller.apply(.retainInhibit); firmwareSession.reset(); currentAction = .inhibitCharge; dischargeSleepEntry.clear(); lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
    response = "OK retainedChargeInhibit"
   }
   else if command == "magSafeStatus" { guard let magSafe else { throw HelperError.rejected("MagSafe unavailable") }; response = "OK " + (try magSafe.status()) }

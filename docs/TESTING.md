@@ -305,3 +305,7 @@ The full check includes 524 compiler-extracted Chinese keys with complete Englis
 ### Development numeric model selection
 
 Raw-frame fixtures exercise all eleven selected numeric models, including MacBookPro15,1–15,4 and MacBookPro16,1–16,4. Each accepted model reads the same fixed CH0B/BCLM status without writes. Each is rejected before any transport call for an arm64/unknown process architecture or an absent internal battery. Mistyped/neighboring identifiers and Apple Silicon models remain rejected. Invalid CH0B or BCLM metadata is refused independently for each accepted model; model identity never bypasses typed-key checks. These injected checks do not establish physical charging, sleep or recovery on those notebooks.
+
+### Development Apple silicon ordinary profiles
+
+Injected-byte and journal checks select 29 known model identifiers under arm64 and x86_64 processes, preserve generic selection for other families, and exercise CH0C precedence over coexisting CHTE. They cover the distinct CH0C values for inhibition, discharge and retained inhibition, allowance reset order, CH0C-only layouts, unchanged unused keys, missing or invalid input controls, malformed/read-error refusal without fallback, repeated no-op requests and battery/permission guards. Recovery checks include interrupted generic journals, CH0C=1 crash records, generic-helper refusal without erasing a new record, failed rollback with retry, and partial write cleanup. No AppleSMC connection, helper request or OS assertion is used by these fixtures.

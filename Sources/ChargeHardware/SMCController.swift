@@ -30,6 +30,7 @@ public final class SMCController {
         #endif
     }
     private lazy var chargeController = SMCChargeController(batteryPresent: internalBattery,
+        platform: SMCChargePlatform.selected(model: model, architecture: processArchitecture),
         read: { [unowned self] in try self.optionalKey($0) },
         write: { [unowned self] in try self.writeKey($0, $1) }, recoveryStore: recoveryStore, bootSession: bootSession)
 

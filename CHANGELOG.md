@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add platform-specific ordinary charge planning for known Apple silicon families. Select legacy CH0C by presence, distinguish pause/discharge/retained values, preserve allowance reset order, and recover owned CH0C=1 states. Keep generic Intel and modern fixed-key validation separate.
+
 - Include MacBookPro15,1–15,4 and MacBookPro16,1–16,4 in fixed numeric firmware selection. Retain architecture, internal-battery, typed-key, service-protocol and recovery requirements; physical effects remain unverified.
 
 - Add Traditional Chinese app and App Shortcut translations, including native Taiwan/Hong Kong selection checks. Preserve source keys, interpolation formats and encoded charge policy.

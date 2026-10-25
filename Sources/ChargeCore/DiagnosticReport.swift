@@ -45,7 +45,7 @@ public struct DiagnosticReport: Codable {
   self.decision = decision; self.errorPresent = errorPresent
  }
  private static func filteredCapabilities(_ text: String) -> String {
-  let allowed: Set<String> = ["unavailable", "internalBattery:present", "internalBattery:absent", "batteryTelemetry", "chargeControl:CHTE", "chargeControl:CH0B+CH0C", "chargeControl:unavailable", "forceDischarge:CHIE", "forceDischarge:CH0J", "forceDischarge:CH0I", "profile:recognizedFormat", "physicalEffects:unverified", "writesRequirePrivilegedHelper", "magSafeKey:ACLC", "magSafe:unavailable", "lowPower:unavailable"]
+  let allowed: Set<String> = ["unavailable", "internalBattery:present", "internalBattery:absent", "batteryTelemetry", "chargeControl:CHTE", "chargeControl:CH0B+CH0C", "chargeControl:CH0C", "chargeControl:unavailable", "forceDischarge:CHIE", "forceDischarge:CH0J", "forceDischarge:CH0I", "profile:recognizedFormat", "physicalEffects:unverified", "writesRequirePrivilegedHelper", "magSafeKey:ACLC", "magSafe:unavailable", "lowPower:unavailable"]
   let tokens = text.prefix(4096).split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { allowed.contains($0) }
   return tokens.isEmpty ? "unavailable" : tokens.joined(separator: ", ")
  }

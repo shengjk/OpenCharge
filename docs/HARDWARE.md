@@ -11,9 +11,9 @@ License notices remain in docs/licenses. Only application source and required no
 
 ## Eligibility and protocol validation
 
-0.2.5 removes the two-model allowlist. Model names are diagnostic information, not proof of a firmware protocol. A real internal battery and recognized SMC byte format/state are required. No internal battery means no charging actions. This admits other Intel/Apple Silicon notebooks only when they expose a recognized profile; it does not claim that all notebooks work.
+The generic ordinary profile removed the original two-model allowlist in 0.2.5 and requires an internal battery and recognized SMC byte layout/state. Development source additionally selects platform-specific ordinary semantics for 29 known Apple silicon model identifiers; numeric Intel selection is separate. A model match never bypasses key-state validation or authorization. This is not a physically validated hardware matrix.
 
-CHTE takes precedence. If it exists with an unexpected format or read error, control fails without falling back to legacy writes. Without CHTE, BOTH CH0B and CH0C must be present and recognized. Force discharge separately requires a recognized adapter key, preferring CHIE, then CH0J, then CH0I. Missing adapter control does not prevent normal charging actions, but forced discharge is refused. Unknown adapter state refuses the profile.
+For the generic ordinary profile, CHTE takes precedence. If it exists with an unexpected format or read error, control fails without falling back to legacy writes. Without CHTE, BOTH CH0B and CH0C must be present and recognized. Force discharge separately requires a recognized adapter key, preferring CHIE, then CH0J, then CH0I. Missing adapter control does not prevent normal charging actions, but forced discharge is refused. Unknown adapter state refuses the profile.
 
 The complete operation plan and its original-state snapshot are validated before any write. Root authorization remains required. Every mutation has readback. No caller can pass raw keys, arbitrary values, selectors or shell commands through the daemon IPC. The transport and fixed-key planner are separated so tests exercise the same planner used by production.
 
@@ -91,9 +91,15 @@ At system sleep entry the helper requires a current discharge session, a snapsho
 
 The display value is a bounded snapshot, not an instantaneous root-side `NSScreen` observation. Screen-parameter notifications request a new app policy round; the next accepted action atomically replaces or revokes selection. This implementation serializes independent attempts and does not reproduce or claim the completion order of asynchronous requests. User activity concerns display wake/idle behavior and does not establish a system-sleep veto. Native/model/OS and physical multi-display behavior remain unverified; the validation machine still runs the older read-only-tested helper.
 
-## Legacy Apple silicon compatibility gap
+## Apple silicon ordinary profiles in development source
 
-The generic ordinary controller is not yet a platform-specific implementation of every legacy Apple silicon key layout. It prefers CHTE whenever present; otherwise it requires both CH0B and CH0C and inhibits both. A CH0C-selected path that leaves CH0B unchanged during inhibition is not integrated. This also leaves the case where CH0C and CHTE coexist, and a layout with CH0C but no CH0B, unresolved. Recognized keys and passing generic-controller fixtures do not establish equivalence for these cases. The compatibility investigation has not changed the controller or enabled hardware control.
+The app package's helper selects the known Apple silicon adapter families using the physical model identifier and a recognized process architecture, including Rosetta. The selected families cover 29 identifiers. Unknown families retain the generic profile; a real internal battery and recognized byte states remain required.
+
+For this platform, an existing CH0C selects the legacy family even when CHTE also exists. An explicit missing CH0C selects CHTE; a read error or invalid CH0C value fails without fallback. Legacy input control uses CH0I and modern input control uses CHIE, without substituting another adapter key.
+
+Legacy allowance resets a present, recognized CH0B to zero, restores CH0I to zero and allows CH0C at zero. Ordinary inhibition leaves CH0B alone and sets CH0C to 2 after restoring input. Discharge sets CH0C to 1 before setting CH0I to 1. The existing `retainChargeInhibit` request now uses CH0C at 1 with input restored, separately from live inhibition. Modern behavior retains CHTE's four-byte encoding and CHIE's fixed 0/8 values. Missing input control prevents discharge while leaving ordinary charging available.
+
+All mutations use the existing owned write-ahead journal, complete-plan validation, readback and compare-and-restore. New legacy CH0C=1 records are accepted only by the selected platform. An older/generic helper can refuse such a recovery record; restore with the matching updated helper before downgrading. An interrupted generic CH0B/CH0C record can be restored by the updated platform controller. Source-only updates do not replace the installed helper. Software fixtures do not prove physical cutoff, discharge, quit persistence, sleep or boot behavior on these models.
 
 ## macOS charging features
 

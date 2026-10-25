@@ -4,12 +4,31 @@ import Darwin
 
 public enum HardwareAction: String, Codable, Sendable {
  case allowCharge, inhibitCharge, forceDischarge, restore
+ case retainInhibit = "retainChargeInhibit"
+}
+
+/// Selects only the known Apple silicon adapter families. A model match never
+/// bypasses battery, key-state, permission or recovery validation.
+public enum SMCChargePlatform: Equatable, Sendable {
+ case generic, appleSilicon
+ public static func selected(model: String, architecture: String) -> Self {
+  guard architecture == "arm64" || architecture == "x86_64" else { return .generic }
+  let models: Set<String> = [
+   "MacBookAir10,1", "MacBookPro17,1",
+   "Mac14,2", "Mac14,15", "MacBookPro18,1", "MacBookPro18,2", "MacBookPro18,3", "MacBookPro18,4",
+   "Mac14,5", "Mac14,6", "Mac14,7", "Mac14,9", "Mac14,10",
+   "Mac15,3", "Mac15,6", "Mac15,7", "Mac15,8", "Mac15,9", "Mac15,10", "Mac15,11", "Mac15,12", "Mac15,13",
+   "Mac16,1", "Mac16,3", "Mac16,5", "Mac16,6", "Mac16,7", "Mac16,8", "Mac16,12"
+  ]
+  return models.contains(model) ? .appleSilicon : .generic
+ }
 }
 
 /// Injectable transport; no caller-supplied key/value operation is exposed by apply.
 public final class SMCChargeController {
  private let lock = NSLock()
  private let batteryPresent: Bool
+ private let platform: SMCChargePlatform
  private let read: (String) throws -> [UInt8]?
  private let write: (String, [UInt8]) throws -> Void
  private let authorized: () -> Bool
@@ -17,9 +36,9 @@ public final class SMCChargeController {
  private let bootSession: String
  private var recoveryLoaded: Bool
  private var interruptedRecoveryPending = false
- public init(batteryPresent: Bool, read: @escaping (String) throws -> [UInt8]?, write: @escaping (String, [UInt8]) throws -> Void, authorized: @escaping () -> Bool = { geteuid() == 0 }, recoveryStore: ChargeRecoveryStore? = nil, bootSession: String = "") {
+ public init(batteryPresent: Bool, platform: SMCChargePlatform = .generic, read: @escaping (String) throws -> [UInt8]?, write: @escaping (String, [UInt8]) throws -> Void, authorized: @escaping () -> Bool = { geteuid() == 0 }, recoveryStore: ChargeRecoveryStore? = nil, bootSession: String = "") {
   self.recoveryStore = recoveryStore; self.bootSession = bootSession; recoveryLoaded = recoveryStore == nil
-  self.batteryPresent = batteryPresent; self.read = read; self.write = write; self.authorized = authorized
+  self.batteryPresent = batteryPresent; self.platform = platform; self.read = read; self.write = write; self.authorized = authorized
  }
  private func optionalKey(_ key: String) throws -> [UInt8]? { try read(key) }
  private func readKey(_ key: String) throws -> [UInt8] {
@@ -71,7 +90,7 @@ public final class SMCChargeController {
                 throw HardwareError.invalidData("Invalid charge recovery record")
             }
             for entry in record.entries {
-                let allowed = Self.allowedStates(entry.key)
+                let allowed = allowedStates(entry.key)
                 guard !allowed.isEmpty, allowed.contains(entry.write.original), allowed.contains(entry.write.expected),
                       entry.write.previous.map({ allowed.contains($0) }) ?? true else {
                     throw HardwareError.invalidData("Unrecognized charge recovery entry")
@@ -88,10 +107,11 @@ public final class SMCChargeController {
         }
         recoveryLoaded = true
     }
-    private static func allowedStates(_ key: String) -> [[UInt8]] {
+    private func allowedStates(_ key: String) -> [[UInt8]] {
         switch key {
         case "CHTE": return [[0, 0, 0, 0], [1, 0, 0, 0]]
-        case "CH0B", "CH0C": return [[0], [2]]
+        case "CH0B": return [[0], [2]]
+        case "CH0C": return platform == .appleSilicon ? [[0], [1], [2]] : [[0], [2]]
         case "CHIE": return [[0], [8]]
         case "CH0J", "CH0I": return [[0], [1]]
         default: return []
@@ -115,19 +135,28 @@ public final class SMCChargeController {
         }
         // Build and validate the whole plan before the first write. No caller may supply raw keys.
         var plan: [(String, [UInt8])] = []
+        // This reset belongs to allowance only. Inhibition and discharge must
+        // not touch an unrelated CH0B state on the selected legacy platform.
+        if profile.appleSiliconLegacy, action == .allowCharge, let _ = try optionalKey("CH0B") {
+            plan.append(("CH0B", [0]))
+        }
         if action != .forceDischarge, let key = profile.dischargeKey {
             plan.append((key, [0]))
         }
-        let inhibit = action == .inhibitCharge || action == .forceDischarge
+        let inhibit = action == .inhibitCharge || action == .forceDischarge || action == .retainInhibit
         for key in profile.chargeKeys {
-            plan.append((key, key == "CHTE" ? [inhibit ? 1 : 0, 0, 0, 0] : [inhibit ? 2 : 0]))
+            let value: [UInt8]
+            if key == "CHTE" { value = [inhibit ? 1 : 0, 0, 0, 0] }
+            else if profile.appleSiliconLegacy, action == .forceDischarge || action == .retainInhibit { value = [1] }
+            else { value = [inhibit ? 2 : 0] }
+            plan.append((key, value))
         }
         if action == .forceDischarge, let key = profile.dischargeKey {
             plan.append((key, [key == "CHIE" ? 8 : 1]))
         }
         let original = try plan.map { operation -> (String, [UInt8]) in
             let key = operation.0, current = try readKey(key)
-            let allowed = Self.allowedStates(key)
+            let allowed = allowedStates(key)
             guard allowed.contains(current) else { throw HardwareError.invalidData("SMC state changed before plan: \(key)") }
             return (key, current)
         }
@@ -192,9 +221,10 @@ public final class SMCChargeController {
         if !failures.isEmpty { throw HardwareError.invalidData(failures.joined(separator: "; ")) }
     }
 
-    private struct Profile { var chargeKeys: [String]; var dischargeKey: String? }
+    private struct Profile { var chargeKeys: [String]; var dischargeKey: String?; var appleSiliconLegacy = false }
 
     private func detectedProfile() throws -> Profile {
+        if platform == .appleSilicon { return try appleSiliconProfile() }
         let chargeKeys: [String]
         if let value = try optionalKey("CHTE") {
             guard [[UInt8](repeating: 0, count: 4), [1, 0, 0, 0]].contains(value) else {
@@ -219,6 +249,33 @@ public final class SMCChargeController {
             }
         }
         return Profile(chargeKeys: chargeKeys, dischargeKey: dischargeKey)
+    }
+
+    private func appleSiliconProfile() throws -> Profile {
+        // Explicit absence selects the modern family. Read errors and malformed
+        // legacy values must never be mistaken for absence.
+        let legacy: Bool
+        let chargeKey: String
+        if let value = try optionalKey("CH0C") {
+            guard [[UInt8](arrayLiteral: 0), [1], [2]].contains(value) else {
+                throw HardwareError.invalidData("Unrecognized CH0C format or state")
+            }
+            legacy = true; chargeKey = "CH0C"
+        } else {
+            guard let value = try optionalKey("CHTE"), [[UInt8](repeating: 0, count: 4), [1, 0, 0, 0]].contains(value) else {
+                throw HardwareError.unsupported("Missing or unrecognized CHTE")
+            }
+            legacy = false; chargeKey = "CHTE"
+        }
+        let adapter = legacy ? "CH0I" : "CHIE"
+        var dischargeKey: String?
+        if let value = try optionalKey(adapter) {
+            guard value == [0] || value == [legacy ? 1 : 8] else {
+                throw HardwareError.invalidData("Unrecognized \(adapter) format or state")
+            }
+            dischargeKey = adapter
+        }
+        return Profile(chargeKeys: [chargeKey], dischargeKey: dischargeKey, appleSiliconLegacy: legacy)
     }
 
 }

@@ -15,4 +15,9 @@ final class DiagnosticReportTests: XCTestCase {
   let report = DiagnosticReport(appVersion: "test", systemVersion: "test", architecture: "arm64", model: "MacBookPro17,1", battery: nil, configuration: Configuration(), registrationStatus: "notRegistered", helperCapabilities: "chargeControl:CHTE, error:/Users/private-person/Documents/secret, serial:ABC123, forceDischarge:CHIE", decision: .restore, errorPresent: true)
   XCTAssertEqual(report.helperCapabilities, "chargeControl:CHTE, forceDischarge:CHIE")
  }
+ func testCH0CCapabilityIsRetainedWithoutAdmittingUnstructuredValues() {
+  let report = DiagnosticReport(appVersion: "test", systemVersion: "test", architecture: "arm64", model: "MacBookPro17,1", battery: nil, configuration: Configuration(), registrationStatus: "notRegistered", helperCapabilities: "chargeControl:CH0C, chargeControl:/Users/private-person/Documents/secret, forceDischarge:CH0I", decision: .restore, errorPresent: false)
+  XCTAssertEqual(report.helperCapabilities, "chargeControl:CH0C, forceDischarge:CH0I")
+ }
+
 }
