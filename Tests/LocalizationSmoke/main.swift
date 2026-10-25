@@ -6,6 +6,8 @@ import ChargeHardware
  @MainActor static func main() throws {
   let language = CommandLine.arguments.last!
   let bundle = Bundle.main
+  let unavailableService = HelperService(bundle:bundle,backend:nil,legacyCheck:{ false },signatureCheck:{ _ in preconditionFailure("no native registration in language fixture") })
+  precondition(unavailableService.preflightText == bundle.localizedString(forKey:"此系统尚不支持应用内服务注册；可按安装说明使用开发服务。",value:nil,table:nil))
   precondition(bundle.preferredLocalizations.first == language,"unexpected selected language: \(bundle.preferredLocalizations)")
   func translated(_ key: String) -> String { bundle.localizedString(forKey:key,value:nil,table:nil) }
   let pairs = [("概览",Page.overview.title),

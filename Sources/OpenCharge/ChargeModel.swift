@@ -15,7 +15,7 @@ struct HistoryPoint: Codable, Identifiable {
 enum PopoverConsumer: Hashable { case preview, statusItem }
 @MainActor final class ChargeModel: ObservableObject {
  let updates: AppUpdates
- let helperService = HelperService()
+ let helperService: HelperService
  let energyMonitor = EnergyMonitor()
  var openStatusPopoverEditor: (() -> Void)?
  let popoverPreferences: PopoverPreferences
@@ -119,7 +119,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }) {
+ init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil) {
+  self.helperService = helperService ?? HelperService()
   settingsDefaults = dashboardDefaults
   self.readBattery = readBattery
   self.screenLockRequest = screenLockRequest
@@ -657,6 +658,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard !quitting else { return }
   do {
    guard !helperService.legacyInstalled else { throw HelperServiceError.ineligible(NSLocalizedString("开发脚本服务需使用对应卸载脚本移除", comment: "")) }
+   try helperService.validateRemoval()
    // SMAppService unregister terminates the daemon: restore while its journal is alive.
    if helperService.status == .enabled || firmwareControl?.mayOwnSession == true {
     try restoreChargeControl()

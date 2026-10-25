@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Isolate hardware-service registration behind a macOS 13 backend while keeping status/preflight available without that API. Refuse unavailable removal before changing app control state, retain layout/signature/legacy checks, and add fake-backend tests for both architectures. Earlier native installation and login-startup compatibility remain pending; the app minimum stays macOS 13.
+
 - Add macOS 11-compatible date display with preserved modern styles and localized calendar/time-zone fallback. Keep unavailable effective Low Power Mode state distinct from off, block unknown-state menu toggles, gate power notifications and add legacy symbol tinting with bitmap checks. Full older-system support remains incomplete; the packaged minimum stays macOS 13.
 
 - Separate framework-independent automation providers from macOS 13 App Intents declarations. Guard shortcut setup, link App Intents weakly, preserve existing actions/parameters and validate native/universal metadata plus macOS 11-target provider binaries. Full older-system support and runtime indexing remain unverified; the packaged minimum stays macOS 13.

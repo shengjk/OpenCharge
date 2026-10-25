@@ -523,3 +523,5 @@
 "；恢复待重试：" = "; recovery awaiting retry: ";
 "；未请求锁屏，实际效果待验证" = "; no lock requested, physical effect unverified";
 "；重新开合盖后可再试" = "; reopen and close the lid to retry";
+
+"此系统尚不支持应用内服务注册；可按安装说明使用开发服务。" = "In-app service registration is not implemented for this system. Use the documented development service setup.";
