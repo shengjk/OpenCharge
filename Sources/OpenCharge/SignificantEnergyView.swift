@@ -18,13 +18,13 @@ struct SignificantEnergyView: View {
      if let icon = row.icon { Image(nsImage: icon).resizable().frame(width: 28, height: 28) }
      Text(row.name).lineLimit(1)
      Spacer()
-     Text(String.localizedStringWithFormat(NSLocalizedString("能耗指标 %@", comment: ""), String(format: "%.0f", row.impact))).monospacedDigit()
-     Text(row.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "CPU —").monospacedDigit().foregroundStyle(.secondary)
+     Text(String.localizedStringWithFormat(NSLocalizedString("能耗指标 %@", comment: ""), String(format: "%.0f", row.impact))).font(.body.monospacedDigit())
+     Text(row.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "CPU —").font(.body.monospacedDigit()).presentationSecondary()
     }
    }
-   Text(monitor.status).font(.caption).foregroundStyle(.secondary)
-   if let date = monitor.updatedAt { Text(String.localizedStringWithFormat(NSLocalizedString("更新于 %@", comment: ""), DateDisplay.string(date, style:.time))).font(.caption).foregroundStyle(.secondary) }
-   Text(NSLocalizedString("仅在本机读取，约每 30 秒更新。系统能耗指标不等于瓦数；接口不可用时显示原因。", comment: "")).font(.caption).foregroundStyle(.secondary)
+   Text(monitor.status).font(.caption).presentationSecondary()
+   if let date = monitor.updatedAt { Text(String.localizedStringWithFormat(NSLocalizedString("更新于 %@", comment: ""), DateDisplay.string(date, style:.time))).font(.caption).presentationSecondary() }
+   Text(NSLocalizedString("仅在本机读取，约每 30 秒更新。系统能耗指标不等于瓦数；接口不可用时显示原因。", comment: "")).font(.caption).presentationSecondary()
   }
  }
  private func refresh() { monitor.refresh(sensitivity: EnergySensitivity(rawValue: sensitivity) ?? .balanced, force: true) }

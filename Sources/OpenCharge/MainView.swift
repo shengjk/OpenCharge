@@ -24,18 +24,18 @@ struct MainView: View {
  var body: some View {
   NavigationSplitView {
    VStack(alignment: .leading, spacing: 24) {
-    HStack(spacing: 12) { Image(systemName: "bolt.circle.fill").font(.largeTitle).foregroundStyle(.mint); VStack(alignment: .leading) { Text("OpenCharge").font(.headline); Text(NSLocalizedString("让电池从容一点", comment: "")).font(.caption).foregroundStyle(.secondary) } }.padding(.horizontal, 12).padding(.top, 22)
+    HStack(spacing: 12) { Image(systemName: "bolt.circle.fill").font(.largeTitle).presentationMint(); VStack(alignment: .leading) { Text("OpenCharge").font(.headline); Text(NSLocalizedString("让电池从容一点", comment: "")).font(.caption).presentationSecondary() } }.padding(.horizontal, 12).padding(.top, 22)
     List(Page.allCases, selection: $m.dashboardPage) { p in Label(p.title, systemImage: p.icon).padding(.vertical, 6).tag(p) }.listStyle(.sidebar)
-    VStack(alignment: .leading, spacing: 6) { Label(m.config.hardwareEnabled ? NSLocalizedString("硬件控制已启用", comment: "") : NSLocalizedString("只读监测", comment: ""), systemImage: m.config.hardwareEnabled ? "checkmark.shield" : "eye").foregroundStyle(.mint); Text(NSLocalizedString("本地运行 · 无账户 · 开源", comment: "")).foregroundStyle(.secondary) }.font(.caption).padding(20)
+    VStack(alignment: .leading, spacing: 6) { Label(m.config.hardwareEnabled ? NSLocalizedString("硬件控制已启用", comment: "") : NSLocalizedString("只读监测", comment: ""), systemImage: m.config.hardwareEnabled ? "checkmark.shield" : "eye").presentationMint(); Text(NSLocalizedString("本地运行 · 无账户 · 开源", comment: "")).presentationSecondary() }.font(.caption).padding(20)
    }.navigationSplitViewColumnWidth(220)
   } detail: {
    ScrollView {
     VStack(alignment: .leading, spacing: 24) {
-     HStack { VStack(alignment: .leading, spacing: 6) { Text((m.dashboardPage ?? .overview).title).font(.system(size: 30, weight: .bold, design: .rounded)); Text(NSLocalizedString("电池照顾，清楚可见。", comment: "")).foregroundStyle(.secondary) }; Spacer(); Button { m.refresh() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.bordered) }
+     HStack { VStack(alignment: .leading, spacing: 6) { Text((m.dashboardPage ?? .overview).title).font(.system(size: 30, weight: .bold, design: .rounded)); Text(NSLocalizedString("电池照顾，清楚可见。", comment: "")).presentationSecondary() }; Spacer(); Button { m.refresh() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.bordered) }
      if let error = m.error { HStack { Image(systemName: "exclamationmark.triangle"); Text(error).font(.callout); Spacer(); Button(NSLocalizedString("关闭", comment: "")) { m.error = nil } }.padding().background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12)) }
      switch m.dashboardPage ?? .overview { case .overview: OverviewView(m: m, d: m.dashboard, preferences: m.dashboardPreferences); case .control: ControlView(); case .schedules: ScheduleView(); case .history: HistoryView(); case .settings: SettingsView() }
     }.padding(30).frame(maxWidth: 1100, alignment: .leading)
-   }.background(Color(nsColor: .windowBackgroundColor))
+   }.background(Color(NSColor.windowBackgroundColor))
   }.frame(minWidth: 900, minHeight: 650)
  }
 }

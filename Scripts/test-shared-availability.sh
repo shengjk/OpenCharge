@@ -34,6 +34,8 @@ for TEST_ARCH in arm64 x86_64; do
   -o "$BUILD_DIR/$TEST_ARCH/MenuPresentation.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name ServiceRegistration \
   Sources/OpenCharge/HelperService.swift -o "$BUILD_DIR/$TEST_ARCH/ServiceRegistration.swiftmodule"
+ swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name PresentationCompatibility \
+  Sources/OpenCharge/PresentationCompatibility.swift -o "$BUILD_DIR/$TEST_ARCH/PresentationCompatibility.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name StartupCompatibility \
   Sources/OpenCharge/LoginStartup.swift -o "$BUILD_DIR/$TEST_ARCH/StartupCompatibility.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \

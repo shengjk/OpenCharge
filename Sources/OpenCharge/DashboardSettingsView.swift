@@ -7,7 +7,7 @@ struct DashboardSettingsView: View {
   Card(NSLocalizedString("仪表盘", comment: "")) {
    Toggle(NSLocalizedString("启动时显示窗口", comment: ""), isOn: $preferences.showOnStartup)
    Toggle(NSLocalizedString("窗口失焦后继续更新仪表盘", comment: ""), isOn: $preferences.backgroundUpdates)
-   Text(NSLocalizedString("关闭后台更新只暂停仪表盘与能耗列表；充电控制、定时任务、菜单栏电量和本地历史继续运行。", comment: "")).font(.caption).foregroundStyle(.secondary)
+   Text(NSLocalizedString("关闭后台更新只暂停仪表盘与能耗列表；充电控制、定时任务、菜单栏电量和本地历史继续运行。", comment: "")).font(.caption).presentationSecondary()
    Divider()
    Text(NSLocalizedString("卡片与顺序", comment: "")).font(.subheadline.bold())
    ForEach(preferences.layout.widgets) { widget in

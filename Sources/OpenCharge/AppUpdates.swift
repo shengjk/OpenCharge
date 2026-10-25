@@ -94,10 +94,10 @@ struct UpdateView: View {
    Text(String.localizedStringWithFormat(NSLocalizedString("当前版本 %@", comment: ""), updates.currentVersion)).font(.subheadline.bold())
    Toggle(NSLocalizedString("自动检查更新（每 12 小时）", comment: ""), isOn: $updates.automaticChecks)
    Toggle(NSLocalizedString("包含开发预览版本", comment: ""), isOn: $updates.includePreviews).disabled(updates.busy)
-   Text(NSLocalizedString("更新检查会连接 GitHub，不发送电池读数或本机标识。自动检查默认关闭；发现更新时提示，下载需由你明确选择。", comment: "")).font(.caption).foregroundStyle(.secondary)
+   Text(NSLocalizedString("更新检查会连接 GitHub，不发送电池读数或本机标识。自动检查默认关闭；发现更新时提示，下载需由你明确选择。", comment: "")).font(.caption).presentationSecondary()
    Text(updates.status).font(.callout).textSelection(.enabled)
-   if let date = updates.checkedAt { Text(String.localizedStringWithFormat(NSLocalizedString("上次成功检查于 %@", comment: ""), DateDisplay.string(date, style:.abbreviated))).font(.caption).foregroundStyle(.secondary) }
-   if let candidate = updates.candidate { Text(String.localizedStringWithFormat(NSLocalizedString("可用版本 %@ · %@ · %@", comment: ""), candidate.version, candidate.filename, ByteCountFormatter.string(fromByteCount: Int64(candidate.size), countStyle: .file))).font(.caption).foregroundStyle(.secondary) }
+   if let date = updates.checkedAt { Text(String.localizedStringWithFormat(NSLocalizedString("上次成功检查于 %@", comment: ""), DateDisplay.string(date, style:.abbreviated))).font(.caption).presentationSecondary() }
+   if let candidate = updates.candidate { Text(String.localizedStringWithFormat(NSLocalizedString("可用版本 %@ · %@ · %@", comment: ""), candidate.version, candidate.filename, ByteCountFormatter.string(fromByteCount: Int64(candidate.size), countStyle: .file))).font(.caption).presentationSecondary() }
    if let progress = updates.progress { ProgressView(value: progress) }
    HStack {
     Button(NSLocalizedString("检查更新", comment: "")) { Task { await updates.check() } }.disabled(updates.busy)
@@ -105,7 +105,7 @@ struct UpdateView: View {
     if updates.downloaded != nil { Button(NSLocalizedString("在访达中显示", comment: "")) { updates.reveal() } }
     Button(NSLocalizedString("在 GitHub 查看", comment: "")) { updates.openReleases() }
    }
-   Text(NSLocalizedString("校验通过后请自行解压并更新应用。当前开发包尚未公证，暂不自动替换应用或硬件服务。", comment: "")).font(.caption).foregroundStyle(.secondary)
+   Text(NSLocalizedString("校验通过后请自行解压并更新应用。当前开发包尚未公证，暂不自动替换应用或硬件服务。", comment: "")).font(.caption).presentationSecondary()
   }
  }
 }

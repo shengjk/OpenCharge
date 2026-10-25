@@ -347,3 +347,7 @@ The compatibility gate additionally compiles menu presentation against macOS 11 
 ## Login startup compatibility
 
 The isolated macOS 11-target fixture checks read-only inspection, exact fixed arguments (including spaces/XML characters), enable/disable idempotence, owned relocation, malformed/oversized/foreign files, file and directory symlinks, hardlinks and write-permission refusal. Fake native/legacy coordination covers explicit disable, successful migration, unconfirmed native registration retaining an old route and unavailable read/write state. It runs as arm64 and x86_64 on the current system. No actual login registration, launchctl call or application launch is performed. Source availability compilation is part of the shared gate; actual login remains unverified.
+
+## Shared SwiftUI presentation availability
+
+The shared gate compiles the presentation palette and foreground modifiers with a macOS 11 target for arm64 and x86_64. On macOS 12 and later they retain the system mint and hierarchical foreground styles; the older path uses semantic secondary/orange colors and system teal. Numeric labels apply monospaced digits to their existing font sizes. Full native and universal package builds check integration, while the injected dashboard fixture checks model behavior without hardware actions. These checks do not establish old-system rendering, VoiceOver behavior or complete application compatibility; Charts, navigation and other newer UI APIs still require separate work. The supported application deployment floor remains macOS 13.
