@@ -38,6 +38,8 @@ for TEST_ARCH in arm64 x86_64; do
   -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
   Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/Components.swift \
   Sources/OpenCharge/PowerFlowConnections.swift Sources/OpenCharge/PowerFlowArrows.swift Sources/OpenCharge/PowerFlowView.swift \
+  Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift \
+  Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
   -o "$BUILD_DIR/$TEST_ARCH/PresentationCompatibility.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name StartupCompatibility \
   Sources/OpenCharge/LoginStartup.swift -o "$BUILD_DIR/$TEST_ARCH/StartupCompatibility.swiftmodule"
@@ -57,10 +59,22 @@ assert len(frameworks)==1 and 'LC_LOAD_WEAK_DYLIB' in frameworks[0],'App Intents
 print('PASS macOS 11 deployment and weak App Intents load command')
 VERIFY
  OPENCHARGE_ICON_PREVIEW_DIR="" /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/automation-check"
- swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -I "$BUILD_DIR/$TEST_ARCH" \
+ swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
   Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/PowerFlowConnections.swift \
-  Tests/DashboardSmoke/PowerFlowConnectionChecks.swift Tests/PresentationAvailability/main.swift \
-  "$BUILD_DIR/$TEST_ARCH/libChargeCore.a" -o "$BUILD_DIR/$TEST_ARCH/presentation-check"
+  Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift \
+  Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
+  Tests/DashboardSmoke/PowerFlowConnectionChecks.swift Tests/DashboardSmoke/TrendPlotChecks.swift Tests/PresentationAvailability/main.swift \
+  "$BUILD_DIR/$TEST_ARCH/libChargeCore.a" "$BUILD_DIR/$TEST_ARCH/libChargeHardware.a" \
+  "$BUILD_DIR/$TEST_ARCH/ApplePowerConstants.o" -framework IOKit \
+  -Xlinker -weak_framework -Xlinker Charts -o "$BUILD_DIR/$TEST_ARCH/presentation-check"
+ python3 - "$BUILD_DIR/$TEST_ARCH/presentation-check" <<'VERIFY_CHART'
+import re,subprocess,sys
+loads=subprocess.check_output(['/usr/bin/otool','-l',sys.argv[1]],text=True)
+assert re.search(r'\bminos 11\.0\b',loads),'Unexpected presentation deployment floor'
+frameworks=[chunk for chunk in loads.split('Load command ') if '/Charts.framework/' in chunk]
+assert len(frameworks)==1 and 'LC_LOAD_WEAK_DYLIB' in frameworks[0],'Charts must load weakly'
+print('PASS macOS 11 presentation binary and weak Charts load command')
+VERIFY_CHART
  /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/presentation-check"
  echo "PASS macOS 11 API availability: shared modules, update transport and guarded automation ($TEST_ARCH); fixture runs on current OS only"
 done
