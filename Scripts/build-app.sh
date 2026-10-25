@@ -5,12 +5,12 @@ cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 swift build -c release --disable-sandbox
-mkdir -p "$PROJECT_DIR/dist"
 PACKAGE_DIR="$(mktemp -d "$PROJECT_DIR/.build/package.XXXXXX")"
 APP="$PACKAGE_DIR/OpenCharge.app"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$PROJECT_DIR/dist/bin"
+TOOLS="$PACKAGE_DIR/bin"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$TOOLS"
 cp .build/release/OpenCharge "$APP/Contents/MacOS/OpenCharge"
-cp .build/release/chargectl .build/release/charged "$PROJECT_DIR/dist/bin/"
+cp .build/release/chargectl .build/release/charged "$TOOLS/"
 cp .build/release/charged "$APP/Contents/MacOS/charged"
 mkdir -p "$APP/Contents/Library/LaunchDaemons"
 cat > "$APP/Contents/Library/LaunchDaemons/org.opencharge.charged.plist" <<'DAEMON'
@@ -47,16 +47,18 @@ done
 cp "$PROJECT_DIR/docs/HELPER-SETUP.md" "$APP/Contents/Resources/HELPER-SETUP.md"
 "$PROJECT_DIR/Scripts/extract-appintents.sh" "$APP" "$PROJECT_DIR/.build/release"
 # Strip local source paths from release debug maps before signing.
-/usr/bin/strip -S "$APP/Contents/MacOS/OpenCharge" "$APP/Contents/MacOS/charged" "$PROJECT_DIR/dist/bin/charged" "$PROJECT_DIR/dist/bin/chargectl"
+/usr/bin/strip -S "$APP/Contents/MacOS/OpenCharge" "$APP/Contents/MacOS/charged" "$TOOLS/charged" "$TOOLS/chargectl"
+python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" prepare "$APP" "$TOOLS" --identity "${OPENCHARGE_SIGNING_IDENTITY:--}"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP/Contents/MacOS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP"
-/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$PROJECT_DIR/dist/bin/charged"
-/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$PROJECT_DIR/dist/bin/chargectl"
+/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$TOOLS/charged"
+/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$TOOLS/chargectl"
 /usr/bin/codesign --verify --deep --strict "$APP"
+python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" verify "$APP" "$TOOLS"
 swift "$PROJECT_DIR/Scripts/verify-helper-package.swift" "$APP"
-if [[ -d "$PROJECT_DIR/dist/OpenCharge.app" ]]; then
- mv "$PROJECT_DIR/dist/OpenCharge.app" "$PROJECT_DIR/.build/previous-app.$$.app"
+# Keep app and tools in the same staging tree until every check has passed.
+if [[ -d "$PROJECT_DIR/dist" ]]; then
+ mv "$PROJECT_DIR/dist" "$PROJECT_DIR/.build/previous-native.$$.dist"
 fi
-mv "$APP" "$PROJECT_DIR/dist/OpenCharge.app"
-rmdir "$PACKAGE_DIR"
+mv "$PACKAGE_DIR" "$PROJECT_DIR/dist"
 printf 'Built %s\n' "$PROJECT_DIR/dist/OpenCharge.app"

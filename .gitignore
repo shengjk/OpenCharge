@@ -21,3 +21,7 @@ opencharge-diagnostics*.json
 
 # Local IDE configuration
 .idea/
+
+# Python verification caches
+__pycache__/
+*.py[cod]

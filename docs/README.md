@@ -14,7 +14,7 @@
 ## Developing OpenCharge
 
 - [Architecture](ARCHITECTURE.md)
-- [Verification](TESTING.md)
+- [Verification](TESTING.md) and [runtime packaging](RUNTIME-PACKAGING.md)
 - [Hardware protocols](HARDWARE.md) and [service management](SERVICE-MANAGEMENT.md)
 - [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md)
 

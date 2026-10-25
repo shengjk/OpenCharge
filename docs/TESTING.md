@@ -382,3 +382,10 @@ The private fixture verifies Unicode/newlines, width-dependent height, a read-on
 
 
 The shared availability gate compiles every application source file as a complete module, with warnings as errors and a macOS 11 deployment target, for arm64 and x86_64. This detects API regressions outside the smaller compatibility fixtures without changing the package deployment floor. Complete private release builds of the app, helper and CLI also pass for both macOS 11 architecture targets on the validation host. These binaries still contain developer-toolchain runtime search paths; they are not portable release packages. The macOS 11 app requires a separately packaged Swift concurrency runtime. Successful compilation does not establish old-OS launch, native helper installation, UI acceptance or feature parity.
+
+
+## Portable runtime packaging
+
+`Scripts/test-runtime-package.sh` compiles isolated asynchronous probes and inert C helper placeholders for macOS 11/13 and arm64/x86_64. Temporary native/universal bundles exercise runtime copying, architecture selection, RPATH order, idempotent preparation, read-only verification, mixed prepared/raw slices and relocation into paths containing spaces and Unicode. Only the asynchronous probe runs; no OpenCharge app or helper is launched. On the current OS it must use the system concurrency runtime. Rejection cases cover a missing runtime, wrong architecture, corrupted signed code, developer RPATH, unsupported standalone-helper runtime dependency, inaccurate minimum version, symlink and unknown Frameworks content, with relevant error messages checked.
+
+Native and universal builders prepare load commands before signing executables and the outer app, then audit every slice and any embedded runtime. The old-system fixture validates dependency closure and package structure; it does not execute the backdeployment runtime on macOS 11. The app deployment floor remains macOS 13, and old-system service installation, UI acceptance and complete feature parity remain separate work. See [runtime packaging](RUNTIME-PACKAGING.md).

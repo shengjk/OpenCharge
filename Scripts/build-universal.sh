@@ -33,11 +33,13 @@ done
 # Intent declarations are architecture-independent; native extraction already validated them.
 cp "$STAGING/bin/charged" "$STAGING/OpenCharge.app/Contents/MacOS/charged"
 /usr/bin/strip -S "$STAGING/OpenCharge.app/Contents/MacOS/OpenCharge" "$STAGING/OpenCharge.app/Contents/MacOS/charged" "$STAGING/bin/charged" "$STAGING/bin/chargectl"
+python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" prepare "$STAGING/OpenCharge.app" "$STAGING/bin" --identity "${OPENCHARGE_SIGNING_IDENTITY:--}"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$STAGING/OpenCharge.app/Contents/MacOS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$STAGING/bin/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$STAGING/bin/chargectl"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$STAGING/OpenCharge.app"
 /usr/bin/codesign --verify --deep --strict "$STAGING/OpenCharge.app"
+python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" verify "$STAGING/OpenCharge.app" "$STAGING/bin"
 swift "$PROJECT_DIR/Scripts/verify-helper-package.swift" "$STAGING/OpenCharge.app"
 swift "$PROJECT_DIR/Scripts/verify-appintents.swift" "$STAGING/OpenCharge.app"
 /usr/bin/codesign --verify --strict "$STAGING/bin/charged"
