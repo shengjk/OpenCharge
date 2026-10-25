@@ -29,8 +29,12 @@ for TEST_ARCH in arm64 x86_64; do
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name ReleaseNetwork \
   -I "$BUILD_DIR/$TEST_ARCH" Sources/OpenCharge/ReleaseHTTP.swift Sources/OpenCharge/ReleaseTransfer.swift \
   -o "$BUILD_DIR/$TEST_ARCH/ReleaseNetwork.swiftmodule"
+ swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name MenuPresentation \
+  -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" Sources/OpenCharge/MenuBarAppearance.swift \
+  -o "$BUILD_DIR/$TEST_ARCH/MenuPresentation.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
-  Sources/OpenCharge/AutomationRuntime.swift Sources/OpenCharge/Intents.swift Tests/AutomationAvailability/main.swift \
+  Sources/OpenCharge/AutomationRuntime.swift Sources/OpenCharge/Intents.swift Sources/OpenCharge/MenuBarAppearance.swift \
+  Tests/DashboardSmoke/MenuBarAppearanceChecks.swift Tests/AutomationAvailability/main.swift \
   "$BUILD_DIR/$TEST_ARCH/libChargeCore.a" "$BUILD_DIR/$TEST_ARCH/libChargeHardware.a" \
   "$BUILD_DIR/$TEST_ARCH/ApplePowerConstants.o" -framework IOKit \
   -Xlinker -weak_framework -Xlinker AppIntents -o "$BUILD_DIR/$TEST_ARCH/automation-check"
@@ -43,6 +47,6 @@ frameworks=[chunk for chunk in loads.split('Load command ') if '/AppIntents.fram
 assert len(frameworks)==1 and 'LC_LOAD_WEAK_DYLIB' in frameworks[0],'App Intents must load weakly'
 print('PASS macOS 11 deployment and weak App Intents load command')
 VERIFY
- /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/automation-check"
+ OPENCHARGE_ICON_PREVIEW_DIR="" /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/automation-check"
  echo "PASS macOS 11 API availability: shared modules, update transport and guarded automation ($TEST_ARCH); fixture runs on current OS only"
 done

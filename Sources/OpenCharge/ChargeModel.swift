@@ -101,7 +101,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published var sleepStatus = NSLocalizedString("尚未使用合盖睡眠控制", comment: "")
  private var magSafeSessionActive = false
  private var magSafePolicyFailed = false
- @Published var lowPowerStatus = ProcessInfo.processInfo.isLowPowerModeEnabled ? NSLocalizedString("当前电源：已开启", comment: "") : NSLocalizedString("当前电源：已关闭", comment: "")
+ @Published var lowPowerStatus = LowPowerObservation.current.map { $0 ? NSLocalizedString("当前电源：已开启", comment: "") : NSLocalizedString("当前电源：已关闭", comment: "") } ?? NSLocalizedString("不可用", comment: "")
  private let readBattery: () throws -> BatteryReading
  private var engine = ChargeEngine()
  private var appliedChargeLimitChangeID: UUID?
@@ -222,7 +222,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } catch { self.error = error.localizedDescription }
  }
  func toggleLowPowerFromMenu(request: (String) throws -> String = HelperClient.request,
-                             isActive: () -> Bool = { ProcessInfo.processInfo.isLowPowerModeEnabled }) {
+                             isActive: () -> Bool? = { LowPowerObservation.current }) {
   guard !quitting else { return }
   guard config.systemActionsEnabled == true else { error = NSLocalizedString("请先允许菜单栏快捷操作改变系统模式", comment: ""); return }
   do {
@@ -234,7 +234,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
          fields[0] != "battery=unknown" || fields[1] != "ac=unknown" else {
     throw HelperError.rejected(NSLocalizedString("低电量模式能力不可用", comment: ""))
    }
-   let enabled = !isActive()
+   guard let active = isActive() else { throw HelperError.rejected(NSLocalizedString("低电量模式能力不可用", comment: "")) }
+   let enabled = !active
    lowPowerStatus = try request(enabled ? "lowPowerOn" : "lowPowerOff")
    config.policy.lowPowerMode = enabled; save()
   } catch { self.error = error.localizedDescription }

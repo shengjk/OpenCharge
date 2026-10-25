@@ -35,6 +35,25 @@ import ChargeHardware
  expect(lowPower.tint == .lowPower, "explicit low-power tint precedes charging color")
  expect(MenuBarIconRenderer.image(for: lowPower)?.isTemplate == false, "low-power color must not be discarded by template rendering")
  expect(MenuBarLabel(display: "status", reading: charging, lowPower: true).tint == .monochrome, "existing defaults stay monochrome")
+ let unavailable = MenuBarLabel(display:"status",reading:charging,lowPower:nil,tintLowPower:true)
+ expect(unavailable.tint == .monochrome, "unknown low-power state cannot request yellow tint")
+ expect(!unavailable.accessibilityText.contains(NSLocalizedString(" · 低电量模式", comment:"")), "unknown state must not announce active Low Power Mode")
+ if let symbol = NSImage(systemSymbolName:"bolt.circle",accessibilityDescription:nil) {
+  let legacy = MenuBarIconRenderer.legacyColoredSymbol(symbol,color:.red)
+  expect(!legacy.isTemplate, "legacy explicit tint must retain its color")
+  let bitmap = NSBitmapImageRep(cgImage:legacy.cgImage(forProposedRect:nil,context:nil,hints:nil)!)
+  let expectedColor = NSColor.red.usingColorSpace(.sRGB)!
+  var coloredPixels = 0
+  for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide {
+   // colorAt returns the stored components under a legacy calibrated-space tag.
+   // Re-converting that tag would change already-sRGB bitmap values.
+   if let pixel = bitmap.colorAt(x:x,y:y), pixel.alphaComponent > 0.25 {
+    coloredPixels += 1
+    expect(abs(pixel.redComponent - expectedColor.redComponent) < 0.04 && abs(pixel.greenComponent - expectedColor.greenComponent) < 0.04 && abs(pixel.blueComponent - expectedColor.blueComponent) < 0.04, "legacy alpha mask preserves requested RGB: \(pixel) expected \(expectedColor)")
+   }
+  } }
+  expect(coloredPixels > 0, "legacy symbol mask must contain visible pixels")
+ }
  expect(MenuBarLabel(display: "status", reading: charging, style: "coloredBattery").tint == .charging, "colored charging indication")
  expect(MenuBarLabel(display: "status", reading: BatteryReading(percent: 20, connected: false, charging: false), style: "coloredBattery").tint == .lowBattery, "low battery color at twenty percent")
  expect(MenuBarLabel(display: "status", reading: BatteryReading(percent: 21, connected: false, charging: false), style: "coloredBattery").tint == .monochrome, "no low battery color above boundary")

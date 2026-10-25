@@ -53,7 +53,7 @@ struct ControlView: View {
   Card(NSLocalizedString("操作与校准", comment: "")) {
    Picker(NSLocalizedString("当前模式", comment: ""), selection: m.controlModeSelection) { ForEach(ChargeMode.allCases, id: \.self) { Text(modeName($0)).tag($0) } }.pickerStyle(.segmented)
    if m.calibrationPending { HStack { Text(NSLocalizedString("上次校准中断", comment: "")); Button(NSLocalizedString("继续", comment: "")) { m.resumeCalibration() }; Button(NSLocalizedString("取消", comment: "")) { m.changeMode(.automatic) } } }
-   if let last = m.config.lastCalibration { Text(String.localizedStringWithFormat(NSLocalizedString("上次完成：%@", comment: ""), last.formatted())).font(.caption).foregroundStyle(.secondary) }
+   if let last = m.config.lastCalibration { Text(String.localizedStringWithFormat(NSLocalizedString("上次完成：%@", comment: ""), DateDisplay.string(last))).font(.caption).foregroundStyle(.secondary) }
    Text(NSLocalizedString("日常上限为 100% 或临时充满时，通常由系统管理补电；手动暂停与热保护结束后的目标暂停仍会停充。临时充满在拔线后结束。", comment: "")).font(.caption).foregroundStyle(.secondary)
    Text(String.localizedStringWithFormat(NSLocalizedString("校准阶段：%@", comment: ""), m.calibration.displayName)).font(.caption).foregroundStyle(.secondary)
    Text(NSLocalizedString("校准顺序：充满 → 放电至 10% → 充满 → 保持一小时 → 恢复日常目标；默认校准期间暂停应用温控，可启用增强保护；可随时切回自动模式。", comment: "")).font(.caption).foregroundStyle(.secondary)

@@ -32,14 +32,14 @@ struct ScheduleView: View {
   }
   Card(NSLocalizedString("已安排", comment: "")) {
    if m.config.schedules.isEmpty { Label(NSLocalizedString("没有任务。为下次出行安排一次充满。", comment: ""), systemImage: "calendar.badge.plus").foregroundStyle(.secondary).padding(.vertical) }
-   ForEach($m.config.schedules) { $s in HStack { Toggle("", isOn: $s.enabled).labelsHidden().onChange(of: s.enabled) { _ in m.save() }; VStack(alignment: .leading) { Text(s.action.displayName).font(.headline); Text("\(s.date.formatted()) · \(s.repeatRule.displayName)").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button(NSLocalizedString("编辑", comment: "")) { draft = s; editing = true }; Button(role: .destructive) { if draft.id == s.id { draft = ChargeSchedule(); editing = false }; m.config.schedules.removeAll { $0.id == s.id }; m.save() } label: { Image(systemName: "trash") } } }
+   ForEach($m.config.schedules) { $s in HStack { Toggle("", isOn: $s.enabled).labelsHidden().onChange(of: s.enabled) { _ in m.save() }; VStack(alignment: .leading) { Text(s.action.displayName).font(.headline); Text("\(DateDisplay.string(s.date)) · \(s.repeatRule.displayName)").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button(NSLocalizedString("编辑", comment: "")) { draft = s; editing = true }; Button(role: .destructive) { if draft.id == s.id { draft = ChargeSchedule(); editing = false }; m.config.schedules.removeAll { $0.id == s.id }; m.save() } label: { Image(systemName: "trash") } } }
    Button(NSLocalizedString("清空全部任务", comment: ""), role: .destructive) { m.config.schedules = []; draft = ChargeSchedule(); editing = false; m.save() }
    Text(NSLocalizedString("应用运行时每 10 秒检查。睡眠期间不执行；唤醒后每个逾期任务仅补执行一次。", comment: "")).font(.caption).foregroundStyle(.secondary)
   }
   Card(NSLocalizedString("执行历史", comment: "")) {
    if (m.config.scheduleHistory ?? []).isEmpty { Text(NSLocalizedString("任务执行后会记录结果。", comment: "")).foregroundStyle(.secondary) }
    ForEach(Array((m.config.scheduleHistory ?? []).suffix(30).reversed())) { run in
-    VStack(alignment: .leading, spacing: 4) { Text("\(run.action.displayName) · \(run.executedAt.formatted())").font(.caption); Text(run.result).font(.caption).foregroundStyle(.secondary) }
+    VStack(alignment: .leading, spacing: 4) { Text("\(run.action.displayName) · \(DateDisplay.string(run.executedAt))").font(.caption); Text(run.result).font(.caption).foregroundStyle(.secondary) }
    }
   }
  }

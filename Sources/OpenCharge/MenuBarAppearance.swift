@@ -27,7 +27,7 @@ struct MenuBarLabel: Equatable {
  let state: MenuBatteryState
  let fraction: Double?
  let tint: MenuBarTint
- init(display: String, reading: BatteryReading?, style: String = "status", lowPower: Bool = false, tintLowPower: Bool = false, fullChargeHold: Bool = false) {
+ init(display: String, reading: BatteryReading?, style: String = "status", lowPower: Bool? = nil, tintLowPower: Bool = false, fullChargeHold: Bool = false) {
   self.style = MenuIconStyle(rawValue: style) ?? .status
   let validPercent = reading.flatMap { $0.percent.isFinite && (0...100).contains($0.percent) ? $0.percent : nil }
   fraction = validPercent.map { $0 / 100 }
@@ -66,11 +66,11 @@ struct MenuBarLabel: Equatable {
    case .status: symbol = statusSymbol
    }
   }
-  if lowPower && tintLowPower { tint = .lowPower }
+  if lowPower == true && tintLowPower { tint = .lowPower }
   else if self.style == .coloredBattery && (state == .charging || state == .full) { tint = .charging }
   else if self.style == .coloredBattery && validPercent.map({ $0 <= 20 }) == true { tint = .lowBattery }
   else { tint = .monochrome }
-  accessibilityText = "OpenCharge · \(text.isEmpty ? percent : text) · \(state.title)" + (lowPower ? NSLocalizedString(" · 低电量模式", comment: "") : "")
+  accessibilityText = "OpenCharge · \(text.isEmpty ? percent : text) · \(state.title)" + (lowPower == true ? NSLocalizedString(" · 低电量模式", comment: "") : "")
  }
 }
 
@@ -81,10 +81,29 @@ enum MenuBarIconRenderer {
   if label.style == .battery || label.style == .coloredBattery { return battery(label) }
   guard let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) else { return nil }
   if let color = label.tint.color {
-   let configured = image.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [color])) ?? image
+   let configured = configuredSymbol(image, color:color)
    configured.isTemplate = false; return configured
   }
   image.isTemplate = true; return image
+ }
+ private static func configuredSymbol(_ image: NSImage, color: NSColor) -> NSImage {
+  if #available(macOS 12.0, *) { return image.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors:[color])) ?? image }
+  return legacyColoredSymbol(image, color:color)
+ }
+ /// Use the symbol's alpha mask on systems without palette configuration.
+ static func legacyColoredSymbol(_ image: NSImage, color: NSColor) -> NSImage {
+  guard let source = image.cgImage(forProposedRect:nil,context:nil,hints:nil),
+        let rgb = color.usingColorSpace(.sRGB), let space = CGColorSpace(name:CGColorSpace.sRGB),
+        let context = CGContext(data:nil,width:source.width,height:source.height,bitsPerComponent:8,
+         bytesPerRow:source.width * 4,space:space,bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+  let bounds = CGRect(x:0,y:0,width:source.width,height:source.height)
+  context.clip(to:bounds,mask:source)
+  guard let fill = CGColor(colorSpace:space,components:[rgb.redComponent,rgb.greenComponent,rgb.blueComponent,rgb.alphaComponent]) else { return image }
+  context.setFillColor(fill)
+  context.fill(bounds)
+  guard let pixels = context.makeImage() else { return image }
+  let result = NSImage(cgImage:pixels,size:image.size)
+  result.isTemplate = false; return result
  }
  private static func battery(_ label: MenuBarLabel) -> NSImage {
   let image = NSImage(size: NSSize(width: 27, height: 18), flipped: false) { _ in
@@ -102,7 +121,7 @@ enum MenuBarIconRenderer {
    else { switch label.state { case .charging: badge = "bolt.fill"; case .holding, .full: badge = "pause.fill"; case .discharging: badge = "arrow.down"; default: badge = nil } }
    if let badge, let overlay = NSImage(systemSymbolName: badge, accessibilityDescription: nil) {
     // XOR keeps the state visible over both filled and empty regions of a template image.
-    let glyph = overlay.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [.labelColor])) ?? overlay
+    let glyph = configuredSymbol(overlay, color:.labelColor)
     glyph.draw(in: NSRect(x: 8, y: 5, width: 8, height: 8), from: .zero, operation: .xor, fraction: 1, respectFlipped: false, hints: nil)
    }
    return true

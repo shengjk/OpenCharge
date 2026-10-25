@@ -333,3 +333,9 @@ A live anonymous check on the validation machine selected v0.3.37, rejected the 
 ## Guarded App Intents availability
 
 The compatibility fixture compiles shared static libraries, provider runtime and all guarded App Intents declarations with a macOS 11 deployment target for both architectures. It verifies the resulting minimum version and weak App Intents framework load command before running each binary on the current system. Missing/failed providers, all typed policy phases and injected pause telemetry are checked; the native policy intent runs only within a macOS 13 availability branch. No app model, configuration setter, hardware service or Shortcuts indexing update is started by this fixture. Native and universal package verification separately checks the metadata and one weak framework load per architecture. These checks do not establish older-system runtime or native Shortcuts discovery.
+
+## Date and Low Power Mode presentation compatibility
+
+Three core methods check that current-system date formatting matches the original three APIs, and exercise the macOS 11 formatter with full calendar years, abbreviated months, seconds, a Buddhist calendar, time-zone midnight differences and a daylight-saving transition. The injected model fixture checks that an unknown effective Low Power Mode state causes only a status query, leaves policy unchanged and sends no setter. Menu projection checks reject active-mode tint/announcements for unknown state.
+
+The compatibility gate additionally compiles menu presentation against macOS 11 and runs its canonical icon projection, rendering, cache and forced legacy alpha-mask checks on the current system for both architectures. Read-only effective-state observation and optional notification names are version-gated. Pixel checks use the bitmap's encoded components without an extra calibrated-to-sRGB conversion. These checks do not prove macOS 11 runtime or physical power-mode effects.

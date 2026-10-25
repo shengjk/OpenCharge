@@ -23,7 +23,7 @@ struct SignificantEnergyView: View {
     }
    }
    Text(monitor.status).font(.caption).foregroundStyle(.secondary)
-   if let date = monitor.updatedAt { Text(String.localizedStringWithFormat(NSLocalizedString("更新于 %@", comment: ""), date.formatted(date: .omitted, time: .standard))).font(.caption).foregroundStyle(.secondary) }
+   if let date = monitor.updatedAt { Text(String.localizedStringWithFormat(NSLocalizedString("更新于 %@", comment: ""), DateDisplay.string(date, style:.time))).font(.caption).foregroundStyle(.secondary) }
    Text(NSLocalizedString("仅在本机读取，约每 30 秒更新。系统能耗指标不等于瓦数；接口不可用时显示原因。", comment: "")).font(.caption).foregroundStyle(.secondary)
   }
  }

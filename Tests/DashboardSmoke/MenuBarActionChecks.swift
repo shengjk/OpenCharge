@@ -59,6 +59,10 @@ import ChargeHardware
   precondition(requests == ["lowPowerStatus"] && power.config.policy == before && power.error != nil)
  }
  requests = []; power.error = nil; let beforeFailure = power.config.policy
+ let beforeUnavailable = power.config.policy
+ power.toggleLowPowerFromMenu(request: { requests.append($0); return "battery=0 ac=0" }, isActive: { nil })
+ precondition(requests == ["lowPowerStatus"] && power.config.policy == beforeUnavailable && power.error != nil)
+ requests = []; power.error = nil
  power.toggleLowPowerFromMenu(request: { requests.append($0); if $0 == "lowPowerStatus" { return "battery=0 ac=0" }; throw HelperError.rejected("fixture write failed") }, isActive: { false })
  precondition(requests == ["lowPowerStatus", "lowPowerOn"] && power.config.policy == beforeFailure && power.error != nil)
  precondition(!power.config.hardwareEnabled)

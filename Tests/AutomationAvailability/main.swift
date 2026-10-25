@@ -26,6 +26,16 @@ import ChargeHardware
   PauseIntentTelemetry.read = { BatteryReading(percent:75.6,connected:true,charging:false,hardwarePercent:55.8) }
   let reading = try PauseIntentTelemetry.read()
   precondition(reading.percent == 75.6 && reading.hardwarePercent == 55.8)
+  if #available(macOS 12.0, *) {
+   precondition(LowPowerObservation.current != nil)
+   precondition(LowPowerObservation.changeNotification == .NSProcessInfoPowerStateDidChange)
+  } else {
+   precondition(LowPowerObservation.current == nil && LowPowerObservation.changeNotification == nil)
+  }
+  for style in DateDisplay.Style.allCases {
+   precondition(!DateDisplay.string(Date(timeIntervalSince1970:1782630145),style:style).isEmpty)
+  }
+  try menuBarAppearanceChecks()
   print("PASS macOS 11-target automation binary: injected providers, errors and guarded current-system policy getter; no configuration, hardware or indexing changes")
  }
 }

@@ -30,8 +30,10 @@ import ChargeHardware
   preferencesObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
    MainActor.assumeIsolated { self?.updateLabel() }
   }
-  powerObserver = NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
-   MainActor.assumeIsolated { self?.updateLabel() }
+  if let notification = LowPowerObservation.changeNotification {
+   powerObserver = NotificationCenter.default.addObserver(forName: notification, object: nil, queue: .main) { [weak self] _ in
+    MainActor.assumeIsolated { self?.updateLabel() }
+   }
   }
   // Status-button snapshots can invalidate their own appearance; observe the app instead.
   appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.old, .new]) { [weak self] _, change in
@@ -48,7 +50,7 @@ import ChargeHardware
   let defaults = UserDefaults.standard
   let label = MenuBarLabel(display: display, reading: model.reading,
    style: defaults.string(forKey: "menuIconStyle") ?? "status",
-   lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
+   lowPower: LowPowerObservation.current,
    tintLowPower: defaults.bool(forKey: "menuTintLowPower"),
    fullChargeHold: model.config.hardwareEnabled && model.decision.fullChargeHold == true)
   if renderCache.needsRender(label, appearance: button.effectiveAppearance.name.rawValue) {
