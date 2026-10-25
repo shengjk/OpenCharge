@@ -9,7 +9,7 @@ python3 Scripts/prepare-swift-runtime.py verify path/to/OpenCharge.app path/to/b
 bash Scripts/test-runtime-package.sh
 ```
 
-The app search order is `/usr/lib/swift`, then `@executable_path/../Frameworks`. Standalone tools and the helper retain only `/usr/lib/swift`. Developer-toolchain and build-directory RPATHs are removed from each architecture independently, including universal files whose host slice was already prepared. System libraries remain system dependencies.
+The app search order is `/usr/lib/swift`, then `@executable_path/../Frameworks`. Standalone tools, the modern helper and any packaged older helper retain only `/usr/lib/swift`. Developer-toolchain and build-directory RPATHs are removed from each architecture independently, including universal files whose host slice was already prepared. System libraries remain system dependencies.
 
 An application slice targeting macOS before 12 that uses Swift concurrency requires a backdeployment runtime. The packager selects the active compiler's `lib/swift-5.5/macosx/libswift_Concurrency.dylib`, checks its macOS deployment commands and architecture coverage, and uses the matching `swift-stdlib-tool` to confirm and copy the dependency closure. It trims unused architectures, explicitly signs the copied library, and places it in `Contents/Frameworks`. Newer systems prefer their system runtime through the first RPATH. Current macOS 13 packages do not need or include this library.
 

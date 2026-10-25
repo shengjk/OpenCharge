@@ -30,6 +30,13 @@ The running daemon remains 0.2.6 while the client/source release advances to 0.3
 
 ## Development availability boundary
 
-Service status and preflight use an application-owned status type and a version-gated registration backend. SMAppService access is confined to the macOS 13 backend. On a system without that backend, inspection and detection of an existing development service remain available; native register/unregister is explicitly unavailable. This is an intermediate compatibility change, not an implementation of older native privileged-service installation. The documented development installer remains a separate explicit administrator action. Login-startup compatibility is also still pending.
+Service status and preflight use an application-owned status type and a version-gated registration backend. SMAppService access is confined to the macOS 13 backend. On a system without that backend, inspection and detection of an existing development service remain available; native register/unregister is explicitly unavailable. This is an intermediate compatibility change, not an implementation of older native privileged-service installation. The documented development installer remains a separate explicit administrator action. Login startup is handled separately; see LOGIN-STARTUP.md.
 
 Removal validates that its registration route exists before the app changes local control flags or begins recovery. Legacy-service, unsupported-platform, layout, signature, unknown-status and backend failures are checked through isolated dependencies. The actual local ad-hoc preflight still rejects registration; fake valid-signature cases invoke only a fake backend. No test registers, unregisters, installs or restarts a system service.
+
+
+## Older helper packaging prerequisites
+
+The app now additionally packages a dedicated macOS 11 helper under Contents/Library/LaunchServices with embedded Info/launchd sections and reciprocal signing requirements. The ordinary SMAppService/development helper remains a different file. The requirements use the actual verified signing team; local ad-hoc packages use `never` for both sides. Per-slice metadata, identifier, version and signature checks run during native and universal builds. See [older helper packaging](LEGACY-HELPER.md).
+
+This supplies installation prerequisites, not the older authorization/ownership/removal backend. Pre-13 in-app service registration remains unavailable, the public deployment floor remains macOS 13, and no helper was installed or restarted by this packaging work. The installation evidence above is historical; it is not evidence that the new route has been exercised.

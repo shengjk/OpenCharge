@@ -48,13 +48,18 @@ cp "$PROJECT_DIR/docs/HELPER-SETUP.md" "$APP/Contents/Resources/HELPER-SETUP.md"
 "$PROJECT_DIR/Scripts/extract-appintents.sh" "$APP" "$PROJECT_DIR/.build/release"
 # Strip local source paths from release debug maps before signing.
 /usr/bin/strip -S "$APP/Contents/MacOS/OpenCharge" "$APP/Contents/MacOS/charged" "$TOOLS/charged" "$TOOLS/chargectl"
+# Sign the normal helper first so the legacy ownership requirements use its real team.
+/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP/Contents/MacOS/charged"
+python3 "$PROJECT_DIR/Scripts/legacy-helper-package.py" prepare "$APP"
 python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" prepare "$APP" "$TOOLS" --identity "${OPENCHARGE_SIGNING_IDENTITY:--}"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP/Contents/MacOS/charged"
-/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP"
+/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" --identifier org.opencharge.charged "$APP/Contents/Library/LaunchServices/org.opencharge.charged"
+/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" --identifier org.opencharge.app "$APP"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$TOOLS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$TOOLS/chargectl"
 /usr/bin/codesign --verify --deep --strict "$APP"
 python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" verify "$APP" "$TOOLS"
+python3 "$PROJECT_DIR/Scripts/legacy-helper-package.py" verify "$APP"
 swift "$PROJECT_DIR/Scripts/verify-helper-package.swift" "$APP"
 # Keep app and tools in the same staging tree until every check has passed.
 if [[ -d "$PROJECT_DIR/dist" ]]; then

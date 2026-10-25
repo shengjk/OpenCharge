@@ -2,6 +2,7 @@
 set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP="${1:-$PROJECT_DIR/dist/OpenCharge.app}"
+APP="$(cd "$APP" && pwd)"
 mkdir -p "$PROJECT_DIR/.build/helper-validation" "$PROJECT_DIR/.build/module-cache"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 TEST_ARCH="${OPENCHARGE_TEST_ARCH:-$(uname -m)}"

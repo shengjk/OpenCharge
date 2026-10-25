@@ -91,6 +91,11 @@ def layout(app, tools):
     paths = [(app / 'Contents/MacOS/OpenCharge', 'application'),
              (app / 'Contents/MacOS/charged', 'embedded helper'),
              (tools / 'charged', 'standalone helper'), (tools / 'chargectl', 'CLI')]
+    legacy = app / 'Contents/Library/LaunchServices/org.opencharge.charged'
+    if 'SMPrivilegedExecutables' in metadata or legacy.exists() or legacy.is_symlink():
+        directory(app / 'Contents/Library')
+        directory(legacy.parent)
+        paths.append((legacy, 'legacy privileged helper'))
     records = [(p, role, inspect(p)) for p, role in paths]
     arches = set(records[0][2])
     for path, role, slices in records:

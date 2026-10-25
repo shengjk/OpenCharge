@@ -15,7 +15,7 @@
 
 - [Architecture](ARCHITECTURE.md)
 - [Verification](TESTING.md) and [runtime packaging](RUNTIME-PACKAGING.md)
-- [Hardware protocols](HARDWARE.md) and [service management](SERVICE-MANAGEMENT.md)
+- [Hardware protocols](HARDWARE.md), [service management](SERVICE-MANAGEMENT.md), and [older helper packaging](LEGACY-HELPER.md)
 - [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md)
 
 - [Login startup](LOGIN-STARTUP.md)
