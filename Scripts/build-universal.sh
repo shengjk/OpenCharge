@@ -46,6 +46,7 @@ python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" verify "$STAGING/OpenCha
 python3 "$PROJECT_DIR/Scripts/legacy-helper-package.py" verify "$STAGING/OpenCharge.app"
 swift "$PROJECT_DIR/Scripts/verify-helper-package.swift" "$STAGING/OpenCharge.app"
 swift "$PROJECT_DIR/Scripts/verify-appintents.swift" "$STAGING/OpenCharge.app"
+python3 "$PROJECT_DIR/Scripts/localization-resources.py" verify "$STAGING/OpenCharge.app"
 /usr/bin/codesign --verify --strict "$STAGING/bin/charged"
 /usr/bin/codesign --verify --strict "$STAGING/bin/chargectl"
 if [[ -d "$PROJECT_DIR/dist-universal" ]]; then mv "$PROJECT_DIR/dist-universal" "$PROJECT_DIR/.build/previous-universal.$$.dist"; fi

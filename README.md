@@ -12,6 +12,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 - Recurring schedules, departure estimates, presets, decision history and JSON configuration backups.
 - Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings.
 - Twelve App Intents, five App Shortcuts, CLI and an `opencharge://` URL scheme.
+- English, Simplified Chinese, Traditional Chinese and Japanese interface resources, selected through macOS language preferences.
 - Local history and explicit diagnostic exports; no account, analytics or cloud storage.
 - Optional GitHub release checks and user-requested ZIP downloads with SHA-256 verification.
 

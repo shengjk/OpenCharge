@@ -29,7 +29,6 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>org.opencharge.app</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
-<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string><string>zh-Hant</string></array>
 <key>CFBundleName</key><string>OpenCharge</string>
 <key>CFBundleDisplayName</key><string>OpenCharge</string>
 <key>CFBundleExecutable</key><string>OpenCharge</string>
@@ -41,9 +40,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>opencharge</string></array><key>CFBundleURLName</key><string>org.opencharge.app</string></dict></array>
 </dict></plist>
 PLIST
-for language in en zh-Hans zh-Hant; do
- cp -R "$PROJECT_DIR/Resources/$language.lproj" "$APP/Contents/Resources/"
-done
+python3 "$PROJECT_DIR/Scripts/localization-resources.py" prepare "$APP"
 cp "$PROJECT_DIR/docs/HELPER-SETUP.md" "$APP/Contents/Resources/HELPER-SETUP.md"
 "$PROJECT_DIR/Scripts/extract-appintents.sh" "$APP" "$PROJECT_DIR/.build/release"
 # Strip local source paths from release debug maps before signing.
@@ -61,6 +58,7 @@ python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" prepare "$APP" "$TOOLS" 
 python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" verify "$APP" "$TOOLS"
 python3 "$PROJECT_DIR/Scripts/legacy-helper-package.py" verify "$APP"
 swift "$PROJECT_DIR/Scripts/verify-helper-package.swift" "$APP"
+python3 "$PROJECT_DIR/Scripts/localization-resources.py" verify "$APP"
 # Keep app and tools in the same staging tree until every check has passed.
 if [[ -d "$PROJECT_DIR/dist" ]]; then
  mv "$PROJECT_DIR/dist" "$PROJECT_DIR/.build/previous-native.$$.dist"

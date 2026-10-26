@@ -11,6 +11,12 @@ import ChargeHardware
   precondition(unavailableService.preflightText == bundle.localizedString(forKey:"此系统尚不支持应用内服务注册；可按安装说明使用开发服务。",value:nil,table:nil))
   precondition(bundle.preferredLocalizations.first == language,"unexpected selected language: \(bundle.preferredLocalizations)")
   func translated(_ key: String) -> String { bundle.localizedString(forKey:key,value:nil,table:nil) }
+  if language == "ja" {
+   let path = bundle.url(forResource:"Localizable",withExtension:"strings",subdirectory:nil,localization:"ja")!
+   let table = try PropertyListSerialization.propertyList(from:Data(contentsOf:path),format:nil) as! [String:String]
+   precondition(table.count == 531)
+   for (key,value) in table { precondition(translated(key) == value,"Japanese lookup fell back: \(key)") }
+  }
   let pairs = [("概览",Page.overview.title),
    ("动态状态",MenuIconStyle.status.title),
    ("高耗能应用",DashboardWidget.energyApps.title),
@@ -21,25 +27,25 @@ import ChargeHardware
    precondition(value == translated(key),"a domain label bypassed localization: \(key)")
    precondition(language == "zh-Hans" ? value == key : value != key)
   }
-  func expected(_ english: String, _ simplified: String, _ traditional: String) -> String {
-   switch language { case "en": return english; case "zh-Hans": return simplified; case "zh-Hant": return traditional; default: preconditionFailure("unsupported test expectation") }
+  func expected(_ english: String, _ simplified: String, _ traditional: String, _ japanese: String) -> String {
+   switch language { case "en": return english; case "zh-Hans": return simplified; case "zh-Hant": return traditional; case "ja": return japanese; default: preconditionFailure("unsupported test expectation") }
   }
-  precondition(Page.settings.title == expected("Settings and Diagnostics", "设置与诊断", "設定與診斷"))
-  precondition(ScheduleAction.calibrate.displayName == expected("Calibrate Battery", "校准电池", "校正電池"))
+  precondition(Page.settings.title == expected("Settings and Diagnostics", "设置与诊断", "設定與診斷", "設定と診断"))
+  precondition(ScheduleAction.calibrate.displayName == expected("Calibrate Battery", "校准电池", "校正電池", "バッテリーをキャリブレーション"))
   let target = String(localized:"目标 \(42)%")
-  precondition(target == expected("Target 42%", "目标 42%", "目標 42%"),"interpolation mismatch: \(target)")
+  precondition(target == expected("Target 42%", "目标 42%", "目標 42%", "目標 42%"),"interpolation mismatch: \(target)")
   let oneMinute = String(localized:"\(1) 分钟"), twoMinutes = String(localized:"\(2) 分钟")
   let oneSample = String(localized:"\(1) 个本地采样"), twoSamples = String(localized:"\(2) 个本地采样")
-  precondition(oneMinute == expected("1 minute", "1 分钟", "1 分鐘"))
-  precondition(twoMinutes == expected("2 minutes", "2 分钟", "2 分鐘"))
-  precondition(oneSample == expected("1 local sample", "1 个本地采样", "1 個本地取樣"))
-  precondition(twoSamples == expected("2 local samples", "2 个本地采样", "2 個本地取樣"))
+  precondition(oneMinute == expected("1 minute", "1 分钟", "1 分鐘", "1 分"))
+  precondition(twoMinutes == expected("2 minutes", "2 分钟", "2 分鐘", "2 分"))
+  precondition(oneSample == expected("1 local sample", "1 个本地采样", "1 個本地取樣", "1 件のローカルサンプル"))
+  precondition(twoSamples == expected("2 local samples", "2 个本地采样", "2 個本地取樣", "2 件のローカルサンプル"))
   let range = String(localized:"充电上限必须在 20–100%")
   precondition(range == translated("充电上限必须在 20–100%"),"literal percent damaged")
   let phrase = bundle.localizedString(forKey:"读取 ${applicationName} 电量",value:nil,table:"AppShortcuts")
-  precondition(phrase == expected("Get the battery level in ${applicationName}", "读取 ${applicationName} 电量", "讀取 ${applicationName} 電量"))
+  precondition(phrase == expected("Get the battery level in ${applicationName}", "读取 ${applicationName} 电量", "讀取 ${applicationName} 電量", "${applicationName} のバッテリー残量を取得"))
   let appStatePhrase = bundle.localizedString(forKey:"读取 ${applicationName} 应用状态",value:nil,table:"AppShortcuts")
-  precondition(appStatePhrase == expected("Get the app state in ${applicationName}", "读取 ${applicationName} 应用状态", "讀取 ${applicationName} 應用程式狀態"))
+  precondition(appStatePhrase == expected("Get the app state in ${applicationName}", "读取 ${applicationName} 应用状态", "讀取 ${applicationName} 應用程式狀態", "${applicationName} のアプリ状態を取得"))
   var engine = ChargeEngine(); var policy = ChargePolicy(); policy.heatProtection = false
   let decision = engine.decide(ChargeSample(percent:50,temperature:30),policy:policy)
   precondition(decision.action == .allowCharge && decision.phase == .charging)
@@ -59,13 +65,13 @@ import ChargeHardware
   let error = ChargeControlSuspension.systemSleep
   precondition(error.localizedDescription == translated("系统睡眠或控制阶段已变化，稍后重新确认"))
   let httpError = ReleaseUpdateError.http(503).localizedDescription
-  precondition(httpError == expected("GitHub returned HTTP 503", "GitHub 返回 HTTP 503", "GitHub 返回 HTTP 503"), "HTTP format argument changed: \(httpError)")
+  precondition(httpError == expected("GitHub returned HTTP 503", "GitHub 返回 HTTP 503", "GitHub 返回 HTTP 503", "GitHub から HTTP 503 が返されました"), "HTTP format argument changed: \(httpError)")
   for status in [403, 429] {
    precondition(ReleaseUpdateError.http(status).localizedDescription == translated("GitHub 请求受限，请稍后重试"))
   }
   for minutes in [1.0, 2.0] {
    let reading = BatteryReading(percent:50, connected:true, charging:false, timeToFullMinutes:minutes, timeToEmptyMinutes:minutes)
-   let value = minutes == 1 ? expected("1 minute", "1 分钟", "1 分鐘") : expected("2 minutes", "2 分钟", "2 分鐘")
+   let value = minutes == 1 ? expected("1 minute", "1 分钟", "1 分鐘", "1 分") : expected("2 minutes", "2 分钟", "2 分鐘", "2 分")
    precondition(BatterySpecificationFormatter.value(.timeToFull, reading:reading) == value)
    precondition(BatterySpecificationFormatter.value(.timeToEmpty, reading:reading) == value)
   }
