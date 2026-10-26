@@ -2,7 +2,7 @@
 
 A local-first macOS battery manager with a native dashboard, menu-bar controls, CLI and Shortcuts actions.
 
-[Download development previews](https://github.com/shengjk/OpenCharge/releases) · [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Status](docs/STATUS.md) · [Contributing](CONTRIBUTING.md)
+[Download development previews](https://github.com/shengjk/OpenCharge/releases) · [Using compiled packages](docs/DOWNLOADS.md) · [简体中文](README.zh-CN.md) · [Documentation](docs/README.md) · [Status](docs/STATUS.md) · [Contributing](CONTRIBUTING.md)
 
 ## Features
 
@@ -32,7 +32,7 @@ New installations start in monitoring mode. Hardware control requires a separate
 
 ## What works and what remains
 
-Version 0.3.37 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
+Version 0.3.38 is a development build. Policy tests and read-only telemetry have been exercised; real charging/discharging, MagSafe effects and sleep recovery still require hardware validation. Private macOS interfaces may be unavailable on another system. A universal binary does not establish support for every Intel or Apple Silicon firmware. See [status and limitations](docs/STATUS.md).
 
 ## Build and verify
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.3.38
+
+- Reuse the final signed embedded helper for the standalone service copy, preserving the same code identity in native and universal downloads.
+
+- Ship compiled downloads with matching helper scripts, CLI, bilingual usage instructions and setup/status guides in a consistent directory layout. Verify signatures, architectures, languages and embedded/standalone helper equality before archiving.
+
+- Add read-only installed-service classification with bounded file, permission and signing checks. Block app registration/removal when root-installed files are incomplete, conflicting or have unverified ownership.
+- Add version-gated presentation fallbacks, complete macOS 11-target source compilation, portable Swift runtime packaging and older-helper metadata. The supported app minimum remains macOS 13; pre-13 installation/removal and runtime acceptance remain incomplete.
+- Add chronological native accessibility reading nodes and macOS 12 audio-chart descriptors for the fallback history graph. Direct fixtures and mounting pass; actual VoiceOver reachability, audio playback and older-system acceptance remain unverified.
+- Package and verify exactly the English and Simplified Chinese resources, preserving all format arguments, shortcut tokens and encoded policy values.
+
 - Limit interface resources to Simplified Chinese and English. Remove other translation tables and require both supported languages in native and universal packages.
 
 - Add a version-gated login-startup controller: native registration on macOS 13+, owned one-shot user LaunchAgent fallback for earlier systems, explicit migration/readback and refusal of unsafe records. Add isolated dual-architecture tests; real login and older-system runtime remain unverified, and the app minimum stays macOS 13.

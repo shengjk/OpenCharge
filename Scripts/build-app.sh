@@ -33,8 +33,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>OpenCharge</string>
 <key>CFBundleExecutable</key><string>OpenCharge</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.3.37</string>
-<key>CFBundleVersion</key><string>49</string>
+<key>CFBundleShortVersionString</key><string>0.3.38</string>
+<key>CFBundleVersion</key><string>50</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>opencharge</string></array><key>CFBundleURLName</key><string>org.opencharge.app</string></dict></array>
@@ -52,7 +52,8 @@ python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" prepare "$APP" "$TOOLS" 
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP/Contents/MacOS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" --identifier org.opencharge.charged "$APP/Contents/Library/LaunchServices/org.opencharge.charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" --identifier org.opencharge.app "$APP"
-/usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$TOOLS/charged"
+# Reuse the final signed helper so embedded and standalone code identities agree.
+cp "$APP/Contents/MacOS/charged" "$TOOLS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$TOOLS/chargectl"
 /usr/bin/codesign --verify --deep --strict "$APP"
 python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" verify "$APP" "$TOOLS"

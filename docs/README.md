@@ -2,6 +2,7 @@
 
 ## Using OpenCharge
 
+- [Using compiled downloads](DOWNLOADS.md)
 - [Usage and automation](USAGE.md)
 - [Software updates](UPDATES.md)
 - [Quit and discharge recovery](QUIT.md)

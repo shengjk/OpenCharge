@@ -2,7 +2,7 @@
 
 本地运行的 macOS 开源电池管理器，提供原生仪表盘、菜单栏、命令行和快捷指令。
 
-[下载开发预览版编译包](https://github.com/shengjk/OpenCharge/releases)
+[下载开发预览版编译包](https://github.com/shengjk/OpenCharge/releases) · [编译包使用说明](docs/DOWNLOADS.md)
 [English](README.md) · [文档](docs/README.md) · [功能状态](docs/STATUS.md) · [参与贡献](CONTRIBUTING.md)
 
 ## 主要功能
@@ -31,7 +31,7 @@ open dist/OpenCharge.app
 
 ## 当前状态
 
-0.3.37 为开发版本。策略、隔离测试和只读能力已有验证；真实充放电、灯光效果、睡眠恢复和更多机型仍待实机验收。通用构建支持 arm64/x86_64，不代表所有机型固件均已验证。完整范围见[功能状态](docs/STATUS.md)。
+0.3.38 为开发版本。策略、隔离测试和只读能力已有验证；真实充放电、灯光效果、睡眠恢复和更多机型仍待实机验收。通用构建支持 arm64/x86_64，不代表所有机型固件均已验证。完整范围见[功能状态](docs/STATUS.md)。
 
 ```sh
 bash Scripts/check.sh
