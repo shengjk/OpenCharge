@@ -4,6 +4,7 @@ import Foundation
  @MainActor static func main() {
   selectableTextChecks()
   trendPlotChecks()
+  trendAccessibilityChecks()
   powerFlowConnectionChecks()
  }
 }

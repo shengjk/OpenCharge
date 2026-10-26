@@ -1,6 +1,6 @@
 import Foundation
 
-struct TrendSample {
+struct TrendSample: Equatable {
  var date: Date
  var percent: Double
  var limit: Double? = nil

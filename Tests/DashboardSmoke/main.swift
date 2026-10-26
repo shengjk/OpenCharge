@@ -6,6 +6,7 @@ import ChargeHardware
  @MainActor static func main() async throws {
   selectableTextChecks()
   trendPlotChecks()
+  trendAccessibilityChecks()
   powerFlowConnectionChecks()
   powerFlowAnimationChecks()
   try menuBarAppearanceChecks()

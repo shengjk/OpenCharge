@@ -33,7 +33,7 @@ func commandOutput(_ path: String, _ arguments: [String]) throws -> String {
 let binary = app.appendingPathComponent("Contents/MacOS/OpenCharge").path
 let architectures = try commandOutput("/usr/bin/lipo", ["-archs",binary]).split(whereSeparator: \.isWhitespace)
 let loads = try commandOutput("/usr/bin/otool", ["-arch","all","-l",binary])
-for name in ["AppIntents", "Charts"] {
+for name in ["AppIntents", "Charts", "Accessibility"] {
  let frameworkLoads = loads.components(separatedBy: "Load command ").filter { $0.contains("/" + name + ".framework/") }
  guard !architectures.isEmpty, frameworkLoads.count == architectures.count,
        frameworkLoads.allSatisfy({ $0.contains("LC_LOAD_WEAK_DYLIB") }) else {
