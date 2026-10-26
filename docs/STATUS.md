@@ -1,10 +1,10 @@
-# Status — 0.3.38 and development source
+# Status — 0.3.39 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
 | Area | Implemented | Remaining validation or scope |
 | --- | --- | --- |
-| Firmware limits | Fixed CH0B/BCLM backend, exclusive recovery, atomic action/sleep plans, app policy selection and sleep/wake/exit handoff; development source selects seventeen Intel notebook identifiers | Physical Intel validation, special multi-display sleep behavior, broader model matrix and native deployment remain unverified |
+| Firmware limits | Separate fixed CH0B+BCLM and BCLM-only backends, distinct journal kinds, atomic action/sleep plans and app sleep/wake/exit handoff; development source selects 17 paired and 50 legacy Intel notebook identifiers | Physical Intel validation, special multi-display sleep behavior, broader model matrix and native deployment remain unverified |
 | Intel inflow assertion | Fixed process-local ownership, backend/helper/app integration, protected startup, sleep-entry recovery and retryable cleanup | Protocol acceptance and readback do not establish physical discharge or OS/model compatibility |
 | Administrator restriction | Scoped charge-setting UI/binding and right-click guards; read-only preference, observation, isolated tests | Managed-profile deployment and broader enterprise/session environments |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
@@ -22,7 +22,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Languages | Packages include native English and Simplified Chinese resources, localized dynamic statuses and App Shortcut phrases, plural rules, and native bundle fallback checks | Visual layout and accessibility review, live Shortcuts/Siri localization, CLI help and raw helper diagnostic text remain incomplete or unverified |
 | Distribution | Native and universal builds, local signatures, CI definition | Notarized releases and broader model matrix |
 
-Unsupported or incomplete: BCLM-only firmware control, guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
+Unsupported or incomplete: guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
 
 The installed development helper was validated only through read-only capabilities. Hardware control and scheduled system actions remain disabled on the validation machine. No physical effects are claimed from capability detection or fake-backend tests.
 

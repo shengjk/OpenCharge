@@ -3,7 +3,9 @@ import ChargeCore
 import ChargeHardware
 
 @MainActor private final class NumericRoot {
- let capabilities = "chargeControl:fixture,firmwareProtocol:fixedV1,firmwareRead:CH0B+BCLM,firmwareWrite:fixedV1,internalBattery:present,chargeRecovery:ready,firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1,sleepOverride:interfacesDetected,sleepRecovery:phasesV1"
+ let readProfile: String
+ init(profile: String = "CH0B+BCLM") { readProfile = profile }
+ var capabilities: String { "chargeControl:fixture,firmwareProtocol:fixedV1,firmwareRead:\(readProfile),firmwareWrite:fixedV1,internalBattery:present,chargeRecovery:ready,firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1,sleepOverride:interfacesDetected,sleepRecovery:phasesV1" }
  var calls: [String] = []
  var limit = 80
  var inflow = false
@@ -35,12 +37,12 @@ import ChargeHardware
   return result
  }
 }
-@MainActor func firmwareControlChecks(defaults: UserDefaults) throws {
+@MainActor func firmwareControlChecks(defaults: UserDefaults, readProfile: String = "CH0B+BCLM") throws {
  let original = try Configuration.load()
  defer { try? original.save() }
  var config = Configuration(); config.historyEnabled = false; try config.save()
  func model() -> ChargeModel { ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)}) }
- let m = model(), root = NumericRoot()
+ let m = model(), root = NumericRoot(profile:readProfile)
  for old in ["chargeControl:fixture",root.capabilities.replacingOccurrences(of:",firmwarePlan:atomicSleepV1",with:"")] {
   do { try m.configureHardwareChannel(capabilities:old,numericRequired:true); preconditionFailure("must not fall back") } catch {}
  }
@@ -64,7 +66,7 @@ import ChargeHardware
  precondition(m.automationPhase == .exit)
 
  var clean = Configuration(); clean.historyEnabled = false; try clean.save()
- let failed = model(), ambiguous = NumericRoot()
+ let failed = model(), ambiguous = NumericRoot(profile:readProfile)
  failed.enableHardware(true,request:ambiguous.request,refresh:{})
  failed.decision = Decision(.allowCharge,"fixture",limit:80); failed.decision.phase = .charging
  ambiguous.dropAfter = "firmwarePlan:allow:80"; ambiguous.restoreFails = true
@@ -76,17 +78,17 @@ import ChargeHardware
  try failed.prepareForQuit(request:ambiguous.request)
  precondition(ambiguous.calls == ["restore"] && !failed.needsQuitPreparation)
 
- try clean.save(); let disabled = model(), last = NumericRoot()
+ try clean.save(); let disabled = model(), last = NumericRoot(profile:readProfile)
  disabled.enableHardware(true,request:last.request,refresh:{})
  disabled.decision = Decision(.allowCharge,"fixture",limit:80); disabled.applyHardwareDecision(charging,request:last.request,setIdleSleep:{_ in})
  last.calls = []; disabled.enableHardware(false,request:last.request,refresh:{})
  precondition(last.calls == ["restore"] && !disabled.config.hardwareEnabled && !disabled.needsQuitPreparation)
- try clean.save(); let rejected = model(), denied = NumericRoot(); denied.protectionFails = true
+ try clean.save(); let rejected = model(), denied = NumericRoot(profile:readProfile); denied.protectionFails = true
  rejected.enableHardware(true,request:denied.request,refresh:{})
  rejected.decision = Decision(.forceDischarge,"fixture",limit:80); rejected.decision.phase = .discharging
  denied.calls = []; rejected.applyHardwareDecision(plan,request:denied.request,setIdleSleep:{_ in})
  precondition(denied.calls == ["firmwarePlan:inhibit:15","sleepOverrideOn","restore"] && denied.creates == 0 && !rejected.config.hardwareEnabled)
- try clean.save(); let cancelled = model(), exitLoss = NumericRoot()
+ try clean.save(); let cancelled = model(), exitLoss = NumericRoot(profile:readProfile)
  cancelled.enableHardware(true,request:exitLoss.request,refresh:{})
  cancelled.config.policy.limit = 75; cancelled.decision = Decision(.allowCharge,"fixture",limit:75)
  cancelled.applyHardwareDecision(charging,request:exitLoss.request,setIdleSleep:{_ in})

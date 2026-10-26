@@ -48,7 +48,7 @@ public final class FirmwareAppSession {
    var observed: FirmwareHelperState?
    if lastAction != nil { observed = try inspect(request:request) }
    if desired == .allow {
-    // A validated allow transaction has CH0B=0 and BCLM=100, so this control
+    // A validated allow transaction has BCLM=100 (and CH0B=0 for paired profiles), so this control
     // state is known independently of OS charging or measured battery power.
     guard let target = FirmwareLimitProjection.onSleep(policy:policy,phase:phase,smcCharging:true) else { throw FirmwareSessionError.rejected("Invalid firmware sleep projection") }
     try plan(.allow,target:target,request:request); status = nil; return

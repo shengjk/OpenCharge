@@ -12,15 +12,17 @@ import ChargeHardware
   calls = []; model.inspectServiceCapabilities { command in calls.append(command); precondition(command == "capabilities"); return unavailable }
   precondition(calls == ["capabilities"] && model.firmwareInspection == nil && model.firmwareStatus.contains("未提供"))
  }
+ for advertised in [capabilities, capabilities.replacingOccurrences(of:"CH0B+BCLM",with:"BCLM")] {
  for (state,expected): (String,Bool?) in [("allowed",true),("inhibited",false),("unknown",nil)] {
   calls = []; model.inspectServiceCapabilities { command in
    calls.append(command)
-   switch command { case "capabilities": return capabilities
+   switch command { case "capabilities": return advertised
    case "firmwareStatus": return "limit=80, charging="+state
    default: preconditionFailure("inspection must be read-only") }
   }
   precondition(calls == ["capabilities","firmwareStatus"] && model.firmwareInspection?.limit == 80)
   precondition(model.firmwareInspection?.chargingAllowed == expected && model.firmwareStatus.contains("尚未启用"))
+ }
  }
  calls = []; model.inspectServiceCapabilities { command in calls.append(command); return command == "capabilities" ? capabilities : "limit=15, charging=false" }
  precondition(calls == ["capabilities","firmwareStatus"] && model.firmwareInspection == nil && model.firmwareStatus.contains("失败"))

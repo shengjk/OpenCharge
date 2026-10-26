@@ -23,7 +23,7 @@ private final class Fixture {
   events.append("write:\(key):\(bytes[0])")
   if failWrite { throw Failure.injected }; values[key] = bytes
  }
- lazy var numeric = SMCFirmwareChargeController(eligibleHost:eligible,batteryPresent:true,
+ lazy var numeric = SMCFirmwareChargeController(eligibleHost:eligible,batteryPresent:true,keyProfile:FirmwareDischargeSessionTests.keyProfile,
   read:{ self.values[$0].map { SMCByteReading(dataType:"ui8 ",bytes:$0) } },write:{ try self.write($0,[$1]) },
   authorized:{true},recoveryStore:store.firmwareStore(),bootSession:boot)
  lazy var ordinary = SMCChargeController(batteryPresent:true,read:{self.values[$0]},write:write,
@@ -48,6 +48,7 @@ private final class Fixture {
  func record() throws -> Bool { try store.firmwareStore().load() != nil }
 }
 @main struct FirmwareDischargeSessionTests {
+ static let keyProfile: SMCFirmwareKeyProfile = CommandLine.arguments.contains("--bclm-only") ? .limitOnly : .chargeAndLimit
  static var checks = 0
  static func check(_ value: Bool) { precondition(value); checks += 1 }
  static func rejects(_ action: () throws -> Void) { do { try action(); preconditionFailure("unexpected success") } catch { checks += 1 } }
@@ -141,6 +142,6 @@ private final class Fixture {
   let result = try atomic.helper.reconcileSleep(recoveryPending:false,restore:atomic.backend.restore)
   check(result == .applied && atomic.token == nil && atomic.values["BCLM"] == [65])
   try atomic.backend.restore(); check(atomic.values["BCLM"] == [80]); check(try !atomic.record())
-  print("Firmware discharge composition: \(checks) helper/backend/ownership checks passed; injected SMC and IOPM only")
+  print("Firmware discharge composition (\(keyProfile.rawValue)): \(checks) helper/backend/ownership checks passed; injected SMC and IOPM only")
  }
 }

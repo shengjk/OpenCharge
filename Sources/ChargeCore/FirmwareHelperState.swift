@@ -15,7 +15,7 @@ public enum FirmwareHelperCapabilities {
  }
  private static func supports(_ reply: String, discharge: Bool, atomic: Bool = false) -> Bool {
   guard reply.utf8.count <= 4096, !reply.contains("\n"), !reply.contains("\r") else { return false }
-  var expected = ["firmwareProtocol":"fixedV1", "firmwareRead":"CH0B+BCLM", "firmwareWrite":"fixedV1", "chargeRecovery":"ready", "internalBattery":"present"]
+  var expected = ["firmwareProtocol":"fixedV1", "firmwareRead":"", "firmwareWrite":"fixedV1", "chargeRecovery":"ready", "internalBattery":"present"]
   if discharge { expected["firmwareDischarge"] = "inflowV1" }
   if atomic { expected["firmwarePlan"] = "atomicSleepV1" }
   var found: [String:String] = [:]
@@ -27,7 +27,8 @@ public enum FirmwareHelperCapabilities {
    guard found[key] == nil else { return false }
    found[key] = String(item[item.index(after:colon)...])
   }
-  return expected.allSatisfy { found[$0.key] == $0.value }
+  guard let profile = found["firmwareRead"], ["CH0B+BCLM", "BCLM"].contains(profile) else { return false }
+  return expected.allSatisfy { $0.key == "firmwareRead" || found[$0.key] == $0.value }
  }
 }
 

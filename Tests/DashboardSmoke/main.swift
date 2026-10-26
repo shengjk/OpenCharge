@@ -78,6 +78,7 @@ import ChargeHardware
   try ledEncodingChecks(defaults: defaults)
   try firmwareInspectionChecks(defaults: defaults)
   try firmwareControlChecks(defaults: defaults)
+  try firmwareControlChecks(defaults:defaults,readProfile:"BCLM")
   try sleepTransitionChecks(defaults: defaults)
   try sleepEpochChecks(defaults: defaults)
   try multiDisplaySleepChecks(defaults: defaults)

@@ -13,7 +13,12 @@ public struct FirmwareChargeStatus: Equatable, Sendable {
  public let chargingAllowed: Bool?
 }
 
-/// Fixed CH0B/BCLM transactions for an explicitly selected numeric firmware profile.
+public enum SMCFirmwareKeyProfile: String, Sendable {
+ case chargeAndLimit = "CH0B+BCLM"
+ case limitOnly = "BCLM"
+}
+
+/// Fixed transactions for an explicitly selected numeric firmware key profile.
 /// The caller must establish host eligibility; readable bytes alone do not prove it.
 /// Production helper access is serialized with ordinary charge sessions.
 public final class SMCFirmwareChargeController {
@@ -31,6 +36,9 @@ public final class SMCFirmwareChargeController {
   let entries: [Entry]
  }
  private let lock = NSLock()
+ private let keyProfile: SMCFirmwareKeyProfile
+ private var journalKind: String { keyProfile == .chargeAndLimit ? "numericFirmwareV1" : "bclmOnlyFirmwareV1" }
+ private var allowedKeys: Set<Key> { keyProfile == .chargeAndLimit ? [.charge, .limit] : [.limit] }
  private let eligibleHost: Bool
  private let batteryPresent: Bool
  private let read: (String) throws -> SMCByteReading?
@@ -42,11 +50,12 @@ public final class SMCFirmwareChargeController {
  private var interrupted = false
  private var entries: [Entry] = []
 
- public init(eligibleHost: Bool, batteryPresent: Bool,
+ public init(eligibleHost: Bool, batteryPresent: Bool, keyProfile: SMCFirmwareKeyProfile = .chargeAndLimit,
              read: @escaping (String) throws -> SMCByteReading?,
              write: @escaping (String, UInt8) throws -> Void,
              authorized: @escaping () -> Bool = { geteuid() == 0 },
              recoveryStore: ChargeRecoveryStore? = nil, bootSession: String = "") {
+  self.keyProfile = keyProfile
   self.eligibleHost = eligibleHost; self.batteryPresent = batteryPresent
   self.read = read; self.write = write; self.authorized = authorized
   store = recoveryStore; self.bootSession = bootSession; loaded = recoveryStore == nil
@@ -56,7 +65,7 @@ public final class SMCFirmwareChargeController {
  public func inspect() throws -> FirmwareChargeStatus {
   lock.lock(); defer { lock.unlock() }
   let values = try profile()
-  if values.charge != 0 { return FirmwareChargeStatus(limit: values.limit, chargingAllowed: false) }
+  if let charge = values.charge, charge != 0 { return FirmwareChargeStatus(limit: values.limit, chargingAllowed: false) }
   if values.limit > 15 { return FirmwareChargeStatus(limit: values.limit, chargingAllowed: true) }
   let input = try optionalByte("BSIn")
   return FirmwareChargeStatus(limit: values.limit, chargingAllowed: input.map { $0 & 1 != 0 })
@@ -116,13 +125,13 @@ public final class SMCFirmwareChargeController {
   }
   return value
  }
- private func profile() throws -> (charge: UInt8, limit: UInt8) {
+ private func profile() throws -> (charge: UInt8?, limit: UInt8) {
   guard eligibleHost, batteryPresent else { throw HardwareError.unsupported("Numeric firmware profile requires an eligible host and internal battery") }
-  return (try byte(.charge), try byte(.limit))
+  return (keyProfile == .chargeAndLimit ? try byte(.charge) : nil, try byte(.limit))
  }
  private func save(_ values: [Entry]) throws {
   guard let store else { return }
-  let data = values.isEmpty ? nil : try JSONEncoder().encode(Record(kind: "numericFirmwareV1", version: 1, bootSession: bootSession, entries: values))
+  let data = values.isEmpty ? nil : try JSONEncoder().encode(Record(kind: journalKind, version: 1, bootSession: bootSession, entries: values))
   try store.save(data)
  }
  private func loadRecovery() throws {
@@ -131,9 +140,9 @@ public final class SMCFirmwareChargeController {
   if let data = try store.load() {
    guard data.count <= 8192 else { throw HardwareError.invalidData("Firmware journal too large") }
    let record = try JSONDecoder().decode(Record.self, from: data)
-   guard record.kind == "numericFirmwareV1", record.version == 1, let recordedBoot = UUID(uuidString: record.bootSession), record.entries.count <= 2,
+   guard record.kind == journalKind, record.version == 1, let recordedBoot = UUID(uuidString: record.bootSession), record.entries.count <= allowedKeys.count,
          Set(record.entries.map(\.key)).count == record.entries.count,
-         record.entries.allSatisfy({ entry in Self.valid(entry.original, for: entry.key) && Self.valid(entry.expected, for: entry.key) }) else {
+         record.entries.allSatisfy({ entry in allowedKeys.contains(entry.key) && Self.valid(entry.original, for: entry.key) && Self.valid(entry.expected, for: entry.key) }) else {
     throw HardwareError.invalidData("Invalid firmware recovery record")
    }
    for entry in record.entries {
@@ -148,7 +157,9 @@ public final class SMCFirmwareChargeController {
  private func transact(_ target: UInt8) throws {
   do {
    let values = try profile()
-   let plan: [(Key, UInt8, UInt8)] = [(.charge, 0, values.charge), (.limit, target, values.limit)]
+   var plan: [(Key, UInt8, UInt8)] = []
+   if let charge = values.charge { plan.append((.charge, 0, charge)) }
+   plan.append((.limit, target, values.limit))
    for (key, _, before) in plan {
     if let owned = entries.first(where: { $0.key == key }), owned.expected != before {
      throw HardwareError.invalidData("External firmware state changed: \(key.rawValue)")
@@ -168,7 +179,7 @@ public final class SMCFirmwareChargeController {
     if let index = entries.firstIndex(where: { $0.key == key }) { entries[index].previous = nil }
    }
    let final = try profile()
-   guard final.charge == 0 && final.limit == target else {
+   guard (final.charge == nil || final.charge == 0) && final.limit == target else {
     throw HardwareError.invalidData("Firmware transaction final state mismatch")
    }
   } catch {

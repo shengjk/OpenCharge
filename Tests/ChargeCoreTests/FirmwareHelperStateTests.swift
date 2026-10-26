@@ -19,6 +19,25 @@ final class FirmwareHelperStateTests: XCTestCase {
   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge("firmwareDischarge:inflowV1"))
   for index in fields.indices { var missing = fields; missing.remove(at:index); XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge((missing+["firmwareDischarge:inflowV1"]).joined(separator:","))) }
  }
+ func testLimitOnlyProfileRequiresTheSameIndependentOwnershipAndPlanCapabilities() {
+  let legacy = fields.map { $0 == "firmwareRead:CH0B+BCLM" ? "firmwareRead:BCLM" : $0 }
+  let control = legacy.joined(separator:",")
+  XCTAssertTrue(FirmwareHelperCapabilities.supportsNumericControl(control))
+  XCTAssertFalse(FirmwareHelperCapabilities.supportsAtomicSleepPlan(control))
+  XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericDischarge(control))
+  let complete = control+",firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1"
+  XCTAssertTrue(FirmwareHelperCapabilities.supportsAtomicSleepPlan(complete))
+  XCTAssertTrue(FirmwareHelperCapabilities.supportsNumericDischarge(complete))
+  let session = try? FirmwareAppSession(capabilities:complete)
+  XCTAssertTrue(session != nil)
+  for index in legacy.indices {
+   var missing = legacy; missing.remove(at:index)
+   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericControl(missing.joined(separator:",")))
+  }
+  for extra in ["CH0B+BCLM","BCLM","unavailable"] {
+   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericControl(control+",firmwareRead:"+extra))
+  }
+ }
  func testNumericAvailabilityRequiresEveryIndependentCapability() {
   let ordinary = "chargeControl:CHTE, profile:recognizedFormat, physicalEffects:unverified"
   XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericControl(ordinary))
@@ -27,7 +46,7 @@ final class FirmwareHelperStateTests: XCTestCase {
   XCTAssertTrue(FirmwareHelperCapabilities.supportsNumericControl(fields.reversed().joined(separator:",")))
  }
  func testUnavailablePendingUnknownAndDuplicateCapabilitiesAreRejected() {
-  for (key,value) in [("firmwareProtocol","fixedV2"),("firmwareRead","BCLM"),("firmwareWrite","unavailable"),("chargeRecovery","pending"),("internalBattery","absent")] {
+  for (key,value) in [("firmwareProtocol","fixedV2"),("firmwareRead","CH0B"),("firmwareWrite","unavailable"),("chargeRecovery","pending"),("internalBattery","absent")] {
    var changed = fields; changed[changed.firstIndex(where:{$0.hasPrefix(key+":")})!] = key+":"+value
    XCTAssertFalse(FirmwareHelperCapabilities.supportsNumericControl(changed.joined(separator:", ")))
   }

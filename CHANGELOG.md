@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.39
+
+- Add a separately selected BCLM-only numeric profile for 50 legacy Intel notebook identifiers. Preserve the 17 paired CH0B+BCLM profiles, never touch CH0B on the new path, separate recovery journal kinds and retain fixed capability/session/protection/exit checks. Physical model and OS behavior remain unverified.
+
 ## 0.3.38
 
 - Reuse the final signed embedded helper for the standalone service copy, preserving the same code identity in native and universal downloads.

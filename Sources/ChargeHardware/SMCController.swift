@@ -34,8 +34,9 @@ public final class SMCController {
         read: { [unowned self] in try self.optionalKey($0) },
         write: { [unowned self] in try self.writeKey($0, $1) }, recoveryStore: recoveryStore, bootSession: bootSession)
 
-    private var firmwareEligible: Bool { SMCFirmwareProbe.eligible(model: model, architecture: processArchitecture, internalBattery: internalBattery) }
-    private lazy var firmwareController = SMCFirmwareChargeController(eligibleHost: firmwareEligible, batteryPresent: internalBattery,
+    private var firmwareProfile: SMCFirmwareKeyProfile? { SMCFirmwareProbe.selectedProfile(model:model,architecture:processArchitecture,internalBattery:internalBattery) }
+    private var firmwareEligible: Bool { firmwareProfile != nil }
+    private lazy var firmwareController = SMCFirmwareChargeController(eligibleHost: firmwareEligible, batteryPresent: internalBattery, keyProfile: firmwareProfile ?? .chargeAndLimit,
         read: { [unowned self] in try self.keyIO.optionalRead($0) },
         write: { [unowned self] in try self.keyIO.writeFirmwareByte($0, value: $1) },
         recoveryStore: firmwareStore, bootSession: bootSession)
@@ -72,7 +73,7 @@ public final class SMCController {
         if let bytes = try? optionalKey("ACLC"), bytes.count == 1, bytes[0] <= 4 { values.append("magSafeKey:ACLC") }
         let numericStatus = try? firmwareStatusUnlocked()
         if let status = numericStatus {
-            values.append("firmwareRead:CH0B+BCLM")
+            values.append("firmwareRead:" + (firmwareProfile?.rawValue ?? "unavailable"))
             values.append("firmwareLimit:\(status.limit)")
             values.append("firmwareCharging:\(status.chargingAllowed.map { $0 ? "allowed" : "inhibited" } ?? "unknown")")
         } else { values.append("firmwareRead:unavailable") }
