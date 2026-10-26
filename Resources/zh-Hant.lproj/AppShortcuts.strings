@@ -1,6 +1,0 @@
-/* Independently authored OpenCharge Traditional Chinese translations. */
-"设置 ${applicationName} 充电上限" = "設定 ${applicationName} 充電上限";
-"设置 ${applicationName} 充电模式" = "設定 ${applicationName} 充電模式";
-"读取 ${applicationName} 充电状态" = "讀取 ${applicationName} 充電狀態";
-"读取 ${applicationName} 应用状态" = "讀取 ${applicationName} 應用程式狀態";
-"读取 ${applicationName} 电量" = "讀取 ${applicationName} 電量";

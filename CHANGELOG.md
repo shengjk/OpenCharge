@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Limit interface resources to Simplified Chinese and English. Remove other translation tables and require both supported languages in native and universal packages.
+
 - Add a version-gated login-startup controller: native registration on macOS 13+, owned one-shot user LaunchAgent fallback for earlier systems, explicit migration/readback and refusal of unsafe records. Add isolated dual-architecture tests; real login and older-system runtime remain unverified, and the app minimum stays macOS 13.
 
 - Isolate hardware-service registration behind a macOS 13 backend while keeping status/preflight available without that API. Refuse unavailable removal before changing app control state, retain layout/signature/legacy checks, and add fake-backend tests for both architectures. Earlier native installation and login-startup compatibility remain pending; the app minimum stays macOS 13.
@@ -12,7 +14,7 @@
 
 - Use macOS 11-available URLSession delegate streaming for bounded release downloads. Preserve anonymous requests, redirect restrictions, exclusive files and verification; terminate disallowed redirects promptly and propagate cancellation through transfer/hash cleanup. Add injected transport checks and dual-architecture availability compilation. The packaged app minimum remains macOS 13.
 
-- Adapt all app localization lookup calls to macOS 11-available Foundation APIs while preserving the 524 existing translation keys, typed format arguments and plural rules. Add six-language comparisons for all 34 formatted app keys and production minute formatting. App UI/automation/registration compatibility remains incomplete; the packaged minimum stays macOS 13.
+- Adapt all app localization lookup calls to macOS 11-available Foundation APIs while preserving the 524 existing translation keys, typed format arguments and plural rules. Add native language comparisons for all 34 formatted app keys and production minute formatting. App UI/automation/registration compatibility remains incomplete; the packaged minimum stays macOS 13.
 
 - Remove macOS 12-only localization and default IOKit port references from shared policy/hardware paths. Preserve translation keys and HTTP formatting, and add dual-architecture macOS 11 availability compilation. The packaged app still requires macOS 13 pending UI, automation and registration compatibility work.
 
@@ -23,8 +25,6 @@
 - Add platform-specific ordinary charge planning for known Apple silicon families. Select legacy CH0C by presence, distinguish pause/discharge/retained values, preserve allowance reset order, and recover owned CH0C=1 states. Keep generic Intel and modern fixed-key validation separate.
 
 - Include MacBookPro15,1–15,4 and MacBookPro16,1–16,4 in fixed numeric firmware selection. Retain architecture, internal-battery, typed-key, service-protocol and recovery requirements; physical effects remain unverified.
-
-- Add Traditional Chinese app and App Shortcut translations, including native Taiwan/Hong Kong selection checks. Preserve source keys, interpolation formats and encoded charge policy.
 
 - Add native English and Simplified Chinese app localization: 524 interface/status entries, five App Shortcut phrases, plural rules and system language fallback. Keep persisted enum values and control protocols unchanged. Validate compiler extraction and native bundle lookup during development checks.
 

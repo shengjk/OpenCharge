@@ -17,8 +17,8 @@ def inventory():
         if any(p.is_symlink() or not p.is_file() for p in files.values()):
             raise ValueError('Localization resources must be regular files')
         result[language] = files
-    if 'en' not in result:
-        raise ValueError('Missing English development localization')
+    if set(result) != {'en', 'zh-Hans'}:
+        raise ValueError('Only English and Simplified Chinese localizations are supported')
     return result
 
 def main():

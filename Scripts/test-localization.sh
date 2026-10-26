@@ -49,7 +49,7 @@ swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
 python3 - "$APP/Contents/MacOS/check" "$TEST_ARCH" <<'PYTEST'
 import base64,subprocess,sys
 snapshots=[]
-for requested,expected in [('en','en'),('zh-Hans','zh-Hans'),('zh-Hant','zh-Hant'),('zh-TW','zh-Hant'),('zh-HK','zh-Hant'),('ja','ja'),('ja-JP','ja'),('fr,ja','ja'),('fr','en')]:
+for requested,expected in [('en','en'),('en-US','en'),('zh-Hans','zh-Hans'),('zh-CN','zh-Hans'),('fr,zh-Hans','zh-Hans'),('fr','en')]:
  output=subprocess.check_output(['/usr/bin/arch','-'+sys.argv[2],sys.argv[1],'-AppleLanguages','('+requested+')',expected],text=True)
  lines=output.splitlines(); snapshots.append(base64.b64decode(next(line[14:] for line in lines if line.startswith('POLICY_BASE64 '))))
  for line in lines:
@@ -69,12 +69,12 @@ with tempfile.TemporaryDirectory(prefix='opencharge-language-package-') as tempo
   app=Path(temporary)/(kind+'.app');shutil.copytree(source,app)
   resources=app/'Contents/Resources'
   if kind=='declaration':
-   info=app/'Contents/Info.plist';value=plistlib.loads(info.read_bytes());value['CFBundleLocalizations'].remove('ja');info.write_bytes(plistlib.dumps(value))
-  elif kind=='missing':shutil.rmtree(resources/'ja.lproj')
-  elif kind=='changed':(resources/'ja.lproj/Localizable.strings').write_text('changed')
+   info=app/'Contents/Info.plist';value=plistlib.loads(info.read_bytes());value['CFBundleLocalizations'].remove('zh-Hans');info.write_bytes(plistlib.dumps(value))
+  elif kind=='missing':shutil.rmtree(resources/'zh-Hans.lproj')
+  elif kind=='changed':(resources/'zh-Hans.lproj/Localizable.strings').write_text('changed')
   elif kind=='extra':(resources/'xx.lproj').mkdir()
   else:
-   original=resources/'ja.lproj/Localizable.strings';original.unlink();original.symlink_to(source/'Contents/Resources/ja.lproj/Localizable.strings')
+   original=resources/'zh-Hans.lproj/Localizable.strings';original.unlink();original.symlink_to(source/'Contents/Resources/zh-Hans.lproj/Localizable.strings')
   before={str(p.relative_to(app)):p.read_bytes() for p in app.rglob('*') if p.is_file()}
   result=subprocess.run([sys.executable,str(script),'verify',str(app)],capture_output=True,text=True)
   assert result.returncode!=0,kind+' accepted'

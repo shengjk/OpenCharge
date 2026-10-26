@@ -12,6 +12,7 @@ def table(language):
  assert isinstance(value,dict) and all(isinstance(k,str) and isinstance(v,str) and v for k,v in value.items())
  return value
 languages=sorted(p.name[:-6] for p in resources.glob('*.lproj'))
+assert set(languages)=={'en','zh-Hans'},'Only English and Simplified Chinese are supported'
 tables={language:table(language) for language in languages}
 english=tables['en'];chinese=tables['zh-Hans']
 assert all(set(values)==set(english) for values in tables.values()),'Translation tables have different keys'
