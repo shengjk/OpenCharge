@@ -3,11 +3,12 @@ import AppKit
 import ChargeCore
 
 @MainActor final class AppUpdates: ObservableObject {
+ private var reloading = false
  private let defaults: UserDefaults
  let currentVersion: String
- @Published var automaticChecks: Bool { didSet { defaults.set(automaticChecks, forKey: "updatesAutomatic"); if automaticChecks { checkIfDue() } } }
+ @Published var automaticChecks: Bool { didSet { guard !reloading else { return }; defaults.set(automaticChecks, forKey: "updatesAutomatic"); if automaticChecks { checkIfDue() } } }
  @Published var includePreviews: Bool { didSet {
-  defaults.set(includePreviews, forKey: "updatesPreviews"); generation += 1; candidate = nil; downloaded = nil
+  guard !reloading else { return }; defaults.set(includePreviews, forKey: "updatesPreviews"); generation += 1; candidate = nil; downloaded = nil
   if !busy { status = NSLocalizedString("渠道已更改，请重新检查", comment: "") }; defaults.removeObject(forKey: "updatesLastAttempt")
  } }
  @Published private(set) var status = NSLocalizedString("尚未检查更新", comment: "")
@@ -24,6 +25,15 @@ import ChargeCore
   self.defaults = defaults; self.currentVersion = currentVersion ?? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")
   automaticChecks = defaults.bool(forKey: "updatesAutomatic")
   includePreviews = defaults.object(forKey: "updatesPreviews") as? Bool ?? true
+ }
+ func reloadAfterReset() {
+  precondition(!busy)
+  reloading = true
+  automaticChecks = defaults.bool(forKey:"updatesAutomatic")
+  includePreviews = defaults.object(forKey:"updatesPreviews") as? Bool ?? true
+  reloading = false; generation += 1
+  candidate = nil; downloaded = nil; checkedAt = nil; progress = nil
+  status = NSLocalizedString("尚未检查更新", comment: "")
  }
  func start() {
   guard timer == nil else { return }
@@ -43,7 +53,7 @@ import ChargeCore
   window?.showWindow(nil); window?.window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
  }
  func showAndCheck() { show(); Task { await check() } }
- func check() async {
+ func check(loadPages: () async throws -> [Data] = { try await ReleaseHTTP.pages() }) async {
   guard !busy else { return }
   guard ReleaseVersion(currentVersion) != nil else { status = NSLocalizedString("开发运行未标记版本，请从发布包打开应用", comment: ""); return }
   guard ReleaseCheckCadence.due(now: Date().timeIntervalSince1970, lastAttempt: defaults.object(forKey: "updatesLastAttempt") as? Double, interval: 60) else { status = NSLocalizedString("刚刚检查过，请稍后再试", comment: ""); return }
@@ -52,7 +62,7 @@ import ChargeCore
   defaults.set(Date().timeIntervalSince1970, forKey: "updatesLastAttempt")
   defer { busy = false }
   do {
-   let pages = try await ReleaseHTTP.pages()
+   let pages = try await loadPages()
    #if arch(arm64)
    let architecture = UpdateArchitecture.appleSilicon
    #else

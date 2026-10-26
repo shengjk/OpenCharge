@@ -75,6 +75,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published var reading: BatteryReading?
  @Published var decision = Decision(.restore, NSLocalizedString("正在读取电池…", comment: ""), limit: 80)
  @Published var error: String?
+ @Published private(set) var settingsResetStatus: String?
+ @Published private(set) var settingsResetPending = false
  @Published var helperStatus = NSLocalizedString("监测模式", comment: "")
  @Published private(set) var firmwareInspection: FirmwareHelperState?
  @Published private(set) var firmwareStatus = NSLocalizedString("尚未检测数值固件通道", comment: "")
@@ -114,12 +116,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil) {
+ init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil) {
   self.helperService = helperService ?? HelperService()
   settingsDefaults = dashboardDefaults
   self.readBattery = readBattery
   self.screenLockRequest = screenLockRequest
-  updates = AppUpdates(defaults: dashboardDefaults)
+  updates = appUpdates ?? AppUpdates(defaults: dashboardDefaults)
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
   menuBarActions = MenuBarActionPreferences(defaults: dashboardDefaults)
@@ -219,7 +221,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func toggleLowPowerFromMenu(request: (String) throws -> String = HelperClient.request,
                              isActive: () -> Bool? = { LowPowerObservation.current }) {
-  guard !quitting else { return }
+  guard !quitting, !settingsResetPending else { return }
   guard config.systemActionsEnabled == true else { error = NSLocalizedString("请先允许菜单栏快捷操作改变系统模式", comment: ""); return }
   do {
    let status = try request("lowPowerStatus")
@@ -251,18 +253,19 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint, sailingCheckpoint: config.sailingCheckpoint); calibrationPending = false; refresh() }
  func setLowPower(_ enabled: Bool, source: String? = nil) {
-  guard !quitting else { return }
+  guard !quitting, !settingsResetPending else { return }
   let command = source == "battery" ? (enabled ? "lowPowerBatteryOn" : "lowPowerBatteryOff") : source == "ac" ? (enabled ? "lowPowerACOn" : "lowPowerACOff") : (enabled ? "lowPowerOn" : "lowPowerOff")
   do { lowPowerStatus = try HelperClient.request(command); config.policy.lowPowerMode = enabled; save() } catch { self.error = error.localizedDescription }
  }
  func setMagSafe(_ color: MagSafeColor?) {
+  guard !settingsResetPending else { return }
   magSafeSelection = color; magSafePolicyFailed = false
   if color == nil { config.magSafeMode = .system; config.magSafeOffDuringSleep = false; save() }
   updateMagSafe()
  }
  func useMagSafePolicy() { magSafeSelection = nil; magSafePolicyFailed = false; updateMagSafe() }
  func updateMagSafe(request: (String) throws -> String = HelperClient.request) {
-  guard !quitting, !magSafePolicyFailed else { return }
+  guard !quitting, !settingsResetPending, !magSafePolicyFailed else { return }
   let mode = config.magSafeMode ?? .system
   let wantsControl = magSafeSelection != nil || mode != .system || config.magSafeOffDuringSleep == true
   do {
@@ -303,6 +306,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard !quitting else { return }
   reloadSettingsLock()
   defer { syncDashboard() }
+  guard !settingsResetPending else {
+   decision = Decision(.restore,NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: ""),limit:config.policy.limit); return
+  }
   do {
    let r = try readBattery(); reading = r
    let lid = LidStateObserver.currentState()
@@ -553,6 +559,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func enableHardware(_ enabled: Bool, request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
+  if enabled && settingsResetPending { error = NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: ""); return }
   if enabled { do {
    sleepOverrideFailed = false
    guard !calibrationPending else { throw HelperError.rejected(NSLocalizedString("请先选择继续或取消上次校准", comment: "")) }
@@ -625,6 +632,60 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   }.joined(separator: "\n")
   do { try text.write(to: url, atomically: true, encoding: .utf8) } catch { self.error = error.localizedDescription }
  }
+ func confirmSettingsReset(confirm: @MainActor () -> Bool = SettingsResetConfirmation.confirm) {
+  guard allowChargeSettingsEdit(), confirm() else { return }
+  do { try resetSettings() } catch { self.error = error.localizedDescription }
+ }
+ /// Stop policy actuation durably before releasing owned sessions. A cleanup or
+ /// storage failure retains settings for retry; no preference reset is reported.
+ func resetSettings(request: (String) throws -> String = HelperClient.request,
+                    releaseIdle: (() throws -> Void)? = nil,
+                    persist: (Configuration) throws -> Void = { try $0.save() },
+                    applyDock: @MainActor (Bool) -> Void = { NSApp.setActivationPolicy($0 ? .regular : .accessory) }) throws {
+  guard allowChargeSettingsEdit() else { throw HelperServiceError.ineligible(error ?? "") }
+  guard !updates.busy else { throw HelperServiceError.ineligible(NSLocalizedString("请等待更新检查或下载结束后再重置设置", comment: "")) }
+  settingsResetStatus = nil; settingsResetPending = true
+  let restoreCharge = config.hardwareEnabled || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore || dischargeExitPending
+  var stopped = config; stopped.hardwareEnabled = false; stopped.systemActionsEnabled = false
+  // Stop this live model even when storage fails, so its next timer cannot rearm control.
+  config = stopped
+  if config.policy.mode == .calibration { calibrationPending = true }
+  try persist(stopped)
+  var failures: [String] = []
+  if restoreCharge {
+   do { try restoreChargeControl(request:request); lastHardwareAction = .restore; dischargeExitPending = false }
+   catch { failures.append(error.localizedDescription) }
+  }
+  if magSafeSessionActive {
+   do { _ = try request("magSafeRestore"); magSafeSessionActive = false }
+   catch { failures.append(error.localizedDescription) }
+  }
+  if sleepOverrideSessionActive {
+   do { _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false }
+   catch { failures.append(error.localizedDescription) }
+  }
+  do { try (releaseIdle ?? { try self.sleepController.setPreventIdleSleep(false) })() }
+  catch { failures.append(error.localizedDescription) }
+  guard failures.isEmpty else { throw HelperServiceError.ineligible(NSLocalizedString("恢复尚未完成，设置已保留；请解决问题后重试：", comment: "")+failures.joined(separator:"; ")) }
+  // Observation records are not preferences. Preserve their factual history.
+  var fresh = Configuration(); fresh.systemActionsEnabled = false
+  fresh.lastCalibration = stopped.lastCalibration; fresh.scheduleHistory = stopped.scheduleHistory
+  try persist(fresh)
+  config = fresh; settingsResetPending = false; engine = ChargeEngine(); appliedChargeLimitChangeID = nil
+  calibration = .idle; calibrationPending = false; firmwareControl = nil
+  firmwareInspection = nil; lastHardwareAction = .restore; dischargeExitPending = false
+  magSafeSelection = nil; magSafePolicyFailed = false
+  sleepOverrideFailed = false; sleepOverrideCapability = nil
+  chargeContextEnabled = false; multiDisplaySleepEnabled = false; lidLockPolicy = LidLockPolicy()
+  AppPreferenceReset.removeOverrides(from:settingsDefaults)
+  dashboardPreferences.reloadAfterReset(); popoverPreferences.reloadAfterReset(); menuBarActions.reloadAfterReset(); updates.reloadAfterReset()
+  applyDock(settingsDefaults.object(forKey:"showDockIcon") as? Bool ?? true)
+  decision = Decision(.restore,NSLocalizedString("监测模式", comment: ""),limit:config.policy.limit)
+  helperStatus = NSLocalizedString("监测模式", comment: "")
+  firmwareStatus = NSLocalizedString("尚未检测数值固件通道", comment: "")
+  error = nil; settingsResetStatus = NSLocalizedString("已恢复默认设置，充电控制保持关闭", comment: "")
+  syncDashboard()
+ }
  func backupConfiguration() {
   let panel = NSSavePanel(); panel.nameFieldStringValue = "opencharge-settings.json"; panel.allowedContentTypes = [.json]
   guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -633,6 +694,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func restoreConfiguration() {
   guard !quitting, allowChargeSettingsEdit() else { return }
+  guard !settingsResetPending else { error = NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: ""); return }
   let panel = NSOpenPanel(); panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false; panel.canChooseDirectories = false
   guard panel.runModal() == .OK, let url = panel.url else { return }
   do {

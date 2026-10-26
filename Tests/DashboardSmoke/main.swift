@@ -70,6 +70,7 @@ import ChargeHardware
   try temporaryActionChecks(defaults: defaults)
   try modeSelectionChecks(defaults: defaults)
   try await settingsLockChecks(defaults: defaults)
+  try await settingsResetChecks()
   try scheduledPauseChecks(defaults: defaults)
   try menuBarActionChecks(defaults: defaults)
   try dischargeThermalChecks(defaults: defaults)

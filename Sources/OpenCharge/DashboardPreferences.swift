@@ -4,13 +4,23 @@ import ChargeCore
 import ChargeHardware
 
 @MainActor final class DashboardPreferences: ObservableObject {
+ private var reloading = false
  private let defaults: UserDefaults
  var changed: (() -> Void)?
- @Published var showOnStartup: Bool { didSet { defaults.set(showOnStartup, forKey: "dashboardShowOnStartup"); changed?() } }
- @Published var backgroundUpdates: Bool { didSet { defaults.set(backgroundUpdates, forKey: "dashboardBackgroundUpdates"); changed?() } }
+ @Published var showOnStartup: Bool { didSet { guard !reloading else { return }; defaults.set(showOnStartup, forKey: "dashboardShowOnStartup"); changed?() } }
+ @Published var backgroundUpdates: Bool { didSet { guard !reloading else { return }; defaults.set(backgroundUpdates, forKey: "dashboardBackgroundUpdates"); changed?() } }
  @Published var layout: DashboardLayout { didSet {
-  if let data = try? JSONEncoder().encode(layout) { defaults.set(data, forKey: "dashboardLayout") }; changed?()
+  guard !reloading else { return }; if let data = try? JSONEncoder().encode(layout) { defaults.set(data, forKey: "dashboardLayout") }; changed?()
  } }
+ func reloadAfterReset() {
+  reloading = true
+  showOnStartup = defaults.object(forKey:"dashboardShowOnStartup") as? Bool ?? true
+  backgroundUpdates = defaults.object(forKey:"dashboardBackgroundUpdates") as? Bool ?? false
+  if let data = defaults.data(forKey:"dashboardLayout"), data.count <= 16_384, let saved = try? JSONDecoder().decode(DashboardLayout.self,from:data) {
+   layout = DashboardLayout(widgets:saved.widgets,specifications:saved.specifications)
+  } else { layout = DashboardLayout() }
+  reloading = false; changed?()
+ }
  init(defaults: UserDefaults = .standard) {
   self.defaults = defaults
   showOnStartup = defaults.object(forKey: "dashboardShowOnStartup") as? Bool ?? true

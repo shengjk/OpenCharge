@@ -530,3 +530,14 @@
 "；恢复待重试：" = "; recovery awaiting retry: ";
 "；未请求锁屏，实际效果待验证" = "; no lock requested, physical effect unverified";
 "；重新开合盖后可再试" = "; reopen and close the lid to retry";
+
+"恢复 OpenCharge 默认设置？" = "Restore OpenCharge defaults?";
+"将重置充电策略、任务、外观和组件布局，并关闭充电控制及系统模式操作。保留电池历史、校准记录和任务执行历史。服务、登录启动和系统低电量模式需分别管理。" = "Reset charge policies, tasks, appearance and component layouts, and disable charge control and system-mode actions. Battery history, calibration records and task execution history are retained. Manage the service, login startup and system Low Power Mode separately.";
+"恢复默认设置" = "Restore Defaults";
+"请等待更新检查或下载结束后再重置设置" = "Wait for the update check or download to finish before resetting settings.";
+"恢复尚未完成，设置已保留；请解决问题后重试：" = "Recovery is incomplete and settings have been retained. Resolve the problem and retry: ";
+"已恢复默认设置，充电控制保持关闭" = "Default settings restored. Charge control remains disabled.";
+"恢复默认设置…" = "Restore Defaults…";
+"重置应用设置与定时任务，保留本地电池历史。开始前会确认范围，并先结束应用持有的控制会话。" = "Reset app settings and scheduled tasks while retaining local battery history. Confirm the scope first, then end control sessions owned by the app.";
+
+"设置重置未完成，请重试；自动控制与任务已暂停" = "Settings reset is incomplete. Retry to resume automatic control and scheduled tasks.";

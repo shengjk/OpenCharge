@@ -1,4 +1,4 @@
-# Status — 0.3.39 and development source
+# Status — 0.3.40 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -7,6 +7,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Firmware limits | Separate fixed CH0B+BCLM and BCLM-only backends, distinct journal kinds, atomic action/sleep plans and app sleep/wake/exit handoff; development source selects 17 paired and 50 legacy Intel notebook identifiers | Physical Intel validation, special multi-display sleep behavior, broader model matrix and native deployment remain unverified |
 | Intel inflow assertion | Fixed process-local ownership, backend/helper/app integration, protected startup, sleep-entry recovery and retryable cleanup | Protocol acceptance and readback do not establish physical discharge or OS/model compatibility |
 | Administrator restriction | Scoped charge-setting UI/binding and right-click guards; read-only preference, observation, isolated tests | Managed-profile deployment and broader enterprise/session environments |
+| Settings reset | Confirmed, scoped reset of configuration and app-owned UI/update preferences; owned-session cleanup, failure retry and retained observation history | Actual administrator/device recovery and live native interaction remain unverified |
 | Charge policies | Limits, Sailing, thermal windows, Top Up, discharge, calibration checkpoints | Real cutoff/discharge/calibration and interrupted recovery |
 | Ordinary key profiles | Generic profiles plus development platform-specific Apple silicon CH0C/CHTE selection, allowance, inhibition, discharge, retained inhibition and owned recovery | Physical model/OS validation, quit/sleep/boot behavior and additional adapter families |
 | Quit lifecycle | Deferred cleanup, stable OS power-source checks after owned discharge, error/timeout choices and monitoring after cancellation | Physical adapter/display transitions, logout/shutdown, user switching and forced process termination |

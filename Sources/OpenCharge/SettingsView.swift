@@ -79,8 +79,13 @@ struct SettingsView: View {
    Text(NSLocalizedString("包含应用与系统版本、机型、当前电池读数、策略摘要和服务状态。不包含序列号、用户名、路径、定时任务日期或历史明细；文件保存在你选择的位置，不自动上传。", comment: "")).font(.caption).presentationSecondary()
   }
   Card(NSLocalizedString("配置备份", comment: "")) {
-   HStack { Button(NSLocalizedString("导出配置备份", comment: "")) { m.backupConfiguration() }; Button(NSLocalizedString("从备份恢复…", comment: "")) { m.restoreConfiguration() }.disabled(m.settingsLocked) }
+   HStack { Button(NSLocalizedString("导出配置备份", comment: "")) { m.backupConfiguration() }; Button(NSLocalizedString("从备份恢复…", comment: "")) { m.restoreConfiguration() }.disabled(m.settingsLocked || m.settingsResetPending) }
    Text(NSLocalizedString("备份包含策略和时间表。恢复会替换当前配置，进入监测模式并停用导入的任务；重新启用前请检查时间和操作。电池历史不在备份中。", comment: "")).font(.caption).presentationSecondary()
+  }
+  Card(NSLocalizedString("恢复默认设置", comment: "")) {
+   DestructiveButton(NSLocalizedString("恢复默认设置…", comment: "")) { m.confirmSettingsReset() }.disabled(m.settingsLocked || m.updates.busy)
+   Text(NSLocalizedString("重置应用设置与定时任务，保留本地电池历史。开始前会确认范围，并先结束应用持有的控制会话。", comment: "")).font(.caption).presentationSecondary()
+   if let status = m.settingsResetStatus { Text(status).font(.caption).presentationSecondary() }
   }
   Card(NSLocalizedString("兼容性与边界", comment: "")) {
    Text(NSLocalizedString("请先退出其他充电管理程序，再启用硬件控制；多个控制器可能相互覆盖。", comment: ""))

@@ -20,3 +20,5 @@
 - [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [changelog](../CHANGELOG.md)
 
 - [Login startup](LOGIN-STARTUP.md)
+
+- [Restore default settings / 恢复默认设置](SETTINGS.md)

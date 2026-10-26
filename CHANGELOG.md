@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.40
+
+- Add confirmed restoration of default app settings, scheduled tasks and layouts. Disable actuation before owned-session cleanup, retain settings for retry after cleanup/storage failures, preserve observation history and managed/unknown preferences, refresh existing UI objects, and refuse reset while update work or an administrator lock is active.
+
 ## 0.3.39
 
 - Add a separately selected BCLM-only numeric profile for 50 legacy Intel notebook identifiers. Preserve the 17 paired CH0B+BCLM profiles, never touch CH0B on the new path, separate recovery journal kinds and retain fixed capability/session/protection/exit checks. Physical model and OS behavior remain unverified.

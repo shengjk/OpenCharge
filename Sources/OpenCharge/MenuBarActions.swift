@@ -3,9 +3,15 @@ import Combine
 import ChargeCore
 
 @MainActor final class MenuBarActionPreferences: ObservableObject {
+ private var reloading = false
  private let defaults: UserDefaults
  @Published var rightClick: MenuBarRightClickAction {
-  didSet { defaults.set(rightClick.rawValue, forKey: "menuRightClickAction") }
+  didSet { guard !reloading else { return }; defaults.set(rightClick.rawValue, forKey: "menuRightClickAction") }
+ }
+ func reloadAfterReset() {
+  reloading = true
+  rightClick = MenuBarRightClickAction.stored(defaults.string(forKey:"menuRightClickAction"))
+  reloading = false
  }
  init(defaults: UserDefaults = .standard) {
   self.defaults = defaults
