@@ -38,6 +38,21 @@ import Foundation
    do { try await service.unregister(); preconditionFailure("Unknown backend unregistered") } catch HelperServiceError.ineligible { }
    precondition(backend.events.isEmpty)
   }
+  for installation in [HelperInstallation.olderNative(ownedByApp:true), .olderNative(ownedByApp:false), .unrecognized] {
+   let backend = FakeRegistration(); backend.status = .enabled
+   let service = HelperService(bundle:bundle,backend:backend,installationCheck:{ installation },signatureCheck:signatureMustNotRun)
+   precondition(service.legacyInstalled && !service.registrationAllowed)
+   do { try service.register(); preconditionFailure("Conflicting route registered") } catch HelperServiceError.ineligible { }
+   do { try await service.unregister(); preconditionFailure("Conflicting route unregistered") } catch HelperServiceError.ineligible { }
+   precondition(backend.events.isEmpty)
+  }
+  let changingBackend = FakeRegistration()
+  var changingInstallation = HelperInstallation.none
+  let changing = HelperService(bundle:bundle,backend:changingBackend,installationCheck:{ changingInstallation },signatureCheck:{ _ in true })
+  precondition(changing.registrationAllowed)
+  changingInstallation = .unrecognized
+  do { try changing.register(); preconditionFailure("Registration used an old ownership snapshot") } catch HelperServiceError.ineligible { }
+  precondition(changingBackend.events.isEmpty && changing.legacyInstalled)
   let incompleteBackend = FakeRegistration()
   let incomplete = HelperService(bundle:.main,backend:incompleteBackend,legacyCheck:{ false },signatureCheck:signatureMustNotRun)
   precondition(!incomplete.registrationAllowed)

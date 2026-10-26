@@ -114,6 +114,7 @@
 "发布列表超过检查范围，请在 GitHub 查看" = "The release list exceeds the check limit. View it on GitHub.";
 "发布版本未提供适用的校验文件" = "The release does not provide a compatible checksum file";
 "发现新版本 %@" = "New version available: %@";
+"发现无法确认归属的硬件服务文件" = "Hardware-service files with unverified ownership found";
 "取消" = "Cancel";
 "取消编辑" = "Cancel Editing";
 "取消退出" = "Cancel Quit";
@@ -186,12 +187,11 @@
 "已跳过暂停：" = "Pause skipped: ";
 "已连接" = "Connected";
 "已退出热保护暂停" = "Heat-protection pause ended";
+"已验证与当前应用的签名归属；旧安装的迁移与移除流程尚未接入。" = "Signing ownership matches this app; migration and removal of the older installation are not yet integrated.";
 "应用策略实例已结束" = "The app policy instance has ended";
 "应用策略状态尚不可读，请先打开 OpenCharge" = "The app's policy state is not available yet. Open OpenCharge first.";
 "应用运行时每 10 秒检查。睡眠期间不执行；唤醒后每个逾期任务仅补执行一次。" = "Checked every 10 seconds while the app runs. Tasks do not run during sleep; each overdue task runs at most once after wake.";
 "开发脚本安装的服务需使用对应卸载脚本移除" = "Remove the development-script service using its matching uninstall script";
-"开发脚本服务已安装（不属于应用内注册）" = "Development-script service installed (not registered by this app)";
-"开发脚本服务需使用对应卸载脚本移除" = "Remove the development-script service using its matching uninstall script";
 "开发运行未标记版本，请从发布包打开应用" = "This development build has no version tag. Open the app from a release package.";
 "开启" = "On";
 "开启低电量模式" = "Enable Low Power Mode";
@@ -259,9 +259,11 @@
 "新增任务" = "New Task";
 "无效灯光颜色" = "Invalid light color";
 "无效电池读数，恢复系统控制" = "Invalid battery reading; restoring system control";
+"无法安全配置登录启动；请检查应用位置与现有登录项。" = "Cannot configure login startup safely. Check the app location and existing login item.";
 "无法监听合盖状态" = "Could not observe lid state";
 "无法识别当前应用版本" = "Could not identify the current app version";
 "无法读取有效电池百分比，未更改充电策略" = "No valid battery percentage is available; the charging policy was not changed";
+"无法验证当前应用拥有此旧服务；不会覆盖或移除这些文件。" = "This app could not verify ownership of the older service; its files will not be replaced or removed.";
 "日常上限 %lld%% · 本次目标 %lld%%" = "Daily limit %lld%% · Current target %lld%%";
 "日常上限为 100% 或临时充满时，通常由系统管理补电；手动暂停与热保护结束后的目标暂停仍会停充。临时充满在拔线后结束。" = "At a daily 100% target or during Top Up, macOS normally manages top-offs. Manual pauses and target pauses after heat protection still inhibit charging. Unplugging ends Top Up.";
 "日常充到上限前阻止系统与合盖睡眠（可选）" = "Prevent system and lid sleep until the daily limit is reached (optional)";
@@ -284,6 +286,7 @@
 "服务仅接受当前登录用户的固定动作，45 秒没有心跳时尝试恢复系统充电。安装服务不会自动开启控制。" = "The service accepts only fixed actions from the current console user. After 45 seconds without a heartbeat, it attempts to restore system charging control. Installing the service does not enable control automatically.";
 "服务已确认恢复" = "Service confirmed restoration";
 "服务已确认：" = "Service confirmed: ";
+"服务文件的权限、布局或签名不匹配；请按原安装方式确认后再操作。" = "Service permissions, layout or signatures do not match; verify the original installation before proceeding.";
 "未启动" = "Not started";
 "未检测到可识别的 MagSafe 灯光接口" = "No recognized MagSafe light interface was detected";
 "未知" = "Unknown";
@@ -318,7 +321,9 @@
 "检查失败：" = "Check failed: ";
 "检查更新" = "Check for Updates";
 "检查更新…" = "Check for Updates…";
+"检测到开发服务布局（不属于应用内注册）" = "Development-service layout detected (not app registration)";
 "检测到开发脚本安装的服务，请先按安装文档移除，再使用应用内注册。" = "A service installed by the development script was found. Remove it using the installation instructions before registering the service in the app.";
+"检测到旧原生服务文件（注册状态需另外检查）" = "Older native-service files detected (registration requires a separate check)";
 "检测服务能力" = "Check Service Capabilities";
 "检测睡眠接口" = "Inspect Sleep Interfaces";
 "检测锁屏接口（只读）" = "Inspect Lock Interface (Read Only)";
@@ -337,6 +342,7 @@
 "此应用未包含完整硬件服务，请使用打包后的 OpenCharge.app。" = "This app does not include the complete hardware service. Use the packaged OpenCharge.app.";
 "此操作需要兼容的睡眠控制服务，请先更新服务" = "This action requires a compatible sleep-control service. Update the service first.";
 "此硬件需要兼容的充电协议、恢复服务和数值睡眠目标接口" = "This hardware requires a compatible charge protocol, recovery service, and numeric sleep-target interface";
+"此系统尚不支持应用内服务注册；可按安装说明使用开发服务。" = "In-app service registration is not implemented for this system. Use the documented development service setup.";
 "此系统未提供应用能耗接口" = "This system does not provide the app energy interface";
 "此通道按当前状态设置睡眠目标，退出时保留数值充电上限；以上两项普通停充选项不适用。" = "This channel uses the current state to set its sleep target and retains a numeric charge limit on exit. The two ordinary pause options above do not apply.";
 "每两周" = "Every two weeks";
@@ -393,6 +399,7 @@
 "电量基准与睡眠" = "Battery Reference and Sleep";
 "电量自然下降至下限再充电，避免频繁补充。" = "Allow the battery to fall naturally to the lower boundary before charging again, avoiding frequent top-ups.";
 "界面与能耗" = "Interface and Energy Use";
+"登录启动设置将在下次登录时生效。" = "Login startup settings take effect at the next login.";
 "监测模式" = "Monitoring mode";
 "监测模式 · 未修改睡眠设置" = "Monitoring mode · Sleep settings unchanged";
 "监测模式 · 未改变充电状态" = "Monitoring mode · Charge state unchanged";
@@ -523,9 +530,3 @@
 "；恢复待重试：" = "; recovery awaiting retry: ";
 "；未请求锁屏，实际效果待验证" = "; no lock requested, physical effect unverified";
 "；重新开合盖后可再试" = "; reopen and close the lid to retry";
-
-"此系统尚不支持应用内服务注册；可按安装说明使用开发服务。" = "In-app service registration is not implemented for this system. Use the documented development service setup.";
-
-"无法安全配置登录启动；请检查应用位置与现有登录项。" = "Cannot configure login startup safely. Check the app location and existing login item.";
-
-"登录启动设置将在下次登录时生效。" = "Login startup settings take effect at the next login.";

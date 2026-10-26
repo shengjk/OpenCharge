@@ -652,7 +652,6 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func removeHelperService() async {
   guard !quitting else { return }
   do {
-   guard !helperService.legacyInstalled else { throw HelperServiceError.ineligible(NSLocalizedString("开发脚本服务需使用对应卸载脚本移除", comment: "")) }
    try helperService.validateRemoval()
    // SMAppService unregister terminates the daemon: restore while its journal is alive.
    if helperService.status == .enabled || firmwareControl?.mayOwnSession == true {

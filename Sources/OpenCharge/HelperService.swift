@@ -40,24 +40,30 @@ enum HelperRegistrationStatus: Equatable {
  static let plistName = "org.opencharge.charged.plist"
  private let bundle: Bundle
  private let backend: HelperRegistrationBackend?
- private let legacyCheck: () -> Bool
+ private let installationCheck: () -> HelperInstallation
+ @Published private(set) var installation: HelperInstallation = .none
  private let signatureCheck: (URL) -> Bool
  @Published private(set) var statusText = NSLocalizedString("尚未检查", comment: "")
  @Published private(set) var registrationAllowed = false
  @Published private(set) var preflightText = ""
  @Published private(set) var busy = false
  var status: HelperRegistrationStatus { backend?.status ?? .unavailable }
- var legacyInstalled: Bool { legacyCheck() }
+ var legacyInstalled: Bool { installation.present }
  convenience init(bundle: Bundle = .main) {
   let backend: HelperRegistrationBackend?
   if #available(macOS 13.0, *) { backend = NativeHelperRegistration() } else { backend = nil }
-  self.init(bundle:bundle,backend:backend,legacyCheck:{ FileManager.default.fileExists(atPath:"/Library/LaunchDaemons/"+Self.plistName) },signatureCheck:Self.validSignature)
+  let inspector = HelperInstallationInspector(app: bundle)
+  self.init(bundle:bundle,backend:backend,installationCheck:{ inspector.inspect() },signatureCheck:Self.validSignature)
  }
- init(bundle: Bundle, backend: HelperRegistrationBackend?, legacyCheck: @escaping () -> Bool, signatureCheck: @escaping (URL) -> Bool) {
-  self.bundle = bundle; self.backend = backend; self.legacyCheck = legacyCheck; self.signatureCheck = signatureCheck; refresh()
+ convenience init(bundle: Bundle, backend: HelperRegistrationBackend?, legacyCheck: @escaping () -> Bool, signatureCheck: @escaping (URL) -> Bool) {
+  self.init(bundle: bundle, backend: backend, installationCheck: { legacyCheck() ? .developmentLayout : .none }, signatureCheck: signatureCheck)
+ }
+ init(bundle: Bundle, backend: HelperRegistrationBackend?, installationCheck: @escaping () -> HelperInstallation, signatureCheck: @escaping (URL) -> Bool) {
+  self.bundle = bundle; self.backend = backend; self.installationCheck = installationCheck; self.signatureCheck = signatureCheck; refresh()
  }
  private var unsupportedText: String { NSLocalizedString("此系统尚不支持应用内服务注册；可按安装说明使用开发服务。", comment: "") }
  func refresh() {
+  installation = installationCheck()
   switch status {
   case .enabled: statusText = NSLocalizedString("已注册，可运行（服务连接需另外检查）", comment: "")
   case .requiresApproval: statusText = NSLocalizedString("已注册，等待管理员在系统设置批准", comment: "")
@@ -67,9 +73,17 @@ enum HelperRegistrationStatus: Equatable {
   case .unknown: statusText = NSLocalizedString("未知注册状态", comment: "")
   }
   registrationAllowed = false
-  if legacyInstalled {
-   statusText = NSLocalizedString("开发脚本服务已安装（不属于应用内注册）", comment: "")
+  switch installation {
+  case .developmentLayout:
+   statusText = NSLocalizedString("检测到开发服务布局（不属于应用内注册）", comment: "")
    preflightText = backend == nil ? unsupportedText : NSLocalizedString("检测到开发脚本安装的服务，请先按安装文档移除，再使用应用内注册。", comment: ""); return
+  case .olderNative(let owned):
+   statusText = NSLocalizedString("检测到旧原生服务文件（注册状态需另外检查）", comment: "")
+   preflightText = owned ? NSLocalizedString("已验证与当前应用的签名归属；旧安装的迁移与移除流程尚未接入。", comment: "") : NSLocalizedString("无法验证当前应用拥有此旧服务；不会覆盖或移除这些文件。", comment: ""); return
+  case .unrecognized:
+   statusText = NSLocalizedString("发现无法确认归属的硬件服务文件", comment: "")
+   preflightText = NSLocalizedString("服务文件的权限、布局或签名不匹配；请按原安装方式确认后再操作。", comment: ""); return
+  case .none: break
   }
   guard backend != nil else { preflightText = unsupportedText; return }
   guard status != .unavailable && status != .unknown else { preflightText = unsupportedText; return }
@@ -96,7 +110,12 @@ enum HelperRegistrationStatus: Equatable {
   try backend.register(); refresh()
  }
  func validateRemoval() throws {
-  guard !legacyInstalled else { throw HelperServiceError.ineligible(NSLocalizedString("开发脚本安装的服务需使用对应卸载脚本移除", comment: "")) }
+  refresh()
+  switch installation {
+  case .developmentLayout: throw HelperServiceError.ineligible(NSLocalizedString("开发脚本安装的服务需使用对应卸载脚本移除", comment: ""))
+  case .olderNative, .unrecognized: throw HelperServiceError.ineligible(preflightText)
+  case .none: break
+  }
   guard backend != nil, status != .unavailable, status != .unknown else { throw HelperServiceError.ineligible(unsupportedText) }
  }
  func unregister() async throws {

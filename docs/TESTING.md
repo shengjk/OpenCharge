@@ -398,3 +398,10 @@ Native and universal builders prepare load commands before signing executables a
 Re-signed counterexamples test an incorrect route marker, integer instead of Boolean launchd value, nonhost helper-version drift and an overly broad ownership requirement. Missing or linked helper files and a linked library directory must also fail. Each mutated slice is signed against its own Info before lipo assembly, so malformed metadata can be rejected independently of a stale signature. No helper executable is launched by these tests.
 
 These checks do not prove a positive Apple-issued signing chain, a real administrator installation, old-system launch, upgrade/removal ownership or hardware behavior. The current app still lacks the pre-13 registration backend. Existing modern ad-hoc service preflight tests remain separate and reject before any OS registration call; relative app arguments are normalized by their shell wrapper.
+
+
+## Read-only installed service inspection
+
+`Scripts/test-helper-installation.sh` uses isolated temporary files and injected signing evidence to exercise absence, orphan files, development layout, typed launchd values, unsafe ownership/modes, hard links, symlinks, size limits, reciprocal signing policy and changes during inspection. The real fixed system paths are inspected read-only as an additional observation. No helper executable, authorization prompt, service management or IPC setter is invoked.
+
+Helper preflight fixtures inject older-owned, older-unowned and unknown installation snapshots, plus an installation that appears between refresh and registration. Each must reject registration/removal before the fake backend is called. These tests establish routing and rejection behavior, not a positive Apple-issued signing chain, ACL safety or real legacy installation. Both architectures run on the current host; physical older-system behavior remains unverified.
