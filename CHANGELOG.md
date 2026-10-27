@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.44
+
+- Verify the development helper job and processes have stopped before removing its files; retain files when state cannot be verified or recovery remains pending.
+- Add isolated failure and recovery-path tests for the manual uninstall script.
+
 ## 0.3.43
 
 - Add signed legacy helper file removal using a bounded administrator-authorization request and kernel audit-token client identity. Restore owned hardware state and require all recovery-record paths to be absent before deleting the two fixed installation files, then unregister the job. Retain partial progress for retry, refuse new hardware mutations while removal is pending, verify final file/job absence, and offer the modern registration route after successful legacy removal on macOS 13+. Actual signed administrator operation and old-system runtime remain unverified.

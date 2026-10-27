@@ -1,4 +1,4 @@
-# Status — 0.3.43 and development source
+# Status — 0.3.44 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -53,3 +53,5 @@ Version 0.3.42 implements the macOS 11/12 native registration backend with Autho
 
 
 Version 0.3.43 adds a full native legacy-removal path separate from job unregistration. A compatible blessed helper checks the requesting app's kernel audit token and matching Apple-issued signing team, verifies an already-granted administrator right without prompting in the root process, restores owned state and rejects any remaining charge/firmware/LED/sleep recovery record path. Descriptor-relative removal is restricted to its fixed root-owned installed binary and launchd plist. Partial file deletion and failed job removal retain retry progress within the current app/helper processes. A confirmed file-removal acknowledgement can finish a failed job-stop retry after the daemon has exited. Actual signed operation and crash/relaunch recovery are unverified; process-local retry state does not constitute a durable transaction. On macOS 13+, successful removal selects the modern registration route but does not automatically register it. Development-script installations still use their manual uninstall route.
+
+The development uninstall script now checks that its launchd job and helper processes have exited before deleting installed files. It fails closed on unrecognized service or process state and preserves recovery records. Its negative paths have isolated tests; real root uninstall and older macOS launchctl behavior have not been validated.
