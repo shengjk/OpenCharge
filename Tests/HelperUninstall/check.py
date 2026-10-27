@@ -10,7 +10,7 @@ assert '$EUID -ne 0' in source
 cases = [('registered', None), ('absent', None), ('unknown', None),
          ('wrong_program', None), ('still_job', None), ('ps_error', None),
          ('pid_alive', None), ('orphan', None), ('helper_link', None),
-         ('plist_directory', None), ('altered_plist', None)]
+         ('plist_directory', None), ('altered_plist', None), ('prepare', None)]
 cases += [(scenario, ('sleep-recovery.json', 'regular')) for scenario in ('changed_during_stop', 'restart_failure')]
 cases += [('marker', (name, kind)) for name in
           ('sleep-recovery.json', 'charge-recovery.json', 'firmware-recovery.json', 'magsafe-recovery.json')
@@ -78,10 +78,14 @@ exit 0
         fixture = root / 'remove.sh'
         fixture.write_text(fixture_source)
         env = dict(os.environ, CASE=scenario, LOG=str(log), STOPPED=str(root / 'stopped'), HELPER=str(helper), PLIST=str(plist))
-        result = subprocess.run(['/bin/bash', str(fixture)], env=env, capture_output=True, text=True)
+        result = subprocess.run(['/bin/bash', str(fixture)] + (['--prepare-update'] if scenario == 'prepare' else []), env=env, capture_output=True, text=True)
         calls = log.read_text().splitlines()
         success = scenario in ('registered', 'absent')
-        if success:
+        if scenario == 'prepare':
+            assert result.returncode == 0 and helper.exists() and plist.exists(), result.stderr
+            assert 'installed files retained' in result.stdout
+            assert 'Helper removed' not in result.stdout
+        elif success:
             assert result.returncode == 0 and not helper.exists() and not plist.exists(), (scenario, result.stderr)
             assert 'Helper removed' in result.stdout
         else:

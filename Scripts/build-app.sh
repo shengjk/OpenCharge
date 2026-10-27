@@ -33,8 +33,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>OpenCharge</string>
 <key>CFBundleExecutable</key><string>OpenCharge</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.3.45</string>
-<key>CFBundleVersion</key><string>57</string>
+<key>CFBundleShortVersionString</key><string>0.3.46</string>
+<key>CFBundleVersion</key><string>58</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>opencharge</string></array><key>CFBundleURLName</key><string>org.opencharge.app</string></dict></array>

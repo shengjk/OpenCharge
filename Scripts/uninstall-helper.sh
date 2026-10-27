@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 if [[ $EUID -ne 0 ]]; then echo 'Run sudo ./Scripts/uninstall-helper.sh' >&2; exit 1; fi
+mode=remove
+if [[ $# -gt 0 ]]; then
+ if [[ $# -eq 1 && $1 == --prepare-update ]]; then mode=prepare-update
+ else echo 'Usage: uninstall-helper.sh [--prepare-update]' >&2; exit 1; fi
+fi
 job=system/org.opencharge.charged
 helper=/Library/PrivilegedHelperTools/org.opencharge.charged
 plist=/Library/LaunchDaemons/org.opencharge.charged.plist
@@ -67,6 +72,9 @@ for record in charge-recovery.json firmware-recovery.json magsafe-recovery.json 
   exit 1
  fi
 done
+if [[ $mode == prepare-update ]]; then
+ echo 'Helper stopped for update; installed files retained.'; exit 0
+fi
 /bin/rm -f "$plist" "$helper"
 if [[ -S /var/run/opencharge.sock ]]; then /bin/rm /var/run/opencharge.sock; fi
 echo 'Helper removed. User settings/history retained.'

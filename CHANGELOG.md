@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.46
+
+- Stage and verify development helper updates before stopping the existing service. Installation now reuses the verified service-stop and recovery-record checks before replacing files.
+- Reject unsafe installation paths, modified service configurations, and incomplete installations. Bootstrap or replacement failures attempt guarded rollback; unresolved recovery retains installed files and backups.
+- Add isolated fresh-install, upgrade, staging, stop, bootstrap, rollback, and unsafe-path scenarios.
+
 ## 0.3.45
 
 - Restrict the development helper uninstaller to the exact installer-generated launchd configuration before service actions; recheck it before requesting recovery restart.

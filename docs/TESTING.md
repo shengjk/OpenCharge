@@ -473,4 +473,13 @@ The installed 0.3.37/build 49 was selected by existing system Shortcuts. Its app
 
 After an explicitly authorized app switch, the running executable and bundle metadata identified the universal 0.3.45/build 57. Its native English Overview and Settings pages were inspected. Settings showed hardware control and scheduled system-power changes disabled, and correctly classified the existing development-service installation. The bundle declares exactly English and Simplified Chinese. The installed helper's binary digest was unchanged.
 
-The Mac locked before system Shortcuts could be repeated against 0.3.45, so the earlier getter results apply to 0.3.37 only. This session does not establish localized Shortcuts discovery, numeric return values, Siri execution, hardware effects, or signed service lifecycle behavior. No service installation, removal, restart, or hardware control was performed.
+After manual unlock, the four-getter workflow was repeated while only the verified 0.3.45 executable was running, and completed with `holding` as its final result. The independent policy-state action displayed the English title `Get OpenCharge App State` and returned `Sailing`. This establishes execution of these read-only workflows and that English action title on this host. Intermediate numeric outputs, complete bilingual discovery, Siri execution, hardware effects, and signed service lifecycle behavior remain unverified. No service installation, removal, restart, or hardware control was performed.
+
+
+## Development helper installation and upgrade
+
+`Scripts/test-helper-upgrade.sh` executes the production installer and stop gate against temporary installation paths and simulated service/process/signature commands. Its 23 scenarios cover fresh installation, running and stopped upgrades, stop failure, recovery records, modified/incomplete installations, unsafe links and permissions, source/staged signature failures, replacement failures, bootstrap failure with and without a running job, rollback, and preserved recovery backups. `Scripts/test-helper-uninstall.sh` additionally verifies the stop-only update mode retains installation files. No test installs a real root service or executes a real service command.
+
+The shell rollback is not a persistent transaction. Actual administrator execution, interrupted-process/power-loss recovery, and concurrent root changes remain unverified. App-internal native registration and these development scripts are separate installation routes.
+
+The same native 0.3.45 session traversed all six English setup-wizard pages through the final review, then used Skip Setup. The persisted configuration bytes were identical before and after this preview/cancel flow. The final review layout was visually inspected; preset application, service authorization and Chinese wizard layout were not exercised.

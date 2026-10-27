@@ -50,11 +50,11 @@ sudo bash Scripts/uninstall-helper.sh
 
 0.3.42 的旧系统后端通过 Authorization Services 请求管理员安装权，再调用 SMJobBless。应用和内嵌服务必须具备相同开发团队的 Apple 签名及匹配的双向签名要求；本地 ad-hoc 包会在授权前被拒绝。初始化和状态刷新只读，不请求管理员密码。授权与等待服务退出在后台队列执行；同一服务操作完成前拒绝再次注册或注销。取消与系统错误会反馈给界面，已取得的授权在所有结束路径释放。
 
-此后端的“注销”调用 SMJobRemove 并等待任务退出，**不会删除已安装的二进制或 plist**。文件仍按旧原生布局显示，并保留开发卸载脚本作为显式移除方式；不会自动迁移到 SMAppService。只允许操作已确认签名归属的旧原生服务，不覆盖开发脚本或未知来源安装。注销前仍需通过现有应用流程恢复充电、灯光和睡眠状态；注销失败不自动重新启用控制。
+此后端的“注销”调用 SMJobRemove 并等待任务退出，**不会删除已安装的二进制或 plist**。文件仍按旧原生布局显示；完整移除请使用下文 0.3.43 的签名服务入口，不要使用开发卸载脚本处理原生安装。不会自动迁移到 SMAppService。只允许操作已确认签名归属的旧原生服务，不覆盖开发脚本或未知来源安装。注销前仍需通过现有应用流程恢复充电、灯光和睡眠状态；注销失败不自动重新启用控制。
 
 发布包仍要求 macOS 13。旧系统后端目前只完成源码可用性编译和隔离测试，尚未在 macOS 11/12 上执行管理员安装、注销或重装，也没有生产开发者签名与公证验收。
 
-The macOS 11/12 source backend uses Authorization Services and SMJobBless after reciprocal app/helper signing checks. Explicit unregistration uses SMJobRemove with an exit wait on a background queue. It stops the job and retains installed files; use the documented manual uninstall route for file removal. Installation does not enable charging control. Ad-hoc builds are rejected before authorization. The distributed minimum remains macOS 13; real legacy-system authorization, installation, reinstallation and migration are unverified.
+The macOS 11/12 source backend uses Authorization Services and SMJobBless after reciprocal app/helper signing checks. Explicit unregistration uses SMJobRemove with an exit wait on a background queue. It stops the job and retains installed files; use the compatible signed full-removal action described below for file removal. Development scripts refuse native-service configurations. Installation does not enable charging control. Ad-hoc builds are rejected before authorization. The distributed minimum remains macOS 13; real legacy-system authorization, installation, reinstallation and migration are unverified.
 
 Apple API references: [SMJobBless](https://developer.apple.com/documentation/servicemanagement/smjobbless(_:_:_:_:)) and [SMJobRemove](https://developer.apple.com/documentation/servicemanagement/smjobremove(_:_:_:_:_:)).
 
@@ -74,3 +74,14 @@ Normal application termination is refused while a service operation is pending. 
 The full legacy-removal action requires a compatible signed, running helper and administrator authorization. The helper validates the peer's kernel audit token and app signing requirement, verifies the granted right without root-side interaction, restores owned state and refuses deletion while any recovery path exists. Only the two fixed installation files are unlinked; the caller then unregisters the job and checks final absence. Process-local retry state handles partial deletion and failed job removal, but crash/relaunch recovery is not a durable transaction. Successful removal on macOS 13+ exposes the modern registration route without automatically registering it. Real signed authorization, removal, migration and macOS 11/12 execution remain unverified.
 
 Apple references: [Authorization Services](https://developer.apple.com/documentation/security/authorization-services), [guest attributes](https://developer.apple.com/documentation/security/guest-attribute-dictionary-keys), and [SecCodeCopyGuestWithAttributes](https://developer.apple.com/documentation/security/seccodecopyguestwithattributes(_:_:_:_:)).
+
+
+## 0.3.46：开发服务的分阶段更新
+
+开发安装脚本与 `uninstall-helper.sh` 必须来自同一版本。安装前会核验源文件和暂存副本的代码签名，拒绝源文件符号链接、安装目标的符号链接或硬链接、可被普通用户修改的安装目录或文件，以及不完整的旧安装。升级时，现有 plist 必须与开发安装脚本生成的固定配置完全一致；原生安装或手动改过的配置会保留供检查，不会被覆盖。
+
+脚本先暂存文件并备份旧副本，再通过 `uninstall-helper.sh --prepare-update` 确认任务、进程和待恢复记录已清理。此模式在成功时保留安装文件。确认后才替换文件并请求服务加载；替换或加载失败会先重新确认服务已停止，再尝试回滚。如果无法安全回滚，会保留当前文件和备份并输出恢复路径。请先解决恢复记录和服务状态，不要删除备份或恢复记录。
+
+这是开发用的脚本更新流程，并非应用内自动更新。突然断电、进程被强制终止、并发 root 修改，以及真实管理员环境中的回滚仍待验证；暂存和备份不能代替持久事务日志。成功输出表示安装及服务加载请求完成，连接和能力仍需单独只读核验。
+
+The development installer stages and verifies files, checks fixed installation paths, and reuses the remover's stop-and-recovery gate before replacement. Failure attempts rollback only after the service is confirmed stopped; uncertain recovery preserves files and backup paths. Use matching scripts from the same release. Native or modified configurations require their own maintenance route. This is not a durable crash-recovery transaction or an automatic in-app updater; real root installation and rollback remain unverified.
