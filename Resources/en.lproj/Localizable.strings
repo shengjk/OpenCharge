@@ -599,3 +599,14 @@
 "旧原生服务已注册；注销会停止服务，已安装文件需按卸载说明另行移除。" = "The legacy native service is registered. Unregistering stops it; remove installed files separately using the uninstall instructions.";
 "点击注册后由系统请求管理员授权；安装不会开启充电控制。" = "Click Register to request administrator authorization from the system. Installation does not enable charge control.";
 "服务操作正在进行，请稍候" = "A service operation is in progress. Please wait.";
+
+"当前服务不支持完整文件移除，请先更新服务或使用卸载说明" = "This helper does not support complete file removal. Update it first or use the uninstall instructions.";
+"无法传递系统移除授权，请重试" = "Unable to transfer system removal authorization. Please retry.";
+"服务未确认文件移除完成，请重试" = "The helper did not confirm file removal. Please retry.";
+"此服务不使用旧版安装文件移除流程" = "This service does not use the legacy installed-file removal route.";
+"旧服务文件移除尚未完成" = "Legacy service file removal is incomplete";
+"请重试完整移除；不要重新启用控制。重开应用后若无法重试，请按卸载说明恢复。" = "Retry complete removal before re-enabling control. If retry is unavailable after reopening the app, recover using the uninstall instructions.";
+"请先重试完整文件移除" = "Retry complete file removal first.";
+"文件或系统任务仍存在，不能确认移除完成" = "Installed files or the system job remain. Removal cannot be confirmed.";
+"移除旧服务与文件" = "Remove Legacy Service and Files";
+"旧服务及安装文件已移除" = "Legacy service and installed files removed";

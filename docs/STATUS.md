@@ -1,4 +1,4 @@
-# Status — 0.3.42 and development source
+# Status — 0.3.43 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -17,7 +17,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |
-| Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless and owned job unregistration in macOS 11/12 source; serialized operations | Actual administrator interaction, legacy runtime, complete file removal, migration and production signing/notarization |
+| Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless; owned legacy file removal/job unregistration and explicit modern-route handoff; serialized operations | Actual signed administrator interaction, legacy runtime, interrupted-process recovery, manual-uninstaller stop failures and production signing/notarization |
 | Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
 | Sleep control | Helper-owned sleep admission and app suspension handling; public idle assertion; required calibration/clamshell protection; optional until-limit system/lid SPI; schema-2 global recovery and same-boot lid cleanup; opt-in foreground lid-lock request | Physical lid/display transitions, private-interface compatibility, powerd interference, actual sleep/boot recovery |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
@@ -50,3 +50,6 @@ Version 0.3.38 includes read-only installed-service classification, portable run
 
 
 Version 0.3.42 implements the macOS 11/12 native registration backend with Authorization Services and SMJobBless, plus SMJobRemove for explicit job unregistration. Matching Apple-issued app/helper signatures, reciprocal ownership metadata and known installed-file ownership are required. Blocking authorization/removal run outside the main thread and overlapping operations are refused. Unregistration stops the job but retains installed files; complete native file removal and migration to SMAppService remain unfinished. The current ad-hoc packages cannot use this route. Physical macOS 11/12 execution, administrator interaction and a production signing/notarization pipeline remain unverified; the packaged minimum remains macOS 13.
+
+
+Version 0.3.43 adds a full native legacy-removal path separate from job unregistration. A compatible blessed helper checks the requesting app's kernel audit token and matching Apple-issued signing team, verifies an already-granted administrator right without prompting in the root process, restores owned state and rejects any remaining charge/firmware/LED/sleep recovery record path. Descriptor-relative removal is restricted to its fixed root-owned installed binary and launchd plist. Partial file deletion and failed job removal retain retry progress within the current app/helper processes. A confirmed file-removal acknowledgement can finish a failed job-stop retry after the daemon has exited. Actual signed operation and crash/relaunch recovery are unverified; process-local retry state does not constitute a durable transaction. On macOS 13+, successful removal selects the modern registration route but does not automatically register it. Development-script installations still use their manual uninstall route.

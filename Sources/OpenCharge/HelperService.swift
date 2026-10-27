@@ -10,11 +10,17 @@ enum HelperRegistrationRoute { case bundledDaemon, blessedHelper }
 @MainActor protocol HelperRegistrationBackend: AnyObject {
  var route: HelperRegistrationRoute { get }
  var status: HelperRegistrationStatus { get }
+ var removalPending: Bool { get }
  func register() async throws
  func unregister() async throws
+ func uninstall() async throws
  func openApprovalSettings()
 }
-extension HelperRegistrationBackend { var route: HelperRegistrationRoute { .bundledDaemon } }
+extension HelperRegistrationBackend {
+ var route: HelperRegistrationRoute { .bundledDaemon }
+ var removalPending: Bool { false }
+ func uninstall() async throws { throw HelperServiceError.ineligible(NSLocalizedString("此服务不使用旧版安装文件移除流程",comment:"")) }
+}
 @available(macOS 13.0, *)
 @MainActor private final class NativeHelperRegistration: HelperRegistrationBackend {
  private let service = SMAppService.daemon(plistName: HelperService.plistName)
@@ -42,7 +48,8 @@ extension HelperRegistrationBackend { var route: HelperRegistrationRoute { .bund
 @MainActor final class HelperService: ObservableObject {
  static let plistName = "org.opencharge.charged.plist"
  private let bundle: Bundle
- private let backend: HelperRegistrationBackend?
+ private var backend: HelperRegistrationBackend?
+ private let backendFactory: ((HelperInstallation) -> HelperRegistrationBackend?)?
  private let installationCheck: () -> HelperInstallation
  @Published private(set) var installation: HelperInstallation = .none
  private let legacyPackageCheck: (Bundle) -> Bool
@@ -53,22 +60,31 @@ extension HelperRegistrationBackend { var route: HelperRegistrationRoute { .bund
  @Published private(set) var busy = false
  var status: HelperRegistrationStatus { backend?.status ?? .unavailable }
  var legacyInstalled: Bool { installation.present }
+ var removalPending: Bool { backend?.removalPending == true }
  convenience init(bundle: Bundle = .main) {
-  let backend: HelperRegistrationBackend?
-  if #available(macOS 13.0, *) { backend = NativeHelperRegistration() } else { backend = LegacyHelperRegistration() }
-  let inspector = HelperInstallationInspector(app: bundle)
-  self.init(bundle:bundle,backend:backend,installationCheck:{ inspector.inspect() },signatureCheck:Self.validSignature)
+  let inspector = HelperInstallationInspector(app:bundle)
+  let factory: (HelperInstallation) -> HelperRegistrationBackend? = { installation in
+   if installation == .olderNative(ownedByApp:true) { return LegacyHelperRegistration() }
+   if #available(macOS 13.0, *) { return NativeHelperRegistration() }
+   return LegacyHelperRegistration()
+  }
+  self.init(bundle:bundle,backend:factory(inspector.inspect()),installationCheck:inspector.inspect,signatureCheck:Self.validSignature,backendFactory:factory)
  }
  convenience init(bundle: Bundle, backend: HelperRegistrationBackend?, legacyCheck: @escaping () -> Bool, signatureCheck: @escaping (URL) -> Bool) {
   self.init(bundle: bundle, backend: backend, installationCheck: { legacyCheck() ? .developmentLayout : .none }, signatureCheck: signatureCheck)
  }
- init(bundle: Bundle, backend: HelperRegistrationBackend?, installationCheck: @escaping () -> HelperInstallation, signatureCheck: @escaping (URL) -> Bool, legacyPackageCheck: @escaping (Bundle) -> Bool = LegacyHelperPackage.valid) {
+ init(bundle: Bundle, backend: HelperRegistrationBackend?, installationCheck: @escaping () -> HelperInstallation, signatureCheck: @escaping (URL) -> Bool, legacyPackageCheck: @escaping (Bundle) -> Bool = LegacyHelperPackage.valid, backendFactory: ((HelperInstallation) -> HelperRegistrationBackend?)? = nil) {
+  self.backendFactory = backendFactory
   self.legacyPackageCheck = legacyPackageCheck
   self.bundle = bundle; self.backend = backend; self.installationCheck = installationCheck; self.signatureCheck = signatureCheck; refresh()
  }
  private var unsupportedText: String { NSLocalizedString("此系统尚不支持应用内服务注册；可按安装说明使用开发服务。", comment: "") }
  func refresh() {
   installation = installationCheck()
+  if !busy, backend?.removalPending != true, let backendFactory {
+   let candidate = backendFactory(installation)
+   if candidate?.route != backend?.route { backend = candidate }
+  }
   switch status {
   case .enabled: statusText = NSLocalizedString("已注册，可运行（服务连接需另外检查）", comment: "")
   case .requiresApproval: statusText = NSLocalizedString("已注册，等待管理员在系统设置批准", comment: "")
@@ -78,6 +94,10 @@ extension HelperRegistrationBackend { var route: HelperRegistrationRoute { .bund
   case .unknown: statusText = NSLocalizedString("未知注册状态", comment: "")
   }
   registrationAllowed = false
+  if backend?.removalPending == true {
+   statusText = NSLocalizedString("旧服务文件移除尚未完成",comment:"")
+   preflightText = NSLocalizedString("请重试完整移除；不要重新启用控制。重开应用后若无法重试，请按卸载说明恢复。",comment:""); return
+  }
   switch installation {
   case .developmentLayout:
    statusText = NSLocalizedString("检测到开发服务布局（不属于应用内注册）", comment: "")
@@ -125,6 +145,7 @@ extension HelperRegistrationBackend { var route: HelperRegistrationRoute { .bund
   try await backend.register()
  }
  func validateRemoval() throws {
+  guard backend?.removalPending != true else { throw HelperServiceError.ineligible(NSLocalizedString("请先重试完整文件移除",comment:"")) }
   guard !busy else { throw HelperServiceError.ineligible(NSLocalizedString("服务操作正在进行，请稍候",comment:"")) }
   refresh()
   switch installation {
@@ -142,7 +163,21 @@ extension HelperRegistrationBackend { var route: HelperRegistrationRoute { .bund
   busy = true; defer { busy = false; refresh() }
   try await backend.unregister()
  }
+ func validateFullRemoval() throws {
+  guard !busy else { throw HelperServiceError.ineligible(NSLocalizedString("服务操作正在进行，请稍候",comment:"")) }
+  refresh()
+  guard status != .unknown, status != .unavailable, backend?.route == .blessedHelper, backend?.removalPending == true || installation == .olderNative(ownedByApp:true) else { throw HelperServiceError.ineligible(preflightText) }
+ }
+ func uninstall() async throws {
+  try validateFullRemoval()
+  guard let backend else { throw HelperServiceError.ineligible(preflightText) }
+  busy = true; defer { busy = false; refresh() }
+  try await backend.uninstall()
+  guard installationCheck() == .none, backend.status == .notRegistered || backend.status == .notFound else { throw HelperServiceError.ineligible(NSLocalizedString("文件或系统任务仍存在，不能确认移除完成",comment:"")) }
+ }
+ var canUninstall: Bool { status != .unknown && status != .unavailable && backend?.route == .blessedHelper && (backend?.removalPending == true || installation == .olderNative(ownedByApp:true)) }
  var canUnregister: Bool {
+  guard backend?.removalPending != true else { return false }
   guard status == .enabled || status == .requiresApproval else { return false }
   if installation == .none { return backend?.route != .blessedHelper }
   return installation == .olderNative(ownedByApp:true) && backend?.route == .blessedHelper

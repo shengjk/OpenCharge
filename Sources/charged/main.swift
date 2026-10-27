@@ -4,7 +4,7 @@ import ChargeCore
 import ChargeHardware
 
 // Narrow local IPC: only the active console user may request fixed charge/power-mode actions.
-// The helper accepts no key names, file paths, shell commands or arbitrary bytes.
+// The helper accepts no key names, file paths, shell commands or raw hardware values.
 func consoleUID() -> uid_t? { var s = stat(); guard stat("/dev/console", &s) == 0, s.st_uid > 0 else { return nil }; return s.st_uid }
 func log(_ text: String) { fputs("charged: \(text)\n", stderr) }
 guard geteuid() == 0 else { log("must run as root via launchd"); exit(1) }
@@ -16,6 +16,9 @@ do {
  recoveryStore = try ChargeRecoveryFileStore()
  recoveryBootSession = try ChargeRecoveryFileStore.bootSession()
 } catch { log("recovery storage unavailable; refusing service startup: \(error.localizedDescription)"); exit(1) }
+// Only a correctly signed blessed helper at the fixed installed path exposes file removal.
+let removalIdentity = try? NativeHelperRemovalIdentity.current()
+let serviceFileRemoval = removalIdentity.map { identity in NativeHelperFileRemoval(signature:identity.matchesInstalledCode) }
 let controller: SMCController?
 let smcFailure: String?
 do {
@@ -61,6 +64,7 @@ func capabilities() -> String {
  if let status = try? magSafe?.status() { values.append("magSafe:" + status); values.append("magSafeEncoding:aclcNativeV2") }
  else { values.append("magSafe:unavailable") }
  if let sleepIO, (try? sleepIO.captureGlobal()) != nil { values.append("sleepOverride:interfacesDetected"); values.append("sleepRecovery:phasesV1") } else { values.append("sleepOverride:unavailable") }
+ values.append("serviceRemoval:\(serviceFileRemoval == nil ? "unavailable" : serviceFileRemoval?.pending == true ? "pendingV1" : "ownedV1")")
  values.append("chargeTransition:\(powerObserver != nil ? "epochV1" : "unavailable")")
  values.append("dischargeSleep:\(powerObserver != nil && sleepOverrides != nil ? "displaySnapshotV1" : "unavailable")")
  values.append("firmwareProtocol:fixedV1")
@@ -257,7 +261,18 @@ source.setEventHandler {
   let admitted = try chargeTransition.admittedCommand(receivedCommand)
   let multiDisplayAction = DischargeSleepRequest.underlying(admitted)
   let command = multiDisplayAction ?? admitted
-  if command == "chargeContext" { response = "OK " + chargeTransition.contextReply }
+  guard serviceFileRemoval?.pending != true || ServiceFileRemovalRequest.permitsWhilePending(command) else { throw HelperError.rejected("service file removal pending; only inspection/restoration/removal allowed") }
+  if let removal = ServiceFileRemovalRequest.parse(command) {
+   guard let removalIdentity, let serviceFileRemoval else { throw HelperError.rejected("signed native file removal unavailable") }
+   try removalIdentity.authorize(peer:client,externalForm:removal.externalForm)
+   try serviceFileRemoval.removeFiles(restore:{
+    restoreBeforeCommands = true
+    do { try restoreSMC() } catch { sleepRecoveryPending = true; throw error }
+    needsRestore = false; restoreBeforeCommands = false; currentAction = nil; pauseOnSleep = false; lease.clear()
+   },recoveryPending:recoveryStore.hasPendingRecovery)
+   response = "OK "+ServiceFileRemovalRequest.reply
+  }
+  else if command == "chargeContext" { response = "OK " + chargeTransition.contextReply }
   else if command == "capabilities" { response = "OK " + capabilities() }
   else if let firmware = FirmwareCommand.parse(command) {
    let oldMutation = firmwareMutationGeneration

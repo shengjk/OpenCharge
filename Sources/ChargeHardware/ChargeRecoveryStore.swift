@@ -11,7 +11,7 @@ public protocol ChargeRecoveryStore: AnyObject {
 public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
  private let directory: Int32
  private let owner: uid_t
- private enum Record: String { case charge = "charge-recovery.json", magSafe = "magsafe-recovery.json", sleep = "sleep-recovery.json", firmware = "firmware-recovery.json" }
+ private enum Record: String, CaseIterable { case charge = "charge-recovery.json", magSafe = "magsafe-recovery.json", sleep = "sleep-recovery.json", firmware = "firmware-recovery.json" }
  private static let limit = 8192
  public init(directory path: String = "/var/db/org.opencharge.charged", owner: uid_t = 0) throws {
   self.owner = owner
@@ -36,6 +36,15 @@ public final class ChargeRecoveryFileStore: ChargeRecoveryStore {
    throw HardwareError.unavailable("Boot session identity")
   }
   return uuid.uuidString
+ }
+ /// Any record path, including malformed files, links or directories, prevents removal.
+ public func hasPendingRecovery() throws -> Bool {
+  for record in Record.allCases {
+   var attributes = stat()
+   if fstatat(directory,record.rawValue,&attributes,AT_SYMLINK_NOFOLLOW) == 0 { return true }
+   guard errno == ENOENT else { throw Self.failure("inspect recovery record") }
+  }
+  return false
  }
  public func load() throws -> Data? { try load(.charge) }
  public func save(_ data: Data?) throws { try save(data, record: .charge) }

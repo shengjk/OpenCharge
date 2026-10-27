@@ -20,3 +20,5 @@ Another process with the same user account can access that user's configuration 
 ## Reporting
 
 Use the repository's private vulnerability reporting option if enabled: [OpenCharge security](https://github.com/shengjk/OpenCharge/security). Do not post exploit details or personal diagnostics publicly. If private reporting is unavailable, open a minimal issue asking the maintainer for a private channel without including the vulnerability details.
+
+Native legacy file removal is a separate fixed operation: a blessed helper at its installed path requires a matching Apple-issued client signature selected by a kernel audit token and an existing administrator authorization right. It restores owned hardware state, refuses all pending recovery paths and validates descriptor-relative fixed files before unlinking. No path, executable or hardware payload is accepted from the request. Partial removal blocks new control operations and retains process-local retry state; this is not durable crash recovery. Ad-hoc/development installations do not expose this native deletion path.

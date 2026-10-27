@@ -8,7 +8,7 @@ let package = Package(name: "OpenCharge", platforms: [.macOS(.v13)], products: [
  .target(name: "ChargeCore"),
  .target(name: "ApplePowerConstants", publicHeadersPath: "include"),
  .target(name: "ChargeHardware", dependencies: ["ApplePowerConstants"], linkerSettings: [.linkedFramework("IOKit")]),
- .executableTarget(name: "OpenCharge", dependencies: ["ChargeCore", "ChargeHardware"],
+ .executableTarget(name: "OpenCharge", dependencies: ["ChargeCore", "ChargeHardware", "ApplePowerConstants"],
   linkerSettings: [.unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "AppIntents", "-Xlinker", "-weak_framework", "-Xlinker", "Charts", "-Xlinker", "-weak_framework", "-Xlinker", "Accessibility"])]),
  .executableTarget(name: "chargectl", dependencies: ["ChargeCore", "ChargeHardware"]),
  .executableTarget(name: "charged", dependencies: ["ChargeCore", "ChargeHardware"]),

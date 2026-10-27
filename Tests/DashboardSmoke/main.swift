@@ -13,6 +13,7 @@ import ChargeHardware
   try updateChecks()
   try await unavailableHelperChecks()
   try await helperOperationQuitChecks()
+  try await acknowledgedRemovalRetryChecks()
   let labelReading = BatteryReading(percent: 80.9, connected: true, charging: false, hardwarePercent: 77.4)
   let statusLabel = MenuBarLabel(display: "status", reading: labelReading)
   precondition(statusLabel.text == "80%" && statusLabel.symbol == "pause.circle")

@@ -62,7 +62,7 @@ public enum HelperClient {
   return try request(value)
  }
  public static func request(_ action: String) throws -> String {
-  guard supportedActions.contains(action) || DischargeSleepRequest.underlying(action) != nil || ChargeRequestContext.parseEnvelope(action) != nil else {
+  guard supportedActions.contains(action) || ServiceFileRemovalRequest.parse(action) != nil || DischargeSleepRequest.underlying(action) != nil || ChargeRequestContext.parseEnvelope(action) != nil else {
    throw HelperError.rejected("unknown helper action")
   }
   let fd = socket(AF_UNIX, SOCK_STREAM, 0); guard fd >= 0 else { throw HelperError.unavailable }; defer { close(fd) }

@@ -79,6 +79,7 @@ import Foundation
   precondition(!valid.busy && valid.status == .enabled)
   valid.openApprovalSettings(); precondition(backend.events.last == "settings")
   try await legacyRegistrationChecks(bundle:bundle)
+  try await completeRemovalChecks(bundle:bundle)
   print("PASS actual ad-hoc/legacy preflight plus unavailable/legacy/signature/fake native registration, busy state and failure propagation; no OS registration changes")
  }
 }

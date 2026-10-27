@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.43
+
+- Add signed legacy helper file removal using a bounded administrator-authorization request and kernel audit-token client identity. Restore owned hardware state and require all recovery-record paths to be absent before deleting the two fixed installation files, then unregister the job. Retain partial progress for retry, refuse new hardware mutations while removal is pending, verify final file/job absence, and offer the modern registration route after successful legacy removal on macOS 13+. Actual signed administrator operation and old-system runtime remain unverified.
+
 ## 0.3.42
 
 - Add a macOS 11/12 native helper registration backend using system administrator authorization and matching app/helper signing requirements. Run blocking authorization/removal off the main thread, release authorization on success and failure, and reject overlapping registration/removal. Refuse normal app termination during an in-flight service operation and prevent registration after quit preparation starts. Preserve ownership/conflict checks; legacy unregistration stops the job and retains installed files for explicit removal. The distributed app still requires macOS 13; actual legacy installation is unverified.

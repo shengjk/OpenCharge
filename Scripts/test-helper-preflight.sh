@@ -6,6 +6,10 @@ mkdir -p "$PROJECT_DIR/.build/helper-validation" "$PROJECT_DIR/.build/module-cac
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 TEST_ARCH="${OPENCHARGE_TEST_ARCH:-$(uname -m)}"
 case "$TEST_ARCH" in arm64|x86_64) ;; *) echo "Unsupported test architecture" >&2; exit 1 ;; esac
+cd "$PROJECT_DIR"
+COMPAT="$PROJECT_DIR/.build/helper-validation/core-$TEST_ARCH"
+mkdir -p "$COMPAT"
+swiftc -target "$TEST_ARCH-apple-macosx11.0" -parse-as-library -emit-module -emit-library -static -module-name ChargeCore Sources/ChargeCore/*.swift -emit-module-path "$COMPAT/ChargeCore.swiftmodule" -o "$COMPAT/libChargeCore.a"
 if [[ -z "$APP" ]]; then
  FIXTURE="$(mktemp -d "$PROJECT_DIR/.build/helper-validation/package.XXXXXX")"
  APP="$FIXTURE/OpenCharge.app"
@@ -27,5 +31,5 @@ APP="$(cd "$APP" && pwd)"
 mkdir -p "$PROJECT_DIR/.build/helper-validation/ApplePowerConstants"
 cp "$PROJECT_DIR/Sources/ApplePowerConstants/include/ApplePowerConstants.h" "$PROJECT_DIR/.build/helper-validation/ApplePowerConstants/"
 printf 'module ApplePowerConstants { header "ApplePowerConstants.h" export * }\n' > "$PROJECT_DIR/.build/helper-validation/ApplePowerConstants/module.modulemap"
-swiftc -I "$PROJECT_DIR/.build/helper-validation/ApplePowerConstants" -target "$TEST_ARCH-apple-macosx11.0" -parse-as-library "$PROJECT_DIR/Sources/OpenCharge/HelperService.swift" "$PROJECT_DIR/Sources/OpenCharge/HelperInstallation.swift" "$PROJECT_DIR/Sources/OpenCharge/LegacyHelperRegistration.swift" "$PROJECT_DIR/Tests/HelperValidation/"*.swift -o "$PROJECT_DIR/.build/helper-validation/check-$TEST_ARCH"
+swiftc -I "$COMPAT" -I "$PROJECT_DIR/.build/helper-validation/ApplePowerConstants" -target "$TEST_ARCH-apple-macosx11.0" -parse-as-library "$PROJECT_DIR/Sources/OpenCharge/HelperService.swift" "$PROJECT_DIR/Sources/OpenCharge/HelperInstallation.swift" "$PROJECT_DIR/Sources/OpenCharge/LegacyHelperRegistration.swift" "$PROJECT_DIR/Tests/HelperValidation/"*.swift "$COMPAT/libChargeCore.a" -o "$PROJECT_DIR/.build/helper-validation/check-$TEST_ARCH"
 /usr/bin/arch "-$TEST_ARCH" "$PROJECT_DIR/.build/helper-validation/check-$TEST_ARCH" "$APP"

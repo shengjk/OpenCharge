@@ -134,6 +134,7 @@ struct HelperServiceView: View {
     Button(NSLocalizedString("刷新状态", comment: "")) { service.refresh() }
     Button(NSLocalizedString("查看安装说明", comment: "")) { if let url = Bundle.main.url(forResource: "HELPER-SETUP", withExtension: "md") { NSWorkspace.shared.open(url) } }
     if service.status == .requiresApproval { Button(NSLocalizedString("打开系统批准设置", comment: "")) { service.openApprovalSettings() } }
+    if service.canUninstall { DestructiveButton(NSLocalizedString("移除旧服务与文件",comment:"")) { Task { await m.removeHelperService(deleteFiles:true) } }.disabled(service.busy) }
     if service.canUnregister { DestructiveButton(NSLocalizedString("注销服务", comment: "")) { Task { await m.removeHelperService() } }.disabled(service.busy) }
    }
   }.onAppear { service.refresh() }

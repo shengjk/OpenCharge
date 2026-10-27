@@ -600,6 +600,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func enableHardware(_ enabled: Bool, request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
+  if enabled && helperService.removalPending { error = NSLocalizedString("请先重试完整文件移除",comment:""); return }
   if enabled && settingsResetPending { error = NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: ""); return }
   if enabled { do {
    sleepOverrideFailed = false
@@ -756,18 +757,20 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard !quitting else { return }
   do { try await helperService.register() } catch { self.error = error.localizedDescription }
  }
- func removeHelperService() async {
+ func removeHelperService(deleteFiles: Bool = false, request: (String) throws -> String = HelperClient.request) async {
   guard !quitting else { return }
   do {
-   try helperService.validateRemoval()
+   if deleteFiles { try helperService.validateFullRemoval() } else { try helperService.validateRemoval() }
    // SMAppService unregister terminates the daemon: restore while its journal is alive.
-   if helperService.status == .enabled || firmwareControl?.mayOwnSession == true {
-    try restoreChargeControl()
-    _ = try HelperClient.request("magSafeRestore")
+   if (!deleteFiles && helperService.status == .enabled) || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || magSafeSessionActive || sleepOverrideSessionActive {
+    try restoreChargeControl(request:request)
+    _ = try request("magSafeRestore")
    }
    config.hardwareEnabled = false; magSafeSessionActive = false; magSafeSelection = nil
    try sleepController.setPreventIdleSleep(false); save()
-   try await helperService.unregister(); helperStatus = NSLocalizedString("硬件服务已注销", comment: "")
+   if deleteFiles { try await helperService.uninstall(); helperStatus = NSLocalizedString("旧服务及安装文件已移除",comment:"") }
+   else { try await helperService.unregister(); helperStatus = NSLocalizedString("硬件服务已注销", comment: "") }
+   error = nil
   } catch { self.error = error.localizedDescription }
  }
  func exportDiagnostics() {

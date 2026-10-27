@@ -15,7 +15,7 @@ import ChargeHardware
  let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{ preconditionFailure("no locks") },readBattery:{ BatteryReading(percent:50,connected:true,charging:false) },helperService:service)
  model.config.hardwareEnabled = true
  let bytes = try Data(contentsOf:Configuration.url)
- await model.removeHelperService()
+ await model.removeHelperService(request:{_ in preconditionFailure("unavailable removal must not invoke helper")})
  precondition(model.config.hardwareEnabled && model.error != nil)
  let after = try Data(contentsOf:Configuration.url)
  precondition(after == bytes,"Unavailable removal rewrote configuration before rejecting")
@@ -56,4 +56,29 @@ import ChargeHardware
  await model.registerHelperService()
  precondition(backend.registrations == 0,"quitting model must not start registration")
  print("PASS helper operation quit admission: pending service operation cancels normal termination, completion permits it and quitting refuses registration; no actual termination, authorization or service action")
+}
+
+
+@MainActor private final class AcknowledgedFileRemoval: HelperRegistrationBackend {
+ let route = HelperRegistrationRoute.blessedHelper
+ var status: HelperRegistrationStatus = .enabled
+ var removalPending = true
+ var finished = false
+ func register() async throws { preconditionFailure("must not register") }
+ func unregister() async throws { preconditionFailure("must complete file removal") }
+ func uninstall() async throws { finished = true; removalPending = false; status = .notRegistered }
+ func openApprovalSettings() { }
+}
+@MainActor func acknowledgedRemovalRetryChecks() async throws {
+ let original = try Configuration.load();defer {try? original.save()}
+ var c=Configuration();c.historyEnabled=false;try c.save()
+ let suite="org.opencharge.removal-retry-fixture."+UUID().uuidString, backend=AcknowledgedFileRemoval()
+ let defaults=UserDefaults(suiteName:suite)!;defer {defaults.removePersistentDomain(forName:suite)}
+ let service=HelperService(bundle:.main,backend:backend,legacyCheck:{false},signatureCheck:{_ in preconditionFailure("pending removal cannot require a fresh package")})
+ let m=ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
+ m.enableHardware(true,request:{_ in preconditionFailure("pending removal must not query or change hardware")},refresh:{preconditionFailure("pending removal must not refresh control")})
+ precondition(!m.config.hardwareEnabled && m.error != nil)
+ await m.removeHelperService(deleteFiles:true,request:{_ in preconditionFailure("acknowledged retry must not need a live daemon for redundant restoration")})
+ precondition(backend.finished && !m.config.hardwareEnabled && m.error == nil)
+ print("PASS acknowledged removal app retry: inactive owned state does not require redundant IPC, pending completion and file/job absence precede success; all backend operations injected")
 }
