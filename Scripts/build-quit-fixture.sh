@@ -8,9 +8,10 @@ export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 swift build --disable-keychain --disable-netrc -c release --disable-sandbox
 APP="$PROJECT_DIR/.build/quit-validation/OpenCharge Exit Fixture.app"
 mkdir -p "$APP/Contents/MacOS"
+source "$PROJECT_DIR/Scripts/sparkle-fixture-flags.sh"
 swiftc -O -target "$(uname -m)-apple-macosx13.0" -parse-as-library -DOPENCHARGE_DASHBOARD_SMOKE \
  -I .build/release/Modules -I .build/release/ApplePowerConstants.build \
- Sources/OpenCharge/*.swift Tests/QuitUI/main.swift \
+ "${SPARKLE_FIXTURE_FLAGS[@]}" Sources/OpenCharge/*.swift Tests/QuitUI/main.swift \
  .build/release/ChargeCore.build/*.o .build/release/ChargeHardware.build/*.o .build/release/ApplePowerConstants.build/*.o \
  -o "$APP/Contents/MacOS/QuitFixture"
 cat > "$APP/Contents/Info.plist" <<'PLIST'

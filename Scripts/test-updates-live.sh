@@ -8,9 +8,10 @@ export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 swift build --disable-keychain --disable-netrc -c release --disable-sandbox
 mkdir -p .build/update-live
+source "$PROJECT_DIR/Scripts/sparkle-fixture-flags.sh"
 swiftc -O -target "$(uname -m)-apple-macosx13.0" -parse-as-library -DOPENCHARGE_DASHBOARD_SMOKE \
  -I .build/release/Modules -I .build/release/ApplePowerConstants.build \
- Sources/OpenCharge/*.swift Tests/UpdateLive/main.swift \
+ "${SPARKLE_FIXTURE_FLAGS[@]}" Sources/OpenCharge/*.swift Tests/UpdateLive/main.swift \
  .build/release/ChargeCore.build/*.o .build/release/ChargeHardware.build/*.o .build/release/ApplePowerConstants.build/*.o \
  -o .build/update-live/check
 if [[ "${1:-}" != --build-only ]]; then .build/update-live/check; fi

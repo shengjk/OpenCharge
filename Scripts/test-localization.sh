@@ -16,6 +16,7 @@ BIN_DIR="$(swift build --disable-keychain --disable-netrc "${BUILD_ARGS[@]}" --s
 mkdir -p .build/localization-validation
 FIXTURE_DIR="$(mktemp -d "$PROJECT_DIR/.build/localization-validation/fixture.XXXXXX")"
 mkdir -p "$FIXTURE_DIR/core" "$FIXTURE_DIR/hardware" "$FIXTURE_DIR/app"
+source "$PROJECT_DIR/Scripts/sparkle-fixture-flags.sh"
 swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library -emit-module -module-name ChargeCore \
  -emit-localized-strings -emit-localized-strings-path "$FIXTURE_DIR/core" \
  Sources/ChargeCore/*.swift -o "$FIXTURE_DIR/core/ChargeCore.swiftmodule"
@@ -25,7 +26,7 @@ swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library -emit-module -mod
 swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
  -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" \
  -emit-localized-strings -emit-localized-strings-path "$FIXTURE_DIR/app" \
- Sources/OpenCharge/*.swift "$BIN_DIR"/ChargeCore.build/*.o "$BIN_DIR"/ChargeHardware.build/*.o "$BIN_DIR"/ApplePowerConstants.build/*.o \
+ "${SPARKLE_FIXTURE_FLAGS[@]}" Sources/OpenCharge/*.swift "$BIN_DIR"/ChargeCore.build/*.o "$BIN_DIR"/ChargeHardware.build/*.o "$BIN_DIR"/ApplePowerConstants.build/*.o \
  -o "$FIXTURE_DIR/extraction-only"
 python3 Scripts/verify-localizations.py "$FIXTURE_DIR/core" "$FIXTURE_DIR/hardware" "$FIXTURE_DIR/app"
 APP="$FIXTURE_DIR/LocalizationFixture.app"
@@ -43,7 +44,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 python3 Scripts/localization-resources.py prepare "$APP"
 swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library \
- -DOPENCHARGE_DASHBOARD_SMOKE -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" Sources/OpenCharge/*.swift Tests/LocalizationSmoke/*.swift \
+ "${SPARKLE_FIXTURE_FLAGS[@]}" -DOPENCHARGE_DASHBOARD_SMOKE -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" Sources/OpenCharge/*.swift Tests/LocalizationSmoke/*.swift \
  "$BIN_DIR"/ChargeCore.build/*.o "$BIN_DIR"/ChargeHardware.build/*.o "$BIN_DIR"/ApplePowerConstants.build/*.o \
  -o "$APP/Contents/MacOS/check"
 python3 - "$APP/Contents/MacOS/check" "$TEST_ARCH" <<'PYTEST'

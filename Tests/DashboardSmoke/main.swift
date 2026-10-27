@@ -11,6 +11,7 @@ import ChargeHardware
   powerFlowAnimationChecks()
   try menuBarAppearanceChecks()
   try updateChecks()
+  try await signedUpdateChecks()
   try await unavailableHelperChecks()
   try await helperOperationQuitChecks()
   try await acknowledgedRemovalRetryChecks()

@@ -19,6 +19,7 @@ for TEST_ARCH in arm64 x86_64; do
  TRIPLE="$TEST_ARCH-apple-macosx11.0"
  clang -target "$TRIPLE" -I Sources/ApplePowerConstants/include -c \
   Sources/ApplePowerConstants/ApplePowerConstants.c -o "$BUILD_DIR/$TEST_ARCH/ApplePowerConstants.o"
+ source "$PROJECT_DIR/Scripts/sparkle-fixture-flags.sh"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -emit-library -static -module-name ChargeCore \
   Sources/ChargeCore/*.swift -emit-module-path "$BUILD_DIR/$TEST_ARCH/ChargeCore.swiftmodule" \
   -o "$BUILD_DIR/$TEST_ARCH/libChargeCore.a"
@@ -42,7 +43,7 @@ for TEST_ARCH in arm64 x86_64; do
   Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
   -o "$BUILD_DIR/$TEST_ARCH/PresentationCompatibility.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -emit-module -module-name FullAppAvailability \
-  -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" Sources/OpenCharge/*.swift \
+  -F "$SPARKLE_FIXTURE_DIR" -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" Sources/OpenCharge/*.swift \
   -o "$BUILD_DIR/$TEST_ARCH/FullAppAvailability.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name StartupCompatibility \
   Sources/OpenCharge/LoginStartup.swift -o "$BUILD_DIR/$TEST_ARCH/StartupCompatibility.swiftmodule"

@@ -6,10 +6,19 @@ import ChargeCore
  private var reloading = false
  private let defaults: UserDefaults
  let currentVersion: String
- @Published var automaticChecks: Bool { didSet { guard !reloading else { return }; defaults.set(automaticChecks, forKey: "updatesAutomatic"); if automaticChecks { checkIfDue() } } }
+ let signedConfiguration: SignedUpdateConfiguration.Readiness
+ private var signedDriver: SignedUpdateClient?
+ private var signedStarted = false
+ private var started = false
+ var maintenanceBusy: () -> Bool = { false }
+ @Published private(set) var signedSnapshot = SignedUpdateSnapshot()
+ var usesSignedUpdates: Bool { if case .ready = signedConfiguration { return true }; return false }
+ var canCheck: Bool { usesSignedUpdates ? signedSnapshot.canCheck && !maintenanceBusy() : !busy }
+ @Published var automaticDownloads: Bool { didSet { guard !reloading else { return }; defaults.set(automaticDownloads,forKey:"updatesAutomaticDownloads"); configureSigned() } }
+ @Published var automaticChecks: Bool { didSet { guard !reloading else { return }; defaults.set(automaticChecks, forKey: "updatesAutomatic"); if usesSignedUpdates { configureSigned() } else if automaticChecks { checkIfDue() } } }
  @Published var includePreviews: Bool { didSet {
   guard !reloading else { return }; defaults.set(includePreviews, forKey: "updatesPreviews"); generation += 1; candidate = nil; downloaded = nil
-  if !busy { status = NSLocalizedString("渠道已更改，请重新检查", comment: "") }; defaults.removeObject(forKey: "updatesLastAttempt")
+  if !busy { status = NSLocalizedString("渠道已更改，请重新检查", comment: "") }; defaults.removeObject(forKey: "updatesLastAttempt"); configureSigned()
  } }
  @Published private(set) var status = NSLocalizedString("尚未检查更新", comment: "")
  @Published private(set) var candidate: ReleasePackage?
@@ -21,27 +30,65 @@ import ChargeCore
  private var downloadToken: UUID?
  private var timer: Timer?
  private var window: NSWindowController?
- init(defaults: UserDefaults = .standard, currentVersion: String? = nil) {
+ init(defaults: UserDefaults = .standard, currentVersion: String? = nil, signedConfiguration: SignedUpdateConfiguration.Readiness? = nil, signedDriver: SignedUpdateClient? = nil) {
   self.defaults = defaults; self.currentVersion = currentVersion ?? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")
+  self.signedConfiguration = signedConfiguration ?? SignedUpdateConfiguration.evaluate(Bundle.main.infoDictionary ?? [:]); self.signedDriver = signedDriver
+  automaticDownloads = defaults.bool(forKey:"updatesAutomaticDownloads")
   automaticChecks = defaults.bool(forKey: "updatesAutomatic")
   includePreviews = defaults.object(forKey: "updatesPreviews") as? Bool ?? true
  }
  func reloadAfterReset() {
   precondition(!busy)
   reloading = true
+  automaticDownloads = defaults.bool(forKey:"updatesAutomaticDownloads")
   automaticChecks = defaults.bool(forKey:"updatesAutomatic")
   includePreviews = defaults.object(forKey:"updatesPreviews") as? Bool ?? true
-  reloading = false; generation += 1
+  reloading = false; generation += 1; configureSigned()
   candidate = nil; downloaded = nil; checkedAt = nil; progress = nil
   status = NSLocalizedString("尚未检查更新", comment: "")
  }
  func start() {
-  guard timer == nil else { return }
+  guard !started else { return }; started = true
+  if usesSignedUpdates { _ = ensureSignedStarted(); return }
+  if case .invalid = signedConfiguration { status = NSLocalizedString("签名更新配置无效，请联系项目维护者",comment:""); return }
   timer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in Task { @MainActor in self?.checkIfDue() } }
   checkIfDue()
  }
+ private func configureSigned() {
+  guard usesSignedUpdates, signedStarted else { return }
+  signedDriver?.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,includePreviews:includePreviews)
+ }
+ private func ensureSignedStarted() -> Bool {
+  guard usesSignedUpdates else { return false }
+  if signedStarted { return true }
+  if signedDriver == nil {
+   #if arch(arm64)
+   let architecture = UpdateArchitecture.appleSilicon
+   #else
+   let architecture = UpdateArchitecture.intel
+   #endif
+   signedDriver = SignedUpdateDriver(maintenanceBusy:{ [weak self] in self?.maintenanceBusy() ?? true },architecture:architecture)
+  }
+  signedDriver?.changed = { [weak self] value in
+   guard let self else { return }; self.signedSnapshot = value
+   self.busy = value.sessionInProgress || value.installationPending
+   self.checkedAt = value.checkedAt
+   self.reloading = true
+   if let automatic = value.automaticChecks { self.automaticChecks = automatic; self.defaults.set(automatic,forKey:"updatesAutomatic") }
+   if let automatic = value.automaticDownloads { self.automaticDownloads = automatic; self.defaults.set(automatic,forKey:"updatesAutomaticDownloads") }
+   self.reloading = false
+   if let error = value.error { self.status = error }
+   else if value.installationPending { self.status = NSLocalizedString("更新已准备好，将在退出清理完成后安装",comment:"") }
+   else if value.sessionInProgress { self.status = NSLocalizedString("正在检查或准备签名更新…",comment:"") }
+   else if value.checkedAt != nil { self.status = NSLocalizedString("已完成签名更新检查",comment:"") }
+  }
+  do {
+   try signedDriver?.start(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,includePreviews:includePreviews)
+   signedStarted = true; return true
+  } catch { status = error.localizedDescription; return false }
+ }
  private func checkIfDue() {
-  guard automaticChecks, !busy, ReleaseCheckCadence.due(now: Date().timeIntervalSince1970, lastAttempt: defaults.object(forKey: "updatesLastAttempt") as? Double, interval: 12 * 3600) else { return }
+  guard !usesSignedUpdates, automaticChecks, !busy, ReleaseCheckCadence.due(now: Date().timeIntervalSince1970, lastAttempt: defaults.object(forKey: "updatesLastAttempt") as? Double, interval: 12 * 3600) else { return }
   Task { await check(); if automaticChecks && candidate != nil { show() } }
  }
  private func show() {
@@ -54,6 +101,8 @@ import ChargeCore
  }
  func showAndCheck() { show(); Task { await check() } }
  func check(loadPages: () async throws -> [Data] = { try await ReleaseHTTP.pages() }) async {
+  if usesSignedUpdates { if ensureSignedStarted(), canCheck { signedDriver?.check() }; return }
+  if case .invalid = signedConfiguration { status = NSLocalizedString("签名更新配置无效，请联系项目维护者",comment:""); return }
   guard !busy else { return }
   guard ReleaseVersion(currentVersion) != nil else { status = NSLocalizedString("开发运行未标记版本，请从发布包打开应用", comment: ""); return }
   guard ReleaseCheckCadence.due(now: Date().timeIntervalSince1970, lastAttempt: defaults.object(forKey: "updatesLastAttempt") as? Double, interval: 60) else { status = NSLocalizedString("刚刚检查过，请稍后再试", comment: ""); return }
@@ -81,7 +130,7 @@ import ChargeCore
   } catch { status = NSLocalizedString("检查失败：", comment: "") + error.localizedDescription }
  }
  func download() async {
-  guard !busy, let candidate else { return }
+  guard !usesSignedUpdates, !busy, let candidate else { return }
   let token = UUID(); downloadToken = token
   busy = true; progress = 0; status = String.localizedStringWithFormat(NSLocalizedString("正在下载并校验 %@…", comment: ""), candidate.version); downloaded = nil
   defer { busy = false; progress = nil; downloadToken = nil }
@@ -103,19 +152,22 @@ struct UpdateView: View {
   Card(NSLocalizedString("软件更新", comment: "")) {
    Text(String.localizedStringWithFormat(NSLocalizedString("当前版本 %@", comment: ""), updates.currentVersion)).font(.subheadline.bold())
    Toggle(NSLocalizedString("自动检查更新（每 12 小时）", comment: ""), isOn: $updates.automaticChecks)
+   if updates.usesSignedUpdates { Toggle(NSLocalizedString("自动下载并在退出时安装更新",comment:""),isOn:$updates.automaticDownloads) }
    Toggle(NSLocalizedString("包含开发预览版本", comment: ""), isOn: $updates.includePreviews).disabled(updates.busy)
-   Text(NSLocalizedString("更新检查会连接 GitHub，不发送电池读数或本机标识。自动检查默认关闭；发现更新时提示，下载需由你明确选择。", comment: "")).font(.caption).presentationSecondary()
+   if !updates.usesSignedUpdates { Text(NSLocalizedString("更新检查会连接 GitHub，不发送电池读数或本机标识。自动检查默认关闭；发现更新时提示，下载需由你明确选择。", comment: "")).font(.caption).presentationSecondary() }
    SelectableStatusText(text: updates.status)
-   if let date = updates.checkedAt { Text(String.localizedStringWithFormat(NSLocalizedString("上次成功检查于 %@", comment: ""), DateDisplay.string(date, style:.abbreviated))).font(.caption).presentationSecondary() }
+   if let date = updates.checkedAt { Text(String.localizedStringWithFormat(updates.usesSignedUpdates ? NSLocalizedString("上次检查于 %@", comment: "") : NSLocalizedString("上次成功检查于 %@", comment: ""), DateDisplay.string(date, style:.abbreviated))).font(.caption).presentationSecondary() }
    if let candidate = updates.candidate { Text(String.localizedStringWithFormat(NSLocalizedString("可用版本 %@ · %@ · %@", comment: ""), candidate.version, candidate.filename, ByteCountFormatter.string(fromByteCount: Int64(candidate.size), countStyle: .file))).font(.caption).presentationSecondary() }
    if let progress = updates.progress { ProgressView(value: progress) }
    HStack {
-    Button(NSLocalizedString("检查更新", comment: "")) { Task { await updates.check() } }.disabled(updates.busy)
+    Button(NSLocalizedString("检查更新", comment: "")) { Task { await updates.check() } }.disabled(!updates.canCheck)
     if updates.candidate != nil && updates.downloaded == nil { Button(NSLocalizedString("下载并校验", comment: "")) { Task { await updates.download() } }.disabled(updates.busy) }
     if updates.downloaded != nil { Button(NSLocalizedString("在访达中显示", comment: "")) { updates.reveal() } }
     Button(NSLocalizedString("在 GitHub 查看", comment: "")) { updates.openReleases() }
    }
-   Text(NSLocalizedString("校验通过后请自行解压并更新应用。当前开发包尚未公证，暂不自动替换应用或硬件服务。", comment: "")).font(.caption).presentationSecondary()
+   if updates.usesSignedUpdates {
+    Text(NSLocalizedString("更新会连接 GitHub 并验证发布者签名，不发送电池读数或本机标识。安装前会执行退出清理，硬件服务需单独管理。自动检查和自动下载默认关闭。",comment:"")).font(.caption).presentationSecondary()
+   } else { Text(NSLocalizedString("校验通过后请自行解压并更新应用。当前开发包尚未公证，暂不自动替换应用或硬件服务。", comment: "")).font(.caption).presentationSecondary() }
   }
  }
 }

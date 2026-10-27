@@ -6,8 +6,9 @@ export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 swift build --disable-keychain --disable-netrc -c release --disable-sandbox
 mkdir -p .build/dashboard-validation
+source "$PROJECT_DIR/Scripts/sparkle-fixture-flags.sh"
 swiftc -target "$(uname -m)-apple-macosx13.0" -parse-as-library -DOPENCHARGE_DASHBOARD_SMOKE -I .build/release/Modules -I .build/release/ApplePowerConstants.build \
- Sources/OpenCharge/*.swift Tests/DashboardSmoke/*.swift \
+ "${SPARKLE_FIXTURE_FLAGS[@]}" Sources/OpenCharge/*.swift Tests/DashboardSmoke/*.swift \
  .build/release/ChargeCore.build/*.o .build/release/ChargeHardware.build/*.o .build/release/ApplePowerConstants.build/*.o \
  -Xlinker -weak_framework -Xlinker Accessibility -o .build/dashboard-validation/check
 FIXTURE_DIR="$(mktemp -d "$PROJECT_DIR/.build/dashboard-validation/fixture.XXXXXX")"

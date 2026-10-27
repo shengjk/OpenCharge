@@ -5,6 +5,7 @@ import Foundation
 func verifyLegacyAppFormatting() {
  let samples: [(Int64, UInt8, String)] = [(0, 0, ""), (1, 1, "A% · 中文"), (2, 255, "100% %@ %lld"), (-7, 42, "🔋 hello")]
  for (signed, unsigned, text) in samples {
+  precondition(String.localizedStringWithFormat(NSLocalizedString("上次检查于 %@", comment: ""), text) == String(localized:"上次检查于 \(text)"))
   precondition(String.localizedStringWithFormat(NSLocalizedString("%lld 个本地采样", comment: ""), Int64(signed + 0)) == String(localized:"\(signed + 0) 个本地采样"), "Legacy formatting mismatch: %lld 个本地采样")
   precondition(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟", comment: ""), Int64(signed + 0)) == String(localized:"\(signed + 0) 分钟"), "Legacy formatting mismatch: %lld 分钟")
   precondition(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟平均：%@ · 数据覆盖 %@", comment: ""), Int64(signed + 0), text + "[1]", text + "[2]") == String(localized:"\(signed + 0) 分钟平均：\(text + "[1]") · 数据覆盖 \(text + "[2]")"), "Legacy formatting mismatch: %lld 分钟平均：%@ · 数据覆盖 %@")

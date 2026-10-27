@@ -17,6 +17,7 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
   let showDock = UserDefaults.standard.object(forKey: "showDockIcon") as? Bool ?? true
   NSApp.setActivationPolicy(showDock ? .regular : .accessory)
   menuBar = MenuBarController(model: model)
+  model.updates.maintenanceBusy = { [weak model] in model?.helperService.busy ?? true }
   model.updates.start()
   if model.setupOnLaunch { model.openSetupWizard() }
   else if model.dashboardPreferences.showOnStartup { model.openDashboardWindow() }

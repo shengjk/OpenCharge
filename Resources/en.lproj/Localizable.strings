@@ -610,3 +610,11 @@
 "文件或系统任务仍存在，不能确认移除完成" = "Installed files or the system job remain. Removal cannot be confirmed.";
 "移除旧服务与文件" = "Remove Legacy Service and Files";
 "旧服务及安装文件已移除" = "Legacy service and installed files removed";
+
+"签名更新配置无效，请联系项目维护者" = "Signed update configuration is invalid. Please contact the project maintainer.";
+"更新已准备好，将在退出清理完成后安装" = "The update is ready and will install after quit cleanup finishes.";
+"正在检查或准备签名更新…" = "Checking or preparing a signed update…";
+"已完成签名更新检查" = "Signed update check completed.";
+"自动下载并在退出时安装更新" = "Automatically download updates and install on quit";
+"更新会连接 GitHub 并验证发布者签名，不发送电池读数或本机标识。安装前会执行退出清理，硬件服务需单独管理。自动检查和自动下载默认关闭。" = "Updates connect to GitHub and verify the publisher signature without sending battery readings or device identifiers. Installation follows quit cleanup; manage the hardware service separately. Automatic checks and downloads are off by default.";
+"上次检查于 %@" = "Last checked at %@";
