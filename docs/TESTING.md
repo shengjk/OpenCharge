@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 233 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 269 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -465,3 +465,12 @@ Normal application termination is refused while a service operation is pending. 
 `Scripts/test-native-helper-removal.sh` builds the actual removal components and runs only temporary filesystem fixtures with injected signature decisions. It checks canonical 32-byte authorization framing and invalid-command rejection without IPC, protocol-version admission, pending mutation refusal, restored-state/journal ordering, fixed plist metadata, file ownership/modes, symlinks/hardlinks/directories, path replacement, partial unlink retry and idempotence. Empty, malformed and unexpected recovery-record paths prevent removal. The real identity constructor rejects the unsigned non-root test executable before any privileged operation.
 
 `Scripts/test-helper-preflight.sh` compiles an independent macOS 11 ChargeCore module for its two-architecture facade/worker tests. Added cases verify capability checks before authorization, cancellation, file-before-job order, preserved partial progress, acknowledged completion after a lost job-stop result and handoff to a modern backend. The dashboard fixture checks that an inactive app can complete an acknowledged retry without contacting an already-exited daemon; helper requests are injected to make accidental live IPC fail. `Scripts/check.sh` includes the new filesystem suite. These checks do not validate a real signed peer, granted administrator credential, actual system job removal or crash/relaunch recovery.
+
+
+## Native read-only inspection — 2026-10-27
+
+The installed 0.3.37/build 49 was selected by existing system Shortcuts. Its application-policy getter returned `Sailing`, the power-flow getter returned `holding`, and the four-getter workflow completed with `holding` as its final result. Intermediate numeric outputs were not separately inspected in that run.
+
+After an explicitly authorized app switch, the running executable and bundle metadata identified the universal 0.3.45/build 57. Its native English Overview and Settings pages were inspected. Settings showed hardware control and scheduled system-power changes disabled, and correctly classified the existing development-service installation. The bundle declares exactly English and Simplified Chinese. The installed helper's binary digest was unchanged.
+
+The Mac locked before system Shortcuts could be repeated against 0.3.45, so the earlier getter results apply to 0.3.37 only. This session does not establish localized Shortcuts discovery, numeric return values, Siri execution, hardware effects, or signed service lifecycle behavior. No service installation, removal, restart, or hardware control was performed.
