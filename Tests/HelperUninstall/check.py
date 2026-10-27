@@ -10,7 +10,8 @@ assert '$EUID -ne 0' in source
 cases = [('registered', None), ('absent', None), ('unknown', None),
          ('wrong_program', None), ('still_job', None), ('ps_error', None),
          ('pid_alive', None), ('orphan', None), ('helper_link', None),
-         ('plist_directory', None)]
+         ('plist_directory', None), ('altered_plist', None)]
+cases += [(scenario, ('sleep-recovery.json', 'regular')) for scenario in ('changed_during_stop', 'restart_failure')]
 cases += [('marker', (name, kind)) for name in
           ('sleep-recovery.json', 'charge-recovery.json', 'firmware-recovery.json', 'magsafe-recovery.json')
           for kind in ('regular', 'symlink', 'directory')]
@@ -22,7 +23,11 @@ for scenario, marker in cases:
         helper.parent.mkdir(parents=True)
         plist.parent.mkdir(parents=True)
         helper.write_text('fake helper')
-        plist.write_text('fake plist')
+        install = (project / 'Scripts/install-helper.sh').read_text()
+        template = install.split("cat > \"$PLIST\" <<'PLIST'\n", 1)[1].split("\nPLIST\n", 1)[0] + "\n"
+        plist.write_text(template.replace('/Library/PrivilegedHelperTools/org.opencharge.charged', str(helper)))
+        if scenario == 'altered_plist':
+            plist.write_text('unexpected configuration')
         if scenario == 'helper_link':
             helper.unlink()
             helper.symlink_to('missing')
@@ -47,7 +52,8 @@ case "$1" in
   if [[ -e "$STOPPED" && "$CASE" != still_job ]]; then exit 113; fi
   if [[ "$CASE" == wrong_program ]]; then echo ' program = /unexpected'; else echo " program = $HELPER"; fi
   echo ' pid = 123';;
- bootout) touch "$STOPPED";;
+ bootout) touch "$STOPPED"; if [[ "$CASE" == changed_during_stop ]]; then echo changed > "$PLIST"; fi;;
+ bootstrap) [[ "$CASE" == restart_failure ]] && exit 5 || exit 0;;
 esac
 ''')
         stub.chmod(0o755)
@@ -71,7 +77,7 @@ exit 0
             fixture_source = fixture_source.replace(original, replacement)
         fixture = root / 'remove.sh'
         fixture.write_text(fixture_source)
-        env = dict(os.environ, CASE=scenario, LOG=str(log), STOPPED=str(root / 'stopped'), HELPER=str(helper))
+        env = dict(os.environ, CASE=scenario, LOG=str(log), STOPPED=str(root / 'stopped'), HELPER=str(helper), PLIST=str(plist))
         result = subprocess.run(['/bin/bash', str(fixture)], env=env, capture_output=True, text=True)
         calls = log.read_text().splitlines()
         success = scenario in ('registered', 'absent')
@@ -83,7 +89,13 @@ exit 0
             assert 'Helper removed' not in result.stdout
         if marker:
             assert record.exists() or record.is_symlink()
-            assert any(call.startswith('bootstrap system ') for call in calls)
-        if scenario in ('absent', 'orphan', 'unknown', 'wrong_program', 'helper_link', 'plist_directory'):
+            if scenario == 'changed_during_stop':
+                assert not any(call.startswith('bootstrap system ') for call in calls)
+            else:
+                assert any(call.startswith('bootstrap system ') for call in calls)
+            if scenario in ('changed_during_stop', 'restart_failure'):
+                assert 'automatic restart failed or the configuration changed' in result.stderr
+                assert 'restart requested' not in result.stderr
+        if scenario in ('absent', 'orphan', 'unknown', 'wrong_program', 'helper_link', 'plist_directory', 'altered_plist'):
             assert not any(call.startswith(('kill ', 'bootout ')) for call in calls), (scenario, calls)
 print(f'Helper removal: {len(cases)} isolated scenarios passed; no real service or system-path writes')

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.45
+
+- Restrict the development helper uninstaller to the exact installer-generated launchd configuration before service actions; recheck it before requesting recovery restart.
+- Report failed recovery restarts accurately, retaining helper files and recovery records.
+
 ## 0.3.44
 
 - Verify the development helper job and processes have stopped before removing its files; retain files when state cannot be verified or recovery remains pending.
