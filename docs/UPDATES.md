@@ -13,3 +13,12 @@ Successful ZIPs are stored in `~/Library/Caches/org.opencharge.app/Updates/` in 
 These checks establish consistency with the files published by the same GitHub repository. They do not independently authenticate the publisher or replace a signed/notarized installation chain. Current development builds are ad-hoc signed and not notarized. Fully automatic signed installation remains unfinished. See [status](STATUS.md) and [verification](TESTING.md).
 
 The development transport uses URLSession delegate streaming, with the same response and byte limits for memory and file destinations. Disallowed redirects terminate immediately. Task cancellation closes the transfer and its file handle; hash verification also observes cancellation. A cancelled or failed verified download removes its newly created package directory. These networking APIs compile with a macOS 11 target, but the complete packaged application still requires macOS 13 pending other compatibility work.
+
+
+## Signed-updater integration — work in progress
+
+The `feature/signed-updates` branch adds a checksum-pinned Sparkle dependency and build-time public-key configuration guards. It has not yet connected a signed installer to the application. Framework embedding, two-language resource preparation, safe framework-link packaging, lifecycle coordination and signed-feed publication remain unfinished. Normal application packaging on this branch is not a validated distribution route yet.
+
+Missing public-key configuration retains the manual-download route. Configured metadata requires the fixed repository feed, archive verification before extraction, signed feeds without validation expiry, disabled profiling/JavaScript and opt-in update behavior. The configuration scripts never generate or read private signing keys.
+
+The candidate dependency is [Sparkle 2.9.6](https://github.com/sparkle-project/Sparkle/releases/tag/2.9.6). Its official package checksum was verified and an isolated nonstarted updater loaded on both architectures on the current host. This is not an installation test or an older-system runtime test. Core configuration and temporary metadata-file fixtures passed; automatic installation remains unfinished. See [Sparkle setup](https://sparkle-project.org/documentation/) for its publishing and signing requirements.
