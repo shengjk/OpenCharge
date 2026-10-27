@@ -130,11 +130,11 @@ struct HelperServiceView: View {
    Text(service.statusText).font(.callout)
    Text(service.preflightText).font(.caption).presentationSecondary()
    HStack {
-    Button(NSLocalizedString("注册硬件服务", comment: "")) { do { try service.register() } catch { m.error = error.localizedDescription } }.disabled(!service.registrationAllowed || service.busy)
+    Button(NSLocalizedString("注册硬件服务", comment: "")) { Task { await m.registerHelperService() } }.disabled(!service.registrationAllowed || service.busy)
     Button(NSLocalizedString("刷新状态", comment: "")) { service.refresh() }
     Button(NSLocalizedString("查看安装说明", comment: "")) { if let url = Bundle.main.url(forResource: "HELPER-SETUP", withExtension: "md") { NSWorkspace.shared.open(url) } }
     if service.status == .requiresApproval { Button(NSLocalizedString("打开系统批准设置", comment: "")) { service.openApprovalSettings() } }
-    if !service.legacyInstalled && (service.status == .enabled || service.status == .requiresApproval) { DestructiveButton(NSLocalizedString("注销服务", comment: "")) { Task { await m.removeHelperService() } }.disabled(service.busy) }
+    if service.canUnregister { DestructiveButton(NSLocalizedString("注销服务", comment: "")) { Task { await m.removeHelperService() } }.disabled(service.busy) }
    }
   }.onAppear { service.refresh() }
  }

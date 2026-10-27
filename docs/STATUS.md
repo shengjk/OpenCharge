@@ -1,4 +1,4 @@
-# Status — 0.3.41 and development source
+# Status — 0.3.42 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -17,6 +17,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |
+| Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless and owned job unregistration in macOS 11/12 source; serialized operations | Actual administrator interaction, legacy runtime, complete file removal, migration and production signing/notarization |
 | Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
 | Sleep control | Helper-owned sleep admission and app suspension handling; public idle assertion; required calibration/clamshell protection; optional until-limit system/lid SPI; schema-2 global recovery and same-boot lid cleanup; opt-in foreground lid-lock request | Physical lid/display transitions, private-interface compatibility, powerd interference, actual sleep/boot recovery |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
@@ -41,8 +42,11 @@ Shared-module compatibility work: application/policy/hardware lookup calls retai
 
 Date display and effective Low Power Mode observation now use version-gated APIs with explicit legacy formatting and unknown-state handling. The menu icon has a legacy alpha-mask tint path. These changes retain the packaged macOS 13 requirement; complete macOS 11-target compilation and presentation fallbacks do not establish older-system runtime or native privileged installation.
 
-Hardware-service inspection now separates its application status/preflight from the macOS 13 SMAppService backend. Earlier systems report the missing native route explicitly and can still inspect existing root-installed service files. Native privileged-service installation before macOS 13 and old-system runtime acceptance remain unfinished; the packaged minimum stays macOS 13.
+Hardware-service inspection now separates its application status/preflight from the macOS 13 SMAppService backend. The macOS 11/12 source backend implements signed, authorized installation and job unregistration. Installed-file deletion, migration and actual old-system runtime acceptance remain unfinished; the packaged minimum stays macOS 13.
 
 Login-startup development source now separates the macOS 13 native backend from an owned per-user LaunchAgent fallback for earlier systems, with fake-backend and temporary-directory tests. Actual logout/login, launchd overrides, native registration and old-system runtime have not been exercised. See [login startup](LOGIN-STARTUP.md).
 
 Version 0.3.38 includes read-only installed-service classification, portable runtime preparation and an embedded older-helper metadata candidate. These are not a pre-13 authorization or removal backend. The development package remains ad-hoc signed and unnotarized; no administrator installation was exercised. Its fallback history view supplies native reading nodes and macOS 12 chart descriptors, but hosted assistive-technology reachability and actual audio playback remain unverified. Interface resources are intentionally limited to Simplified Chinese and English.
+
+
+Version 0.3.42 implements the macOS 11/12 native registration backend with Authorization Services and SMJobBless, plus SMJobRemove for explicit job unregistration. Matching Apple-issued app/helper signatures, reciprocal ownership metadata and known installed-file ownership are required. Blocking authorization/removal run outside the main thread and overlapping operations are refused. Unregistration stops the job but retains installed files; complete native file removal and migration to SMAppService remain unfinished. The current ad-hoc packages cannot use this route. Physical macOS 11/12 execution, administrator interaction and a production signing/notarization pipeline remain unverified; the packaged minimum remains macOS 13.

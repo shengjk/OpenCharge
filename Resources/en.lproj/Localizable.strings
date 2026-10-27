@@ -594,3 +594,8 @@
 "预览已过期，请确认更新后的预设" = "The preview expired. Review the updated preset.";
 
 "已有自动校准：%@ · %@ · %@" = "Existing automatic calibration: %@ · %@ · %@";
+
+"旧版系统安装需要当前应用与内嵌服务的匹配开发者签名。" = "Installation on older systems requires matching developer signatures for the app and embedded helper.";
+"旧原生服务已注册；注销会停止服务，已安装文件需按卸载说明另行移除。" = "The legacy native service is registered. Unregistering stops it; remove installed files separately using the uninstall instructions.";
+"点击注册后由系统请求管理员授权；安装不会开启充电控制。" = "Click Register to request administrator authorization from the system. Installation does not enable charge control.";
+"服务操作正在进行，请稍候" = "A service operation is in progress. Please wait.";

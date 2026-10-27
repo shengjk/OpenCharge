@@ -23,6 +23,10 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
  }
  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
   if quitFlow != nil { return .terminateLater }
+  if model?.helperService.busy == true {
+   model?.error = NSLocalizedString("服务操作正在进行，请稍候",comment:"")
+   return .terminateCancel
+  }
   guard let model, model.needsQuitPreparation else { return .terminateNow }
   let flow = QuitFlow(waitForPower: model.needsDischargeExitWait, prepare: { try model.prepareForQuit() }, cancelControl: { model.cancelQuit() }, reply: { [weak self] allowed in
    self?.quitFlow = nil; sender.reply(toApplicationShouldTerminate: allowed)

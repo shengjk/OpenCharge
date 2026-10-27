@@ -44,3 +44,18 @@ sudo bash Scripts/uninstall-helper.sh
 0.3.13 adds a separate sleep recovery record. Global SleepDisabled preferences persist across reboot and must be restored even for a previous boot; the kernel lid flag is released only within its recorded boot. The development uninstall script refuses to delete helper files while any sleep recovery marker remains and requests the existing job restart for recovery. Do not downgrade to a helper without sleep recovery support or delete its record while an override is pending. Resolve recovery with the compatible service before retrying removal. The application does not update the installed service automatically. See [sleep control](SLEEP.md).
 
 0.3.15 uses schema 2 for new sleep journals; released schema-1-only helpers refuse these records. The current helper still reads schema 1 and migrates uncertain compensation before writing. Complete pending recovery before downgrading or removing any helper. Calibration requires compatible full sleep control independently of the optional until-limit setting; ordinary clamshell-discharge opt-in also pre-acquires full protection. Unsupported preflight or a failed sleep request stops control and attempts cleanup. Optional lid locking runs only in the foreground application session and adds no root helper action.
+
+
+## macOS 11/12 原生注册后端（开发源码）
+
+0.3.42 的旧系统后端通过 Authorization Services 请求管理员安装权，再调用 SMJobBless。应用和内嵌服务必须具备相同开发团队的 Apple 签名及匹配的双向签名要求；本地 ad-hoc 包会在授权前被拒绝。初始化和状态刷新只读，不请求管理员密码。授权与等待服务退出在后台队列执行；同一服务操作完成前拒绝再次注册或注销。取消与系统错误会反馈给界面，已取得的授权在所有结束路径释放。
+
+此后端的“注销”调用 SMJobRemove 并等待任务退出，**不会删除已安装的二进制或 plist**。文件仍按旧原生布局显示，并保留开发卸载脚本作为显式移除方式；不会自动迁移到 SMAppService。只允许操作已确认签名归属的旧原生服务，不覆盖开发脚本或未知来源安装。注销前仍需通过现有应用流程恢复充电、灯光和睡眠状态；注销失败不自动重新启用控制。
+
+发布包仍要求 macOS 13。旧系统后端目前只完成源码可用性编译和隔离测试，尚未在 macOS 11/12 上执行管理员安装、注销或重装，也没有生产开发者签名与公证验收。
+
+The macOS 11/12 source backend uses Authorization Services and SMJobBless after reciprocal app/helper signing checks. Explicit unregistration uses SMJobRemove with an exit wait on a background queue. It stops the job and retains installed files; use the documented manual uninstall route for file removal. Installation does not enable charging control. Ad-hoc builds are rejected before authorization. The distributed minimum remains macOS 13; real legacy-system authorization, installation, reinstallation and migration are unverified.
+
+Apple API references: [SMJobBless](https://developer.apple.com/documentation/servicemanagement/smjobbless(_:_:_:_:)) and [SMJobRemove](https://developer.apple.com/documentation/servicemanagement/smjobremove(_:_:_:_:_:)).
+
+Normal application termination is refused while a service operation is pending. A model already preparing to quit cannot start registration. The isolated dashboard fixture checks the actual delegate replies without requesting application termination.

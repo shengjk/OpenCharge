@@ -33,7 +33,7 @@ for TEST_ARCH in arm64 x86_64; do
   -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" Sources/OpenCharge/MenuBarAppearance.swift \
   -o "$BUILD_DIR/$TEST_ARCH/MenuPresentation.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -emit-module -module-name ServiceRegistration \
-  Sources/OpenCharge/HelperService.swift Sources/OpenCharge/HelperInstallation.swift -o "$BUILD_DIR/$TEST_ARCH/ServiceRegistration.swiftmodule"
+  -I "$BUILD_DIR/ApplePowerConstants" Sources/OpenCharge/HelperService.swift Sources/OpenCharge/HelperInstallation.swift Sources/OpenCharge/LegacyHelperRegistration.swift -o "$BUILD_DIR/$TEST_ARCH/ServiceRegistration.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -emit-module -module-name PresentationCompatibility \
   -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
   Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/SelectableStatusText.swift Sources/OpenCharge/Components.swift \

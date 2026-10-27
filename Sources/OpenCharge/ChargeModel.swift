@@ -752,6 +752,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    lastHardwareAction = .restore; refresh()
   } catch { self.error = error.localizedDescription }
  }
+ func registerHelperService() async {
+  guard !quitting else { return }
+  do { try await helperService.register() } catch { self.error = error.localizedDescription }
+ }
  func removeHelperService() async {
   guard !quitting else { return }
   do {
