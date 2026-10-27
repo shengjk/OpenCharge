@@ -18,7 +18,8 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
   NSApp.setActivationPolicy(showDock ? .regular : .accessory)
   menuBar = MenuBarController(model: model)
   model.updates.start()
-  if model.dashboardPreferences.showOnStartup { model.openDashboardWindow() }
+  if model.setupOnLaunch { model.openSetupWizard() }
+  else if model.dashboardPreferences.showOnStartup { model.openDashboardWindow() }
  }
  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
   if quitFlow != nil { return .terminateLater }

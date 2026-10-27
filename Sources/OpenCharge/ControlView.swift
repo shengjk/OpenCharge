@@ -23,7 +23,7 @@ struct ControlView: View {
    HStack { Text(NSLocalizedString("保持区间", comment: "")); Spacer(); Stepper("\(Int(m.config.policy.sailingWidth))%", value: m.chargeSetting(\.sailingWidth), in: 1...20) }.disabled(!m.config.policy.sailing).disabled(m.settingsLocked)
    Text(NSLocalizedString("电量自然下降至下限再充电，避免频繁补充。", comment: "")).font(.caption).presentationSecondary()
    Divider(); Toggle(NSLocalizedString("热保护", comment: ""), isOn: m.chargeSetting(\.heatProtection)).disabled(m.settingsLocked)
-   HStack { Text(NSLocalizedString("暂停充电温度", comment: "")); Spacer(); Stepper("\(Int(m.config.policy.maxTemperature))°C", value: m.chargeSetting(\.maxTemperature), in: 25...45) }.disabled(!m.config.policy.heatProtection).disabled(m.settingsLocked)
+   HStack { Text(NSLocalizedString("暂停充电温度", comment: "")); Spacer(); Stepper("\(Int(m.config.policy.maxTemperature))°C", value: m.chargeSetting(\.maxTemperature), in: 25...50) }.disabled(!m.config.policy.heatProtection).disabled(m.settingsLocked)
    Text(NSLocalizedString("普通充电使用热保护，不拦截主动放电；充至满电与校准的温控由下方增强选项决定。", comment: "")).font(.caption).presentationSecondary()
    Picker(NSLocalizedString("温控恢复规则", comment: ""), selection: Binding(get: { m.config.policy.thermalBehavior ?? .fiveMinuteWindows }, set: { value in m.editChargeSettings { m.config.policy.thermalBehavior = value } })) { Text(NSLocalizedString("五分钟窗口", comment: "")).tag(ThermalBehavior.fiveMinuteWindows); Text(NSLocalizedString("降温 2°C", comment: "")).tag(ThermalBehavior.degreeHysteresis) }.disabled(m.settingsLocked)
    Toggle(NSLocalizedString("充至满电期间也启用温控（可选增强）", comment: ""), isOn: Binding(get: { m.config.policy.topUpThermalProtection }, set: { value in m.editChargeSettings { m.config.policy.protectDuringTopUp = value } })).disabled(m.settingsLocked)

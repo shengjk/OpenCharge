@@ -36,7 +36,7 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
   limit = min(100, max(20, limit.isFinite ? limit : 80))
   sailingWidth = min(20, max(1, sailingWidth.isFinite ? sailingWidth : 5))
   reserve = min(40, max(10, reserve.isFinite ? reserve : 15))
-  maxTemperature = min(45, max(25, maxTemperature.isFinite ? maxTemperature : 35))
+  maxTemperature = min(50, max(25, maxTemperature.isFinite ? maxTemperature : 35))
   departureTarget = min(100, max(20, departureTarget.isFinite ? departureTarget : 100))
   estimatedPercentPerHour = min(100, max(5, estimatedPercentPerHour.isFinite ? estimatedPercentPerHour : 30))
  }
@@ -289,6 +289,7 @@ public struct ChargeEngine: Sendable {
 public enum ScheduleAction: String, Codable, CaseIterable { case limit, topUp, pause, discharge, calibrate, automatic, lowPowerOn, lowPowerOff }
 public enum RepeatRule: String, Codable, CaseIterable { case once, daily, weekdays, weekly, biweekly, monthly, yearly }
 public struct ChargeSchedule: Codable, Identifiable {
+ public var name: String? = nil
  public var anchorDay: Int? = nil
  public var anchorMonth: Int? = nil
  public var anchorHour: Int? = nil
@@ -374,12 +375,13 @@ public struct ChargeSchedule: Codable, Identifiable {
 }
 public struct ScheduleExecution: Codable, Identifiable {
  public var id = UUID()
+ public var scheduleName: String? = nil
  public var scheduleID: UUID
  public var action: ScheduleAction
  public var scheduledAt: Date
  public var executedAt: Date
  public var result: String
- public init(scheduleID: UUID, action: ScheduleAction, scheduledAt: Date, executedAt: Date = Date(), result: String) { self.scheduleID = scheduleID; self.action = action; self.scheduledAt = scheduledAt; self.executedAt = executedAt; self.result = result }
+ public init(scheduleID: UUID, action: ScheduleAction, scheduledAt: Date, executedAt: Date = Date(), result: String, scheduleName: String? = nil) { self.scheduleName = scheduleName; self.scheduleID = scheduleID; self.action = action; self.scheduledAt = scheduledAt; self.executedAt = executedAt; self.result = result }
 }
 public struct Configuration: Codable {
  public var policy = ChargePolicy(); public var schedules: [ChargeSchedule] = []; public var notifications = false; public var hardwareEnabled = false; public var historyEnabled = true
@@ -388,6 +390,7 @@ public struct Configuration: Codable {
  public var chargeLimitChangeID: UUID? = nil
  public var lastCalibration: Date? = nil
  public var scheduleHistory: [ScheduleExecution]? = nil
+ public var setupCalibrationScheduleID: UUID? = nil
  public var runMissedTasks: Bool? = nil
  public var systemActionsEnabled: Bool? = nil
  public var magSafeMode: MagSafeMode? = nil

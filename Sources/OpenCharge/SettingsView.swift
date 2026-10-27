@@ -17,6 +17,10 @@ struct SettingsView: View {
  @StateObject private var loginStartup = LoginStartup()
  var body: some View {
   ChargeSettingsLockNotice(model: m)
+  Card(NSLocalizedString("设置向导",comment:"")) {
+   Button(NSLocalizedString("打开设置向导",comment:"")) { m.openSetupWizard() }
+   Text(NSLocalizedString("根据使用习惯预览充电策略与校准计划；你可以在最终确认前取消。",comment:"")).font(.caption).presentationSecondary()
+  }
   Card(NSLocalizedString("界面与能耗", comment: "")) {
    PopoverActivityView(monitor: m.energyMonitor, popoverVisible: m.popoverVisible)
    Text(NSLocalizedString("只有可见界面需要能耗列表时才读取；暂停界面更新不会停止充电策略和定时任务。", comment: "")).font(.caption).presentationSecondary()

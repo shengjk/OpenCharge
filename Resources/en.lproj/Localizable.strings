@@ -541,3 +541,56 @@
 "重置应用设置与定时任务，保留本地电池历史。开始前会确认范围，并先结束应用持有的控制会话。" = "Reset app settings and scheduled tasks while retaining local battery history. Confirm the scope first, then end control sessions owned by the app.";
 
 "设置重置未完成，请重试；自动控制与任务已暂停" = "Settings reset is incomplete. Retry to resume automatic control and scheduled tasks.";
+
+"环境温度须为 15–40°C 或 59–104°F" = "Ambient temperature must be 15–40°C or 59–104°F.";
+"无法为设置向导生成有效的任务日期" = "Cannot generate a valid task date for the setup wizard.";
+"自动校准" = "Automatic Calibration";
+"任务名称（可选）" = "Task name (optional)";
+"OpenCharge · 设置向导" = "OpenCharge · Setup Wizard";
+"第 %lld / 6 步" = "Step %lld of 6";
+"暂不设置" = "Skip Setup";
+"上一步" = "Back";
+"下一步" = "Next";
+"应用预设并完成" = "Apply Preset and Finish";
+"先了解你的充电管理方式" = "Choose how to manage charging";
+"回答四个问题，查看建议的充电策略和可选校准计划。最后确认前不会应用这些答案。" = "Answer four questions to preview a charge policy and optional calibration plan. Your answers are applied only after final confirmation.";
+"硬件控制需要单独启用。安装与注册服务可在设置中管理；向导保留你已有的控制许可。" = "Enable hardware control separately. Manage service installation and registration in Settings. The wizard preserves your existing control permissions.";
+"检查系统充电设置" = "Review System Charging Settings";
+"系统优化充电、系统充电上限和其他电池工具可能同时影响充电。请检查当前设置，再选择你希望使用的管理方式。" = "Optimized charging, system charge limits and other battery tools can also affect charging. Review your current settings and choose how you want to manage charging.";
+"打开电池设置" = "Open Battery Settings";
+"Apple 充电设置说明" = "Apple Charging Settings Guide";
+"你多久会外出使用电脑？" = "How often do you use your Mac on the go?";
+"外出使用频率" = "Use on the go";
+"很少 · 建议上限 70%" = "Rarely · Suggested limit 70%";
+"有时 · 建议上限 80%" = "Sometimes · Suggested limit 80%";
+"经常 · 建议上限 90%" = "Often · Suggested limit 90%";
+"工作环境的平均温度是多少？" = "What is the average temperature where you work?";
+"温度单位" = "Temperature Unit";
+"温控暂停阈值按环境温度加 10°C 生成，可在充电控制页继续调整。" = "The charge-pause threshold is your ambient temperature plus 10°C. You can adjust it later in Charge Control.";
+"你会经常关机或切换用户吗？" = "Do you regularly shut down or switch users?";
+"经常关机或切换用户" = "I regularly shut down or switch users";
+"此答案用于建议睡眠停充和自动放电；自动放电还会结合完成向导时的合盖状态。" = "This answer informs pause-on-sleep and automatic-discharge settings. Automatic discharge also depends on the lid state when you finish setup.";
+"是否创建自动校准计划？" = "Create an automatic calibration plan?";
+"创建自动校准计划" = "Create an automatic calibration plan";
+"很少外出时建议每两周一次，有时外出时建议每月一次；首次计划在两周后。经常外出时不新增计划。已有自动校准任务会保留。" = "For rare travel, the suggested interval is two weeks; for occasional travel, it is monthly. The first task is two weeks from now. Frequent travel adds no task. Existing automatic-calibration tasks are retained.";
+"校准需要保持供电并经历充放电过程。任务实际执行仍遵守硬件控制许可和校准条件。" = "Calibration requires power and a charge/discharge cycle. Execution still requires hardware-control permission and valid calibration conditions.";
+"确认建议设置" = "Review Suggested Settings";
+"充电上限 %lld%% · 航行宽度 %lld%%" = "Charge limit %lld%% · Sailing width %lld%%";
+"热保护开启 · 暂停阈值 %@°C" = "Heat protection on · Pause threshold %@°C";
+"睡眠停充：开启" = "Pause charging during sleep: On";
+"睡眠停充：关闭" = "Pause charging during sleep: Off";
+"自动放电：开启" = "Automatic discharge: On";
+"自动放电：关闭" = "Automatic discharge: Off";
+"控制基准：macOS 电量" = "Control reference: macOS percentage";
+"新增自动校准：%@ · %@" = "New automatic calibration: %@ · %@";
+"保留已有任务，不新增校准任务" = "Keep existing tasks; add no calibration task";
+"未列出的策略保持原设置。已启用的充电控制会使用新策略；未启用时继续监测。" = "Other policy settings stay as they are. Enabled charge control uses the new policy; otherwise monitoring continues.";
+"请先结束校准，再应用设置向导" = "End the current calibration before applying setup.";
+"合盖状态已改变，请确认更新后的预设" = "The lid state changed. Review the updated preset.";
+"设置向导" = "Setup Wizard";
+"打开设置向导" = "Open Setup Wizard";
+"根据使用习惯预览充电策略与校准计划；你可以在最终确认前取消。" = "Preview a charge policy and calibration plan based on your habits. You can cancel before final confirmation.";
+
+"预览已过期，请确认更新后的预设" = "The preview expired. Review the updated preset.";
+
+"已有自动校准：%@ · %@ · %@" = "Existing automatic calibration: %@ · %@ · %@";

@@ -39,6 +39,11 @@ func verifyLegacyAppFormatting() {
   precondition(String.localizedStringWithFormat(NSLocalizedString("系统维护提示：%@", comment: ""), text + "[0]") == String(localized:"系统维护提示：\(text + "[0]")"), "Legacy formatting mismatch: 系统维护提示：%@")
   precondition(String.localizedStringWithFormat(NSLocalizedString("能耗指标 %@", comment: ""), text + "[0]") == String(localized:"能耗指标 \(text + "[0]")"), "Legacy formatting mismatch: 能耗指标 %@")
   precondition(String.localizedStringWithFormat(NSLocalizedString("配置文件无法读取：%@", comment: ""), text + "[0]") == String(localized:"配置文件无法读取：\(text + "[0]")"), "Legacy formatting mismatch: 配置文件无法读取：%@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("第 %lld / 6 步", comment: ""), Int64(signed)) == String(localized:"第 \(signed) / 6 步"), "Legacy formatting mismatch: 第 %lld / 6 步")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("充电上限 %lld%% · 航行宽度 %lld%%", comment: ""), Int64(signed), Int64(signed + 2)) == String(localized:"充电上限 \(signed)% · 航行宽度 \(signed + 2)%"), "Legacy formatting mismatch: 充电上限 %lld%% · 航行宽度 %lld%%")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("热保护开启 · 暂停阈值 %@°C", comment: ""), text) == String(localized:"热保护开启 · 暂停阈值 \(text)°C"), "Legacy formatting mismatch: 热保护开启 · 暂停阈值 %@°C")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("新增自动校准：%@ · %@", comment: ""), text + "[0]", text + "[1]") == String(localized:"新增自动校准：\(text + "[0]") · \(text + "[1]")"), "Legacy formatting mismatch: 新增自动校准：%@ · %@")
+  precondition(String.localizedStringWithFormat(NSLocalizedString("已有自动校准：%@ · %@ · %@", comment: ""), text + "[0]", text + "[1]", text + "[2]") == String(localized:"已有自动校准：\(text + "[0]") · \(text + "[1]") · \(text + "[2]")"), "Legacy formatting mismatch: 已有自动校准：%@ · %@ · %@")
  }
- print("PASS legacy app formatting: 34 keys × 4 typed samples match native interpolation")
+ print("PASS legacy app formatting: 39 keys × 4 typed samples match native interpolation")
 }

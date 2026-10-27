@@ -14,6 +14,7 @@ struct ScheduleView: View {
  var body: some View {
   Card(editing ? NSLocalizedString("编辑任务", comment: "") : NSLocalizedString("新增任务", comment: "")) {
    Toggle(NSLocalizedString("唤醒后补执行错过的任务", comment: ""), isOn: Binding(get: { m.config.runMissedTasks ?? true }, set: { m.config.runMissedTasks = $0; m.save() }))
+   TextField(NSLocalizedString("任务名称（可选）", comment: ""),text:Binding(get:{draft.name ?? ""},set:{draft.name = $0}))
    DatePicker(NSLocalizedString("运行时间", comment: ""), selection: $draft.date)
    Picker(NSLocalizedString("操作", comment: ""), selection: $draft.action) { ForEach(ScheduleAction.allCases, id: \.self) { Text($0.displayName).tag($0) } }
    if draft.action == .pause { Text(NSLocalizedString("执行时按选定控制电量设置上限并暂停；电量低于 20%、读数不可用或当前状态不适用时跳过，并记录原因。已中断的校准仍需手动继续或取消。", comment: "")).font(.caption).presentationSecondary() }
@@ -31,14 +32,14 @@ struct ScheduleView: View {
   }
   Card(NSLocalizedString("已安排", comment: "")) {
    if m.config.schedules.isEmpty { Label(NSLocalizedString("没有任务。为下次出行安排一次充满。", comment: ""), systemImage: "calendar.badge.plus").presentationSecondary().padding(.vertical) }
-   ForEach($m.config.schedules) { $s in HStack { Toggle("", isOn: $s.enabled).labelsHidden().onChange(of: s.enabled) { _ in m.save() }; VStack(alignment: .leading) { Text(s.action.displayName).font(.headline); Text("\(DateDisplay.string(s.date)) · \(s.repeatRule.displayName)").font(.caption).presentationSecondary() }; Spacer(); Button(NSLocalizedString("编辑", comment: "")) { draft = s; editing = true }; DestructiveButton { if draft.id == s.id { draft = ChargeSchedule(); editing = false }; m.config.schedules.removeAll { $0.id == s.id }; m.save() } label: { Image(systemName: "trash") } } }
+   ForEach($m.config.schedules) { $s in HStack { Toggle("", isOn: $s.enabled).labelsHidden().onChange(of: s.enabled) { _ in m.save() }; VStack(alignment: .leading) { Text(s.displayTitle).font(.headline).lineLimit(1); if s.displayTitle != s.action.displayName { Text(s.action.displayName).font(.caption).presentationSecondary() }; Text("\(DateDisplay.string(s.date)) · \(s.repeatRule.displayName)").font(.caption).presentationSecondary() }; Spacer(); Button(NSLocalizedString("编辑", comment: "")) { draft = s; editing = true }; DestructiveButton { if draft.id == s.id { draft = ChargeSchedule(); editing = false }; m.config.schedules.removeAll { $0.id == s.id }; m.save() } label: { Image(systemName: "trash") } } }
    DestructiveButton(NSLocalizedString("清空全部任务", comment: "")) { m.config.schedules = []; draft = ChargeSchedule(); editing = false; m.save() }
    Text(NSLocalizedString("应用运行时每 10 秒检查。睡眠期间不执行；唤醒后每个逾期任务仅补执行一次。", comment: "")).font(.caption).presentationSecondary()
   }
   Card(NSLocalizedString("执行历史", comment: "")) {
    if (m.config.scheduleHistory ?? []).isEmpty { Text(NSLocalizedString("任务执行后会记录结果。", comment: "")).presentationSecondary() }
    ForEach(Array((m.config.scheduleHistory ?? []).suffix(30).reversed())) { run in
-    VStack(alignment: .leading, spacing: 4) { Text("\(run.action.displayName) · \(DateDisplay.string(run.executedAt))").font(.caption); Text(run.result).font(.caption).presentationSecondary() }
+    VStack(alignment: .leading, spacing: 4) { Text("\(run.displayTitle) · \(DateDisplay.string(run.executedAt))").font(.caption); Text(run.result).font(.caption).presentationSecondary() }
    }
   }
  }

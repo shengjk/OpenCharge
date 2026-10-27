@@ -9,6 +9,9 @@ import ChargeHardware
 
 enum PopoverConsumer: Hashable { case preview, statusItem }
 @MainActor final class ChargeModel: ObservableObject {
+ let setupOnLaunch: Bool
+ private var setupWindow: NSWindowController?
+ private var setupWindowDelegate: SetupWizardWindowDelegate?
  let updates: AppUpdates
  let helperService: HelperService
  let energyMonitor = EnergyMonitor()
@@ -55,6 +58,43 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   dashboardWindowController?.showWindow(nil)
   dashboardWindowController?.window?.makeKeyAndOrderFront(nil)
   NSApp.activate(ignoringOtherApps: true)
+ }
+ var setupDefaultCalibration: Bool {
+  settingsDefaults.string(forKey:SetupWizardPresentation.key) == SetupWizardPresentation.State.pending.rawValue || config.schedules.contains { $0.action == .calibrate && $0.enabled }
+ }
+ func setupLidClosed() -> Bool { LidStateObserver.currentState() ?? observedLidState ?? false }
+ func openSetupWizard() {
+  if setupWindow == nil {
+   let content = NSHostingController(rootView:SetupWizardView(model:self))
+   let window = NSWindow(contentViewController:content)
+   window.title = NSLocalizedString("OpenCharge · 设置向导",comment:""); window.identifier = NSUserInterfaceItemIdentifier("OpenChargeSetupWizard")
+   window.styleMask = [.titled,.closable,.resizable]; window.isReleasedWhenClosed = false
+   window.setContentSize(NSSize(width:720,height:650)); window.center()
+   setupWindowDelegate = SetupWizardWindowDelegate { [weak self] in
+    guard let self else { return }
+    if self.settingsDefaults.string(forKey:SetupWizardPresentation.key) == SetupWizardPresentation.State.pending.rawValue {
+     SetupWizardPresentation.finish(.skipped,defaults:self.settingsDefaults)
+    }
+    self.setupWindow = nil; self.setupWindowDelegate = nil
+   }
+   window.delegate = setupWindowDelegate; setupWindow = NSWindowController(window:window)
+  }
+  setupWindow?.showWindow(nil); setupWindow?.window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps:true)
+ }
+ func finishSetupWizard(applied: Bool) {
+  SetupWizardPresentation.finish(applied ? .completed : .skipped,defaults:settingsDefaults)
+  setupWindow?.close(); openDashboardWindow()
+ }
+ func applySetupSurvey(_ answers: SetupAnswers, lidClosed: Bool, now: Date = Date(),
+                       persist: (Configuration) throws -> Void = { try $0.save() },refresh: (() -> Void)? = nil) throws {
+  guard allowChargeSettingsEdit() else { throw HelperServiceError.ineligible(error ?? "") }
+  guard !settingsResetPending else { throw HelperServiceError.ineligible(NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停",comment:"")) }
+  guard config.policy.mode != .calibration, !calibrationPending else { throw HelperServiceError.ineligible(NSLocalizedString("请先结束校准，再应用设置向导",comment:"")) }
+  let plan = try SetupRecommendation(answers:answers,lidClosed:lidClosed,now:now)
+  let next = plan.applying(to:config,calibrationName:NSLocalizedString("自动校准",comment:""))
+  try persist(next); config = next
+  SetupWizardPresentation.finish(.completed,defaults:settingsDefaults)
+  (refresh ?? { self.refresh() })()
  }
  func selectSettingsPage() { dashboardPage = .settings }
  func openSettingsPage() { selectSettingsPage(); openDashboardWindow() }
@@ -119,6 +159,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil) {
   self.helperService = helperService ?? HelperService()
   settingsDefaults = dashboardDefaults
+  setupOnLaunch = SetupWizardPresentation.shouldShow(configurationExists:FileManager.default.fileExists(atPath:Configuration.url.path),defaults:dashboardDefaults)
   self.readBattery = readBattery
   self.screenLockRequest = screenLockRequest
   updates = appUpdates ?? AppUpdates(defaults: dashboardDefaults)
@@ -354,7 +395,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
        catch { result = NSLocalizedString("执行失败：", comment: "") + error.localizedDescription; self.error = result }
       } else { result = NSLocalizedString("只读监测：未改变系统模式", comment: "") }
      }
-     runs.append(ScheduleExecution(scheduleID: task.id, action: task.action, scheduledAt: task.date, result: result))
+     runs.append(ScheduleExecution(scheduleID: task.id, action: task.action, scheduledAt: task.date, result: result, scheduleName:task.name))
     }
     if config.schedules[i].date != task.date || config.schedules[i].enabled != task.enabled { changed = true }
    }

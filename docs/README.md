@@ -22,3 +22,5 @@
 - [Login startup](LOGIN-STARTUP.md)
 
 - [Restore default settings / 恢复默认设置](SETTINGS.md)
+
+- [Setup wizard / 设置向导](SETUP.md)
