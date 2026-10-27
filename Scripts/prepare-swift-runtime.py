@@ -14,6 +14,7 @@ CONCURRENCY = 'libswift_Concurrency.dylib'
 SYSTEM_SWIFT = '/usr/lib/swift'
 APP_FRAMEWORKS = '@executable_path/../Frameworks'
 SUPPORTED_ARCHES = {'arm64', 'x86_64'}
+SPARKLE = '@rpath/Sparkle.framework/Versions/B/Sparkle'
 
 class PackageError(Exception):
     pass
@@ -74,6 +75,7 @@ def validate_dependencies(slices, role):
     for item in slices.values():
         for name in item['dependencies']:
             allowed = is_system(name) or name in {'@rpath/libswiftCore.dylib', '@rpath/' + CONCURRENCY}
+            allowed = allowed or (role == 'application' and name == SPARKLE)
             require(allowed, 'Unsupported non-system dependency in ' + role + ': ' + name)
             if Path(name).name == CONCURRENCY and item['minimum'] < (12, 0, 0):
                 require(role == 'application', 'A standalone helper/tool cannot depend on the app backdeployment runtime')
@@ -105,9 +107,17 @@ def layout(app, tools):
     frameworks = app / 'Contents/Frameworks'
     if frameworks.exists() or frameworks.is_symlink():
         directory(frameworks)
-        require(all(p.name == CONCURRENCY for p in frameworks.iterdir()), 'Unexpected file in staged Frameworks directory')
+        require(all(p.name in {CONCURRENCY,'Sparkle.framework'} for p in frameworks.iterdir()), 'Unexpected file in staged Frameworks directory')
         if (frameworks / CONCURRENCY).exists() or (frameworks / CONCURRENCY).is_symlink():
             regular(frameworks / CONCURRENCY)
+    uses_sparkle = [SPARKLE in item['dependencies'] for item in records[0][2].values()]
+    require(all(uses_sparkle) or not any(uses_sparkle), 'Updater dependency differs between app architectures')
+    sparkle = frameworks / 'Sparkle.framework'
+    if any(uses_sparkle):
+        require(sparkle.is_dir() and not sparkle.is_symlink(), 'Missing updater framework')
+        run('python3', Path(__file__).with_name('sparkle-package.py'), 'verify', app)
+    else:
+        require(not sparkle.exists() and not sparkle.is_symlink(), 'Unnecessary/stale updater framework')
     needs_runtime = any(item['minimum'] < (12, 0, 0) and any(Path(d).name == CONCURRENCY for d in item['dependencies']) for item in records[0][2].values())
     return app, records, frameworks, needs_runtime
 

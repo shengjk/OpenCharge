@@ -483,3 +483,10 @@ After manual unlock, the four-getter workflow was repeated while only the verifi
 The shell rollback is not a persistent transaction. Actual administrator execution, interrupted-process/power-loss recovery, and concurrent root changes remain unverified. App-internal native registration and these development scripts are separate installation routes.
 
 The same native 0.3.45 session traversed all six English setup-wizard pages through the final review, then used Skip Setup. The persisted configuration bytes were identical before and after this preview/cancel flow. The final review layout was visually inspected; preset application, service authorization and Chinese wizard layout were not exercised.
+
+
+## Signed updater packaging (work in progress)
+
+`Scripts/test-signed-updates.sh` runs 11 metadata fixtures and 29 real-framework packaging, localization and rejection checks. The pinned SDK is resolved anonymously, with SwiftPM Keychain and netrc lookup disabled by the build/test scripts. Temporary apps are never registered or opened. Probes load the transformed framework only to read English and Simplified Chinese strings on arm64 and x86_64. No updater, network check, installer, root service or hardware control is started.
+
+The framework fixtures check ZIP/ditto round trips, exact versioned aliases, byte and file-mode preservation, architecture/deployment consistency and nested Hardened Runtime signatures. They reject escaping or extra aliases, extra languages, changed translation tables, changed SDK identity, nonportable RPATHs, unsigned code, lost runtime flags and mismatched component architectures. The fixtures also exercise the real updater-linked app dependency and reject missing/stale frameworks, asymmetric dependencies between app architectures, and SDK linkage in the embedded helper, standalone helper or CLI. These checks establish package structure on the current host; they do not establish signed installation, relaunch, older-system execution or release-feed operation.

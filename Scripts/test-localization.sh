@@ -11,8 +11,8 @@ BUILD_ARGS=(-c release --disable-sandbox)
 if [[ "$TEST_ARCH" != "$(uname -m)" ]]; then
  BUILD_ARGS+=(--scratch-path "$PROJECT_DIR/.build/universal-$TEST_ARCH" --triple "$TEST_ARCH-apple-macosx13.0")
 fi
-swift build "${BUILD_ARGS[@]}"
-BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
+swift build --disable-keychain --disable-netrc "${BUILD_ARGS[@]}"
+BIN_DIR="$(swift build --disable-keychain --disable-netrc "${BUILD_ARGS[@]}" --show-bin-path)"
 mkdir -p .build/localization-validation
 FIXTURE_DIR="$(mktemp -d "$PROJECT_DIR/.build/localization-validation/fixture.XXXXXX")"
 mkdir -p "$FIXTURE_DIR/core" "$FIXTURE_DIR/hardware" "$FIXTURE_DIR/app"

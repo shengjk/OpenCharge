@@ -6,7 +6,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
-swift build -c release --disable-sandbox
+swift build --disable-keychain --disable-netrc -c release --disable-sandbox
 mkdir -p .build/update-live
 swiftc -O -target "$(uname -m)-apple-macosx13.0" -parse-as-library -DOPENCHARGE_DASHBOARD_SMOKE \
  -I .build/release/Modules -I .build/release/ApplePowerConstants.build \

@@ -7,8 +7,8 @@ TEST_ARCH="${OPENCHARGE_TEST_ARCH:-$(uname -m)}"
 BUILD_ARGS=(-c release --disable-sandbox)
 case "$TEST_ARCH" in arm64|x86_64) ;; *) exit 1 ;; esac
 if [[ "$TEST_ARCH" != "$(uname -m)" ]]; then BUILD_ARGS+=(--scratch-path "$PROJECT_DIR/.build/universal-$TEST_ARCH" --triple "$TEST_ARCH-apple-macosx13.0");fi
-swift build "${BUILD_ARGS[@]}"
-BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
+swift build --disable-keychain --disable-netrc "${BUILD_ARGS[@]}"
+BIN_DIR="$(swift build --disable-keychain --disable-netrc "${BUILD_ARGS[@]}" --show-bin-path)"
 mkdir -p .build/native-helper-removal
 swiftc -target "$TEST_ARCH-apple-macosx13.0" -parse-as-library -I "$BIN_DIR/Modules" -I "$BIN_DIR/ApplePowerConstants.build" \
  Tests/NativeHelperRemoval/main.swift "$BIN_DIR"/ChargeCore.build/*.o "$BIN_DIR"/ChargeHardware.build/*.o "$BIN_DIR"/ApplePowerConstants.build/*.o \

@@ -4,7 +4,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
-swift build -c release --disable-sandbox
+swift build --disable-keychain --disable-netrc -c release --disable-sandbox
 PACKAGE_DIR="$(mktemp -d "$PROJECT_DIR/.build/package.XXXXXX")"
 APP="$PACKAGE_DIR/OpenCharge.app"
 TOOLS="$PACKAGE_DIR/bin"
@@ -40,6 +40,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>opencharge</string></array><key>CFBundleURLName</key><string>org.opencharge.app</string></dict></array>
 </dict></plist>
 PLIST
+python3 "$PROJECT_DIR/Scripts/signed-update-configuration.py" "$APP"
 python3 "$PROJECT_DIR/Scripts/localization-resources.py" prepare "$APP"
 cp "$PROJECT_DIR/docs/HELPER-SETUP.md" "$APP/Contents/Resources/HELPER-SETUP.md"
 "$PROJECT_DIR/Scripts/extract-appintents.sh" "$APP" "$PROJECT_DIR/.build/release"
@@ -48,6 +49,8 @@ cp "$PROJECT_DIR/docs/HELPER-SETUP.md" "$APP/Contents/Resources/HELPER-SETUP.md"
 # Sign the normal helper first so the legacy ownership requirements use its real team.
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP/Contents/MacOS/charged"
 python3 "$PROJECT_DIR/Scripts/legacy-helper-package.py" prepare "$APP"
+SPARKLE_SOURCE="$(python3 "$PROJECT_DIR/Scripts/sparkle-package.py" source "$PROJECT_DIR/.build/artifacts")"
+python3 "$PROJECT_DIR/Scripts/sparkle-package.py" prepare "$APP" --source "$SPARKLE_SOURCE" --identity "${OPENCHARGE_SIGNING_IDENTITY:--}"
 python3 "$PROJECT_DIR/Scripts/prepare-swift-runtime.py" prepare "$APP" "$TOOLS" --identity "${OPENCHARGE_SIGNING_IDENTITY:--}"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" "$APP/Contents/MacOS/charged"
 /usr/bin/codesign --force --sign "${OPENCHARGE_SIGNING_IDENTITY:--}" --identifier org.opencharge.charged "$APP/Contents/Library/LaunchServices/org.opencharge.charged"
