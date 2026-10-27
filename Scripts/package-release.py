@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse, hashlib, os, plistlib, re, stat, subprocess, tempfile, zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS = ROOT / 'Scripts'
 ASSETS = [('dist', 'arm64'), ('dist-universal', 'universal')]
 
 def command(*args):
@@ -62,7 +63,7 @@ def inspect(folder, architecture):
         raise ValueError('Invalid package version')
     if info.get('LSMinimumSystemVersion') != '13.0' or info.get('CFBundleLocalizations') != ['en', 'zh-Hans']:
         raise ValueError('Unsupported deployment or language declaration')
-    subprocess.run(['python3', str(ROOT / 'Scripts/localization-resources.py'), 'verify', str(app)], check=True)
+    subprocess.run(['python3', str(SCRIPTS / 'localization-resources.py'), 'verify', str(app)], check=True)
     expected = {'arm64'} if architecture == 'arm64' else {'arm64', 'x86_64'}
     binaries = [app / 'Contents/MacOS/OpenCharge', app / 'Contents/MacOS/charged',
                 app / 'Contents/Library/LaunchServices/org.opencharge.charged',
@@ -85,9 +86,20 @@ def inspect(folder, architecture):
     if code_hashes(app / 'Contents/MacOS/charged') != code_hashes(folder / 'bin/charged'):
         raise ValueError('Embedded and standalone helper code differs')
     subprocess.run(['/usr/bin/codesign', '--verify', '--all-architectures', '--deep', '--strict', str(app)], check=True)
-    subprocess.run(['python3', str(ROOT / 'Scripts/prepare-swift-runtime.py'), 'verify', str(app), str(folder / 'bin')], check=True)
+    subprocess.run(['python3', str(SCRIPTS / 'prepare-swift-runtime.py'), 'verify', str(app), str(folder / 'bin')], check=True)
     files(folder)
     return version, build
+
+def release_payload(folder, architecture, version):
+    prefix = Path('OpenCharge-' + version + '-' + architecture)
+    payload = [(path, prefix / 'dist' / path.relative_to(ROOT / folder)) for path in files(ROOT / folder)]
+    for name in ['install-helper.sh', 'uninstall-helper.sh']:
+        payload.append((ROOT / 'Scripts' / name, prefix / 'Scripts' / name))
+    for path in files(ROOT / 'docs'):
+        payload.append((path, prefix / 'docs' / path.relative_to(ROOT / 'docs')))
+    payload.append((ROOT / 'docs/DOWNLOADS.md', prefix / 'README.md'))
+    payload.extend((ROOT / name, prefix / name) for name in ['LICENSE', 'SECURITY.md', 'CONTRIBUTING.md', 'CHANGELOG.md'])
+    return payload
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -103,14 +115,7 @@ def main():
         raise ValueError('Release output already exists; refusing to overwrite frozen assets')
     payloads = []
     for folder, architecture in ASSETS:
-        prefix = Path('OpenCharge-' + version + '-' + architecture)
-        payload = [(path, prefix / 'dist' / path.relative_to(ROOT / folder)) for path in files(ROOT / folder)]
-        for name in ['install-helper.sh', 'uninstall-helper.sh']:
-            payload.append((ROOT / 'Scripts' / name, prefix / 'Scripts' / name))
-        for path in files(ROOT / 'docs'):
-            payload.append((path, prefix / 'docs' / path.relative_to(ROOT / 'docs')))
-        payload.append((ROOT / 'docs/DOWNLOADS.md', prefix / 'README.md'))
-        payload.extend((ROOT / name, prefix / name) for name in ['LICENSE', 'SECURITY.md', 'CONTRIBUTING.md', 'CHANGELOG.md'])
+        payload = release_payload(folder, architecture, version)
         for original, relative in payload:
             if not original.is_symlink() and not original.is_file():
                 raise ValueError('Release inputs must be files or validated updater aliases')
