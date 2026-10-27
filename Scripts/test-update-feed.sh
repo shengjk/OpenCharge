@@ -6,3 +6,4 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 export PYTHONDONTWRITEBYTECODE=1
 python3 Tests/SignedUpdates/feed.py "$@"
+python3 Tests/SignedUpdates/history.py

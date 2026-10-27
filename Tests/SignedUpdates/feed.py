@@ -63,8 +63,12 @@ with tempfile.TemporaryDirectory(prefix='signed-feed-fixture-',dir=ROOT/'.build'
  assert item.findtext('description').startswith('<pre>') and '<script>' not in item.findtext('description')
  assert item.find('enclosure').get('url').endswith('/OpenCharge-macOS-universal.zip');checks+=1
  signed=root/'appcast.xml';feed_signature=swift(prepared/'appcast-unsigned.xml')
- run('python3',tool,'finalize','--prepared',prepared,'--signature',feed_signature,'--output',signed);checks+=1
+ run('python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',signed);checks+=1
  data=signed.read_bytes();assert data.startswith(content) and b'<!-- sparkle-signatures:\n' in data;ET.fromstring(data)
+ def rejected(command):
+  global checks
+  result=subprocess.run([str(x) for x in command],capture_output=True,text=True)
+  assert result.returncode!=0,'unexpectedly accepted invalid input';checks+=1
  # Verify both signatures through the exact official executable from the
  # checksum-pinned distribution. Explicit RFC key path avoids Keychain lookup.
  matches=list((args.build_root/'.build/artifacts').rglob('bin/sign_update'));assert len(matches)==1
@@ -74,23 +78,60 @@ with tempfile.TemporaryDirectory(prefix='signed-feed-fixture-',dir=ROOT/'.build'
  fixture_key=root/'rfc-fixture-key';swift('fixture-key',fixture_key);fixture_key.chmod(0o600)
  run(official,'--verify','--ed-key-file',fixture_key,archive,signature);checks+=1
  run(official,'--verify','--ed-key-file',fixture_key,signed);checks+=1
- def rejected(command):
-  global checks
-  result=subprocess.run([str(x) for x in command],capture_output=True,text=True)
-  assert result.returncode!=0,'unexpectedly accepted invalid input';checks+=1
+ # Historical item metadata is synthetic here; actual current archive bytes
+ # and matching built app are still audited by prepare. These tests do not
+ # claim a historical archive installation or SDK item selection.
+ historical=dict(request);historical['previous_feed']=None
+ components=list(map(int,info['CFBundleShortVersionString'].split('.')))
+ assert components[-1]>0 and int(info['CFBundleVersion'])>1
+ components[-1]-=1;historical['version']='.'.join(map(str,components));historical['build']=str(int(info['CFBundleVersion'])-1);historical['channel']='stable'
+ history_content=feed.render(historical)
+ history_file=root/'previous.xml';history_input=root/'previous-unsigned.xml';history_input.write_bytes(history_content)
+ history_file.write_bytes(history_content+('<!-- sparkle-signatures:\nedSignature: '+swift(history_input)+'\nlength: '+str(len(history_content))+'\n-->\n').encode())
+ merged=root/'merged'
+ run('python3',tool,'prepare',*common,'--previous-feed',history_file,'--output',merged)
+ merged_items=ET.fromstring((merged/'appcast-unsigned.xml').read_bytes()).findall('./channel/item')
+ assert len(merged_items)==2 and merged_items[1].find('{'+feed.NS+'}channel') is None;checks+=1
+ merged_file=root/'merged.xml'
+ run('python3',tool,'finalize','--public-key',key,'--prepared',merged,'--signature',swift(merged/'appcast-unsigned.xml'),'--output',merged_file)
+ run(official,'--verify','--ed-key-file',fixture_key,merged_file);checks+=1
+ # Promotion must preserve archive bytes and remove duplicate preview entries.
+ promoted=root/'promoted';stable_common=list(common);stable_common[stable_common.index('--channel')+1]='stable'
+ run('python3',tool,'prepare',*stable_common,'--previous-feed',signed,'--output',promoted)
+ promoted_items=ET.fromstring((promoted/'appcast-unsigned.xml').read_bytes()).findall('./channel/item')
+ assert len(promoted_items)==1 and promoted_items[0].find('{'+feed.NS+'}channel') is None;checks+=1
+ promoted_file=root/'promoted.xml'
+ run('python3',tool,'finalize','--public-key',key,'--prepared',promoted,'--signature',swift(promoted/'appcast-unsigned.xml'),'--output',promoted_file)
+ run(official,'--verify','--ed-key-file',fixture_key,promoted_file);checks+=1
+ rejected(['python3',tool,'prepare',*common,'--previous-feed',history_input,'--output',root/'unsigned-history'])
+ bad_history=root/'bad-history.xml';bad_history.write_bytes(history_file.read_bytes().replace(b'OpenCharge Updates',b'OpenCharge Changed'))
+ rejected(['python3',tool,'prepare',*common,'--previous-feed',bad_history,'--output',root/'corrupt-history'])
+ # Existing v1 signing requests remain finalizable without adding history.
+ legacy=root/'legacy';shutil.copytree(prepared,legacy)
+ legacy_request=dict(request);legacy_request['schema']=1;legacy_request.pop('previous_feed')
+ (legacy/'signing-request.json').write_text(json.dumps(legacy_request))
+ run('python3',tool,'finalize','--public-key',key,'--prepared',legacy,'--signature',feed_signature,'--output',root/'legacy.xml');checks+=1
+ replaced_key=dict(legacy_request);replaced_key['public_key']=base64.b64encode(bytes(32)).decode()
+ (legacy/'signing-request.json').write_text(json.dumps(replaced_key))
+ rejected(['python3',tool,'finalize','--public-key',key,'--prepared',legacy,'--signature',feed_signature,'--output',root/'replaced-key.xml'])
+ # A changed history inside the public request cannot be smuggled into a feed
+ # signature that authenticated a different merged template.
+ merged_request=json.loads((merged/'signing-request.json').read_text());merged_request['previous_feed']=base64.b64encode(bad_history.read_bytes()).decode()
+ (merged/'signing-request.json').write_text(json.dumps(merged_request))
+ rejected(['python3',tool,'finalize','--public-key',key,'--prepared',merged,'--signature',feed_signature,'--output',root/'changed-history.xml'])
  for name,value in [('signature',base64.b64encode(bytes(64)).decode()),('public-key',base64.b64encode(bytes(32)).decode()),('build','999999'),('version','1.02.3'),('channel','nightly'),('published','2026-02-30T00:00:00Z')]:
   bad=list(common);bad[bad.index('--'+name)+1]=value
   rejected(['python3',tool,'prepare',*bad,'--output',root/('bad-'+name)])
   assert not (root/('bad-'+name)).exists()
  rejected(['python3',tool,'prepare',*common,'--output',prepared])
- before=signed.read_bytes();rejected(['python3',tool,'finalize','--prepared',prepared,'--signature',feed_signature,'--output',signed]);assert signed.read_bytes()==before
- rejected(['python3',tool,'finalize','--prepared',prepared,'--signature',base64.b64encode(bytes(64)).decode(),'--output',root/'bad-feed.xml'])
+ before=signed.read_bytes();rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',signed]);assert signed.read_bytes()==before
+ rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',base64.b64encode(bytes(64)).decode(),'--output',root/'bad-feed.xml'])
  (prepared/'appcast-unsigned.xml').write_bytes(content+b' ')
- rejected(['python3',tool,'finalize','--prepared',prepared,'--signature',feed_signature,'--output',root/'changed-feed.xml'])
+ rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',root/'changed-feed.xml'])
  (prepared/'appcast-unsigned.xml').write_bytes(content)
  original_request=(prepared/'signing-request.json').read_bytes()
- (prepared/'signing-request.json').write_bytes(original_request.replace(b'"schema": 1',b'"schema": 1, "schema": 1'))
- rejected(['python3',tool,'finalize','--prepared',prepared,'--signature',feed_signature,'--output',root/'duplicate-field.xml'])
+ (prepared/'signing-request.json').write_bytes(original_request.replace(b'"schema": 2',b'"schema": 2, "schema": 2'))
+ rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',root/'duplicate-field.xml'])
  (prepared/'signing-request.json').write_bytes(original_request)
  linked=root/'archive-link';linked.symlink_to(archive)
  bad=list(common);bad[bad.index('--archive')+1]=str(linked)
@@ -99,6 +140,11 @@ with tempfile.TemporaryDirectory(prefix='signed-feed-fixture-',dir=ROOT/'.build'
  with zipfile.ZipFile(root/'different.zip','w') as z:z.writestr('extra','test')
  bad=list(common);bad[bad.index('--archive')+1]=str(root/'different.zip');bad[bad.index('--signature')+1]=swift(root/'different.zip')
  rejected(['python3',tool,'prepare',*bad,'--output',root/'different'])
+ # A checkout containing a live appcast cannot accidentally bootstrap a
+ # single-item replacement merely because --previous-feed was omitted.
+ guarded=root/'guarded-checkout';(guarded/'Scripts').mkdir(parents=True);(guarded/'updates').mkdir()
+ shutil.copyfile(tool,guarded/'Scripts/prepare-update-feed.py');shutil.copyfile(history_file,guarded/'updates/appcast.xml')
+ rejected(['python3',guarded/'Scripts/prepare-update-feed.py','prepare',*common,'--output',root/'missing-history-option'])
  # Stable feed omits the preview channel; escaped notes cannot inject an item.
  stable=dict(request);stable['channel']='stable';assert ET.fromstring(feed.render(stable)).find('./channel/item/{'+feed.NS+'}channel') is None;checks+=1
  print(f'Signed feed: {checks} package/cryptographic/template/rejection checks passed; RFC public test vector only; no updater, service or publication')
