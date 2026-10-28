@@ -9,6 +9,7 @@ import Sparkle
  var install: (() -> Void)?
  var failed = false
  var quitCount = 0
+ var rejectResume = false
  let info = Bundle.main.infoDictionary!
  var scheduledQuit: Bool { (info["FixtureQuitMode"] as? String)?.hasSuffix("on-quit") == true }
  var version: String { info["CFBundleShortVersionString"] as! String }
@@ -30,6 +31,11 @@ import Sparkle
   catch { failed=true;record("start-error",["description":error.localizedDescription]);NSApp.terminate(nil) }
  }
  func feedURLString(for updater: SPUUpdater) -> String? { info["SUFeedURL"] as? String }
+ func updater(_ updater: SPUUpdater, mayPerform check: SPUUpdateCheck) throws {
+  record("check-admission",["check":check.rawValue,"busy":rejectResume])
+  if rejectResume { throw NSError(domain:"org.opencharge.fixture.maintenance",code:1) }
+ }
+ func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) { record("valid-update",["build":item.versionString]) }
  func updater(_ updater: SPUUpdater, shouldProceedWithUpdate item: SUAppcastItem, updateCheck: SPUUpdateCheck) throws {
   let feed=URL(string:info["SUFeedURL"] as! String)!
   guard let url=item.fileURL,url.scheme=="http",url.host=="127.0.0.1",url.port==feed.port,url.path=="/archive.zip",item.displayVersionString=="1.0.1",item.versionString=="2",item.installationType=="application",!item.isDeltaUpdate else { throw CocoaError(.fileReadCorruptFile) }
@@ -45,7 +51,12 @@ import Sparkle
   if scheduledQuit {
    // Match the product's NO return: keep the SDK scheduler, never retain or
    // invoke its immediate-install handler. Only this fixture app is quit.
-   DispatchQueue.main.asyncAfter(deadline:.now()+0.8) { self.record("request-normal-quit");NSApp.terminate(nil) }
+   DispatchQueue.main.asyncAfter(deadline:.now()+0.8) {
+    if (self.info["FixtureQuitMode"] as? String)?.contains("resume") == true {
+     self.rejectResume = (self.info["FixtureQuitMode"] as? String)?.hasPrefix("busy-") == true
+     self.record("request-resume-info");updater.checkForUpdateInformation()
+    } else { self.record("request-normal-quit");NSApp.terminate(nil) }
+   }
    return false
   }
   install=immediateInstallationBlock
@@ -54,10 +65,19 @@ import Sparkle
  }
  func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) { record("install-begin") }
  func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+  if rejectResume { record("maintenance-rejected");return }
   failed=true;let e=error as NSError;record("update-error",["domain":e.domain,"code":e.code,"description":e.localizedDescription]);NSApp.terminate(nil)
  }
  func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor check: SPUUpdateCheck, error: Error?) {
   record("cycle-end",["error":error?.localizedDescription as Any? ?? NSNull()])
+  if check == .updateInformation {
+   if rejectResume {
+    rejectResume=false
+    DispatchQueue.main.asyncAfter(deadline:.now()+0.3) { self.record("retry-resume-info");updater.checkForUpdateInformation() }
+   } else if error == nil {
+    DispatchQueue.main.asyncAfter(deadline:.now()+0.3) { self.record("request-normal-quit");NSApp.terminate(nil) }
+   }
+  }
  }
  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
   if version == "1.0.1" || failed { return .terminateNow }

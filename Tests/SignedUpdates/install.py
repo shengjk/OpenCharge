@@ -29,7 +29,7 @@ parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--build-root',type=Path,default=ROOT)
 parser.add_argument('--arch',choices=['native','arm64','x86_64','all'],default='native')
 parser.add_argument('--evidence-output',type=Path)
-MODES=['plain','cancel-once','on-quit','cancel-once-on-quit','bad-signature','tampered-archive']
+MODES=['plain','cancel-once','on-quit','cancel-once-on-quit','resume-on-quit','busy-resume-on-quit','bad-signature','tampered-archive']
 parser.add_argument('--case',action='append',choices=MODES,help='Run selected cases; default runs all cases')
 args=parser.parse_args();args.build_root=args.build_root.resolve()
 arches=[platform.machine()] if args.arch=='native' else ['arm64','x86_64'] if args.arch=='all' else [args.arch]
@@ -183,6 +183,12 @@ with tempfile.TemporaryDirectory(prefix='opencharge-sdk-install-',dir='/private/
         assert 'request-install' not in names and 'retry-install' not in names
         assert names.index('ready')<names.index('cycle-end')<names.index('request-normal-quit')
         assert names.index('terminated')<names.index('harness-open-replacement')<names.index('relaunched-new-version')
+       if 'resume' in mode:
+        assert names.count('candidate')==1 and names.count('valid-update')==2,'Resume policy callback behavior changed'
+        assert names.count('check-admission')==(3 if mode.startswith('busy-') else 2)
+        assert names.index('ready')<names.index('request-resume-info')<names.index('request-normal-quit')
+        if mode.startswith('busy-'):
+         assert names.index('request-resume-info')<names.index('maintenance-rejected')<names.index('retry-resume-info')<names.index('request-normal-quit')
        run('/usr/bin/codesign','--verify','--deep','--all-architectures','--strict',app)
        assert set(run('/usr/bin/lipo','-archs',app/'Contents/MacOS/SDKInstallFixture').split())=={cpu}
       print('PASS real SDK archive fixture '+cpu+' '+mode,flush=True)

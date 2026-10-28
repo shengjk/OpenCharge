@@ -26,6 +26,7 @@ struct SignedUpdateSnapshot: Equatable {
  private var started = false
  private var sdkSnapshot = SignedUpdateSnapshot()
  private var previews = true
+ private var rejectedPendingCheck = false
  private let maintenanceBusy: () -> Bool
  private let architecture: UpdateArchitecture
  private(set) var snapshot = SignedUpdateSnapshot()
@@ -69,7 +70,16 @@ struct SignedUpdateSnapshot: Equatable {
  }
  func feedURLString(for updater: SPUUpdater) -> String? { SignedUpdateConfiguration.feedURL.absoluteString }
  func allowedChannels(for updater: SPUUpdater) -> Set<String> { previews ? ["preview"] : [] }
- func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws { try requireIdleMaintenance() }
+ func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
+  rejectedPendingCheck = false
+  do { try requireIdleMaintenance() }
+  catch {
+   // Refusing a new check does not cancel the installer already waiting for
+   // normal quit. Keep the settings-reset barrier across its error callbacks.
+   rejectedPendingCheck = snapshot.installationPending
+   throw error
+  }
+ }
  func updater(_ updater: SPUUpdater, shouldProceedWithUpdate item: SUAppcastItem, updateCheck: SPUUpdateCheck) throws {
   try requireIdleMaintenance()
   try SignedUpdateItemPolicy.validate(version:item.displayVersionString,currentVersion:Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",build:item.versionString,url:item.fileURL,size:item.contentLength,
@@ -87,10 +97,15 @@ struct SignedUpdateSnapshot: Equatable {
   refresh()
  }
  func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
-  snapshot.installationPending = false; snapshot.error = error.localizedDescription; refresh()
+  if !rejectedPendingCheck { snapshot.installationPending = false }
+  snapshot.error = error.localizedDescription; refresh()
  }
  func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
-  if let error { snapshot.installationPending = false; snapshot.error = error.localizedDescription }
+  if let error {
+   if !rejectedPendingCheck { snapshot.installationPending = false }
+   snapshot.error = error.localizedDescription
+  }
+  rejectedPendingCheck = false
   refresh()
  }
 }

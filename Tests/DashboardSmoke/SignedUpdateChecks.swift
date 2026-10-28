@@ -80,6 +80,18 @@ import Sparkle
  precondition(driver.snapshot.installationPending && !forced)
  driver.updater(updater,didFinishUpdateCycleFor:.updatesInBackground,error:nil)
  precondition(driver.snapshot.installationPending)
+ // The prepared installer survives a rejected new check: neither SDK abort
+ // nor cycle completion may make settings reset available prematurely.
+ maintenance=true
+ do { try driver.updater(updater,mayPerform:.updateInformation); preconditionFailure("pending maintenance admitted") } catch {
+  driver.updater(updater,didAbortWithError:error)
+  precondition(driver.snapshot.installationPending)
+  driver.updater(updater,didFinishUpdateCycleFor:.updateInformation,error:error)
+ }
+ driver.receiveSessionState(SignedUpdateSnapshot(canCheck:true))
+ precondition(driver.snapshot.installationPending && driver.snapshot.error != nil)
+ maintenance=false
+ try driver.updater(updater,mayPerform:.updateInformation)
  driver.updater(updater,didAbortWithError:CocoaError(.fileReadUnknown))
  precondition(!driver.snapshot.installationPending && driver.snapshot.error != nil)
  driver.receiveSessionState(SignedUpdateSnapshot(canCheck:true,sessionInProgress:true))

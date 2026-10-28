@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep the prepared-install settings-reset barrier when service maintenance rejects a subsequent SDK check. Add real prepared-installer resume and maintenance-rejection/retry fixtures.
+
 - Share the signed-update SDK lifecycle with isolated runtime fixtures, and synchronize SDK preferences and check state with the settings model. Clear stale errors when a new SDK-owned check begins while retaining errors within the current cycle and preserving prepared-install barriers.
 
 ## 0.3.46
