@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share the signed-update SDK lifecycle with isolated runtime fixtures, and synchronize SDK preferences and check state with the settings model. Clear stale errors when a new SDK-owned check begins while retaining errors within the current cycle and preserving prepared-install barriers.
+
 ## 0.3.46
 
 - Stage and verify development helper updates before stopping the existing service. Installation now reuses the verified service-stop and recovery-record checks before replacing files.

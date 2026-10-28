@@ -93,7 +93,9 @@ with tempfile.TemporaryDirectory(prefix='real-sdk-probe-',dir=ROOT/'.build') as 
     binary_root=args.build_root/'.build/release' if cpu==platform.machine() else args.build_root/('.build/universal-'+cpu)/(cpu+'-apple-macosx/release')
     assert (binary_root/'Modules/ChargeCore.swiftmodule').exists(),'Build the native/universal products first'
     app=root/cpu/'Template.app';mac=app/'Contents/MacOS';mac.mkdir(parents=True)
-    run('/usr/bin/xcrun','swiftc','-module-cache-path',ROOT/'.build/module-cache','-parse-as-library','-target',cpu+'-apple-macosx13.0','-I',binary_root/'Modules','-F',source.parent,'-framework','Sparkle','-Xlinker','-rpath','-Xlinker','@executable_path/../Frameworks',ROOT/'Sources/OpenCharge/SignedUpdateDriver.swift',ROOT/'Tests/SignedUpdates/SDKProbe.swift',*sorted((binary_root/'ChargeCore.build').glob('*.o')),'-o',mac/'OpenCharge')
+    objects=[]
+    for module in ['ChargeCore','ChargeHardware','ApplePowerConstants']:objects+=sorted((binary_root/(module+'.build')).glob('*.o'))
+    run('/usr/bin/xcrun','swiftc','-module-cache-path',ROOT/'.build/module-cache','-parse-as-library','-DOPENCHARGE_DASHBOARD_SMOKE','-target',cpu+'-apple-macosx13.0','-I',binary_root/'Modules','-I',binary_root/'ApplePowerConstants.build','-F',source.parent,'-framework','Sparkle','-Xlinker','-rpath','-Xlinker','@executable_path/../Frameworks',*sorted((ROOT/'Sources/OpenCharge').glob('*.swift')),ROOT/'Tests/SignedUpdates/SDKProbe.swift',*objects,'-o',mac/'OpenCharge')
     base={'CFBundleIdentifier':'org.opencharge.app','CFBundleExecutable':'OpenCharge','CFBundleName':'OpenCharge SDK Fixture','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.0.0','CFBundleVersion':'1','LSMinimumSystemVersion':'13.0','CFBundleDevelopmentRegion':'en','CFBundleLocalizations':['en','zh-Hans'],'LSUIElement':True,'SUPublicEDKey':key}
     base.update(config.DEFAULTS);(app/'Contents/Info.plist').write_bytes(plistlib.dumps(base))
     # The package helper audits/trims the real SDK before the fixture identity
@@ -125,15 +127,16 @@ with tempfile.TemporaryDirectory(prefix='real-sdk-probe-',dir=ROOT/'.build') as 
      if name=='busy':
       assert value['denied'] and value['admitted']==0 and not seen and value['found'] is None
      else:
-      assert value['finished'] and not value['denied'] and len(seen)==1
+      assert value['finished'] and not value['denied']
+      assert value['observedBusy'] and value['observedIdle'] and value['sessionSnapshots']>5
       # In pinned SDK 2.9.6, a valid full-content signature is accepted
       # despite a wrong unsigned trailer length. This case records that
       # behavior; strict envelope-length rejection belongs to our feed tool.
       if name in ['stable','preview','wrong-length'] or (name=='arm-archive' and cpu=='arm64'):
        expected='1.0.2' if name=='preview' else '1.0.1'
-       assert value['found']==expected and value['errorCode'] is None and value['admitted']==1 and value['policyChecks']==1
+       assert value['found']==expected and value['errorCode'] is None and value['admitted']==2 and value['policyChecks']==2 and value['pendingStateComposition'] and len(seen)==2
       else:
-       assert value['found'] is None and value['errorCode'] is not None and value['admitted']==0
+       assert value['found'] is None and value['errorCode'] is not None and value['admitted']==0 and len(seen)==1
        if name in ['unsigned','tampered','wrong-key']:assert value['errorDomain']=='SUSparkleErrorDomain' and value['errorCode']==1000 and value['policyChecks']==0
        if name in ['empty-stable','newer-system-required']:assert value['errorDomain']=='SUSparkleErrorDomain' and value['errorCode']==1001 and value['policyChecks']==0
        if name in ['foreign-archive','package','downgrade'] or (name=='arm-archive' and cpu=='x86_64'):assert value['policyChecks']==1

@@ -22,9 +22,9 @@ struct SignedUpdateSnapshot: Equatable {
 /// The SDK owns authenticated download, extraction and replacement. Application
 /// termination still goes through OpenChargeDelegate and QuitFlow.
 @MainActor final class SignedUpdateDriver: NSObject, SPUUpdaterDelegate, SignedUpdateClient {
- private var controller: SPUStandardUpdaterController?
- private var observations: [NSKeyValueObservation] = []
+ private var session: SparkleUpdateSession?
  private var started = false
+ private var sdkSnapshot = SignedUpdateSnapshot()
  private var previews = true
  private let maintenanceBusy: () -> Bool
  private let architecture: UpdateArchitecture
@@ -37,46 +37,31 @@ struct SignedUpdateSnapshot: Equatable {
   guard !started else { return }
   guard case .ready = SignedUpdateConfiguration.evaluate(Bundle.main.infoDictionary ?? [:]) else { throw ReleaseUpdateError.invalidFeed }
   previews = includePreviews; snapshot.error = nil
-  let controller = SPUStandardUpdaterController(startingUpdater:false,updaterDelegate:self,userDriverDelegate:nil)
-  self.controller = controller
-  let updater = controller.updater
-  updater.automaticallyChecksForUpdates = automaticChecks
-  updater.automaticallyDownloadsUpdates = automaticDownloads
-  updater.updateCheckInterval = 12 * 3600
-  updater.sendsSystemProfile = false
-  observations = [updater.observe(\.canCheckForUpdates,options:[.initial,.new]) { [weak self] _,_ in
-   MainActor.assumeIsolated { self?.refresh() }
-  }, updater.observe(\.sessionInProgress,options:[.initial,.new]) { [weak self] _,_ in
-   MainActor.assumeIsolated { self?.refresh() }
-  }, updater.observe(\.automaticallyChecksForUpdates,options:[.new]) { [weak self] _,_ in
-   MainActor.assumeIsolated { self?.refresh() }
-  }, updater.observe(\.automaticallyDownloadsUpdates,options:[.new]) { [weak self] _,_ in
-   MainActor.assumeIsolated { self?.refresh() }
-  }, updater.observe(\.lastUpdateCheckDate,options:[.initial,.new]) { [weak self] _,_ in
-   MainActor.assumeIsolated { self?.refresh() }
-  }]
-  do { try updater.start(); started = true; refresh() }
-  catch { observations.removeAll(); self.controller = nil; snapshot.error = error.localizedDescription; refresh(); throw error }
+  let session = SparkleUpdateSession(delegate:self); self.session = session
+  session.changed = { [weak self] value in self?.receiveSessionState(value) }
+  do { try session.start(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads); started = true; refresh() }
+  catch { self.session = nil; sdkSnapshot = SignedUpdateSnapshot(); snapshot.error = error.localizedDescription; refresh(); throw error }
  }
  func configure(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) {
   let channelChanged = previews != includePreviews; previews = includePreviews
-  guard let updater = controller?.updater else { return }
-  updater.automaticallyChecksForUpdates = automaticChecks
-  updater.automaticallyDownloadsUpdates = automaticDownloads
-  updater.sendsSystemProfile = false
-  if channelChanged { updater.resetUpdateCycleAfterShortDelay() }
+  session?.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,resetCycle:channelChanged)
   refresh()
  }
  func check() {
-  guard let updater = controller?.updater, updater.canCheckForUpdates, !maintenanceBusy() else { return }
-  snapshot.error = nil; updater.checkForUpdates(); refresh()
+  guard let session, session.snapshot.canCheck, !maintenanceBusy() else { return }
+  snapshot.error = nil; session.check(); refresh()
+ }
+ // A status-only sink shared with the SDK session; it never starts a session
+ // or changes identity/feed/archive admission. Keep pending/error delegate
+ // state even when KVO reports the active check session has finished.
+ func receiveSessionState(_ value: SignedUpdateSnapshot) {
+  if value.sessionInProgress && !sdkSnapshot.sessionInProgress { snapshot.error = nil }
+  sdkSnapshot = value; refresh()
  }
  private func refresh() {
-  snapshot.canCheck = controller?.updater.canCheckForUpdates ?? false
-  snapshot.sessionInProgress = controller?.updater.sessionInProgress ?? false
-  snapshot.automaticChecks = controller?.updater.automaticallyChecksForUpdates
-  snapshot.automaticDownloads = controller?.updater.automaticallyDownloadsUpdates
-  snapshot.checkedAt = controller?.updater.lastUpdateCheckDate
+  let pending = snapshot.installationPending, error = snapshot.error
+  snapshot = sdkSnapshot
+  snapshot.installationPending = pending; snapshot.error = error
   changed?(snapshot)
  }
  private func requireIdleMaintenance() throws {

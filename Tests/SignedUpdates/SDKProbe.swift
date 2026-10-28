@@ -13,6 +13,8 @@ import Sparkle
  var admitted = 0
  var policyChecks = 0
  var denied = false
+ var profileEnabled: Bool?
+ weak var observedUpdater: SPUUpdater?
  init(previews: Bool, maintenance: Bool) {
   policy = SignedUpdateDriver(maintenanceBusy:{ maintenance },architecture: {
    #if arch(arm64)
@@ -27,6 +29,7 @@ import Sparkle
  func feedURLString(for updater: SPUUpdater) -> String? { Bundle.main.infoDictionary?["SUFeedURL"] as? String }
  func allowedChannels(for updater: SPUUpdater) -> Set<String> { policy.allowedChannels(for:updater) }
  func updater(_ updater: SPUUpdater, mayPerform check: SPUUpdateCheck) throws {
+  observedUpdater = updater;profileEnabled = updater.sendsSystemProfile
   do { try policy.updater(updater,mayPerform:check) }
   catch { denied = true; self.error = error as NSError; throw error }
  }
@@ -36,9 +39,35 @@ import Sparkle
  }
  func updater(_ updater: SPUUpdater, shouldDownloadReleaseNotesForUpdate item: SUAppcastItem) -> Bool { policy.updater(updater,shouldDownloadReleaseNotesForUpdate:item) }
  func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) { found = item.displayVersionString }
+ func updater(_ updater: SPUUpdater, didAbortWithError error: Error) { policy.updater(updater,didAbortWithError:error) }
  func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor check: SPUUpdateCheck, error: Error?) {
+  policy.updater(updater,didFinishUpdateCycleFor:check,error:error)
   self.error = error as NSError?; finished = true
  }
+}
+
+@MainActor final class ProbeClient: SignedUpdateClient {
+ let delegate: ProbeDelegate
+ lazy var session = SparkleUpdateSession(delegate:delegate)
+ var snapshots: [SignedUpdateSnapshot] = []
+ var changed: ((SignedUpdateSnapshot) -> Void)?
+ var afterChange: (() -> Void)?
+ init(delegate: ProbeDelegate) {
+  self.delegate=delegate
+  delegate.policy.changed = { [weak self] value in self?.changed?(value);self?.afterChange?() }
+ }
+ func start(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) throws {
+  delegate.policy.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,includePreviews:includePreviews)
+  session.changed = { [weak self] value in
+   guard let self else { return }; self.snapshots.append(value); self.delegate.policy.receiveSessionState(value)
+  }
+  try session.start(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads)
+ }
+ func configure(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) {
+  delegate.policy.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,includePreviews:includePreviews)
+  session.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,resetCycle:false)
+ }
+ func check() { session.check(.informational) }
 }
 
 @main struct SDKProbe {
@@ -51,13 +80,62 @@ import Sparkle
   precondition(feed.scheme == "http" && feed.host == "127.0.0.1")
   let app = NSApplication.shared; app.setActivationPolicy(.prohibited)
   let delegate = ProbeDelegate(previews:arguments[2]=="preview",maintenance:arguments[3]=="busy")
-  let controller = SPUStandardUpdaterController(startingUpdater:false,updaterDelegate:delegate,userDriverDelegate:nil)
-  let updater = controller.updater
-  updater.automaticallyChecksForUpdates = false; updater.automaticallyDownloadsUpdates = false; updater.sendsSystemProfile = false
-  try updater.start(); updater.checkForUpdateInformation()
+  let client=ProbeClient(delegate:delegate)
+  let domain="org.opencharge.sdk-model."+UUID().uuidString
+  let defaults=UserDefaults(suiteName:domain)!
+  defer { defaults.removePersistentDomain(forName:domain) }
+  var info=Bundle.main.infoDictionary!
+  info["CFBundleIdentifier"]="org.opencharge.app";info["SUFeedURL"]=SignedUpdateConfiguration.feedURL.absoluteString
+  let readiness=SignedUpdateConfiguration.evaluate(info)
+  guard case .ready = readiness else { preconditionFailure("fixture configuration") }
+  defaults.set(arguments[2]=="preview",forKey:"updatesPreviews")
+  let updates=AppUpdates(defaults:defaults,currentVersion:"1.0.0",signedConfiguration:readiness,signedDriver:client)
+  var sawBusy=false
+  client.afterChange = { [weak updates] in if updates?.busy == true { sawBusy=true } }
+  updates.start();updates.start()
+  precondition(updates.canCheck && !updates.automaticChecks && !updates.automaticDownloads)
+  // Drive actual SDK setters as the native SDK UI would; observe the shared
+  // KVO session updating production AppUpdates and its own preference domain.
+  client.session.configure(automaticChecks:false,automaticDownloads:true,resetCycle:false)
+  precondition(updates.automaticDownloads && defaults.bool(forKey:"updatesAutomaticDownloads"))
+  client.session.configure(automaticChecks:false,automaticDownloads:false,resetCycle:false)
+  precondition(!updates.automaticDownloads && !defaults.bool(forKey:"updatesAutomaticDownloads"))
+  let before=client.snapshots.count
+  try client.session.start(automaticChecks:true,automaticDownloads:true)
+  precondition(client.snapshots.count==before && !updates.automaticChecks && !updates.automaticDownloads)
+  Task { await updates.check(loadPages:{ preconditionFailure("signed check reached manual catalog") }) }
   let deadline = Date().addingTimeInterval(20)
   while !delegate.finished && !delegate.denied && Date() < deadline { RunLoop.main.run(until:Date().addingTimeInterval(0.025)) }
-  let result: [String:Any] = ["finished":delegate.finished,"found":delegate.found as Any? ?? NSNull(),"errorCode":delegate.error?.code as Any? ?? NSNull(),"errorDomain":delegate.error?.domain as Any? ?? NSNull(),"error":delegate.error?.localizedDescription as Any? ?? NSNull(),"admitted":delegate.admitted,"policyChecks":delegate.policyChecks,"denied":delegate.denied,"identity":Bundle.main.bundleIdentifier!,"automaticChecks":updater.automaticallyChecksForUpdates,"automaticDownloads":updater.automaticallyDownloadsUpdates,"sendsSystemProfile":updater.sendsSystemProfile]
+  // Let the SDK finish its session-end KVO after its delegate completion.
+  RunLoop.main.run(until:Date().addingTimeInterval(0.05))
+  let idle = !updates.busy && !client.session.snapshot.sessionInProgress
+  precondition(idle)
+  precondition(updates.checkedAt == client.session.snapshot.checkedAt)
+  if !delegate.denied, let error=delegate.error { precondition(updates.status == error.localizedDescription) }
+  var pendingVerified=false
+  if delegate.found != nil && delegate.error == nil, let updater=delegate.observedUpdater {
+   // Inject the production ready/finish/abort callbacks after a real completed
+   // SDK cycle. This tests state composition, not a resumed installer process.
+   let handled=delegate.policy.updater(updater,willInstallUpdateOnQuit:SUAppcastItem.empty(),immediateInstallationBlock:{ preconditionFailure("production delegate invoked fixture install") })
+   precondition(!handled && updates.busy && updates.canCheck)
+   client.session.configure(automaticChecks:false,automaticDownloads:false,resetCycle:false)
+   delegate.policy.updater(updater,didFinishUpdateCycleFor:.updateInformation,error:nil)
+   precondition(updates.busy && updates.signedSnapshot.installationPending && !updates.signedSnapshot.sessionInProgress)
+   delegate.policy.updater(updater,didAbortWithError:CocoaError(.fileReadUnknown))
+   precondition(!updates.busy && !updates.signedSnapshot.installationPending && updates.status==delegate.policy.snapshot.error)
+   // A later SDK-owned cycle must clear the previous error even when it did
+   // not pass through the product's manual-check action.
+   delegate.finished=false;delegate.error=nil;delegate.found=nil
+   client.session.check(.informational)
+   let retryDeadline=Date().addingTimeInterval(20)
+   while !delegate.finished && Date()<retryDeadline { RunLoop.main.run(until:Date().addingTimeInterval(0.025)) }
+   RunLoop.main.run(until:Date().addingTimeInterval(0.05))
+   precondition(delegate.finished && delegate.error == nil && delegate.found != nil && !updates.busy && updates.signedSnapshot.error == nil)
+   pendingVerified=true
+  }
+  AppPreferenceReset.removeOverrides(from:defaults);updates.reloadAfterReset()
+  precondition(!updates.automaticChecks && !updates.automaticDownloads && updates.includePreviews)
+  let result: [String:Any] = ["finished":delegate.finished,"found":delegate.found as Any? ?? NSNull(),"errorCode":delegate.error?.code as Any? ?? NSNull(),"errorDomain":delegate.error?.domain as Any? ?? NSNull(),"error":delegate.error?.localizedDescription as Any? ?? NSNull(),"admitted":delegate.admitted,"policyChecks":delegate.policyChecks,"denied":delegate.denied,"identity":Bundle.main.bundleIdentifier!,"automaticChecks":updates.automaticChecks,"automaticDownloads":updates.automaticDownloads,"sendsSystemProfile":delegate.profileEnabled as Any? ?? NSNull(),"observedBusy":sawBusy,"observedIdle":idle,"sessionSnapshots":client.snapshots.count,"pendingStateComposition":pendingVerified]
   let data = try JSONSerialization.data(withJSONObject:result,options:[.sortedKeys])
   print("SDK_PROBE "+String(decoding:data,as:UTF8.self))
   if !delegate.finished && !delegate.denied { exit(2) }
