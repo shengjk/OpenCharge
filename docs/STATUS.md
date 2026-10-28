@@ -1,4 +1,4 @@
-# Status — 0.3.46 and development source
+# Status — 0.3.47 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -63,4 +63,6 @@ Version 0.3.46 stages and verifies development-service upgrades, requires stoppe
 
 The `feature/signed-updates` work adds a configured-only SDK adapter and authenticated local appcast history tooling. Real SDK informational checks passed in isolated identities, and disposable-app archive fixtures demonstrated replacement/relaunch, cancellation/retry and signature/tampering rejection on the current host's arm64 and Rosetta x86_64 processes. The production app remains unconfigured for signed updates by default. Default SDK scheduler installation on ordinary quit and cancellation/retry passed in the same disposable identities without using an immediate-install handler. The shared SDK session/KVO and production update-model projection have real informational-cycle coverage. Guarded product bootstrap/resume, actual service cleanup/update, deployment signing/notarization, older-system runtime and publication acceptance remain open; fixture success does not establish complete update parity.
 
-Development packages on `feature/signed-updates` now target macOS 11 in SwiftPM, native/universal executables, Info.plist and App Intents metadata. Both CPU binaries linked and packaged on the current host with validated Swift concurrency backdeployment libraries and weak newer-framework loads. This is build/package evidence; macOS 11/12 runtime remains unverified. Published 0.3.46 artifacts are unchanged and require macOS 13.
+Version 0.3.47 packages target macOS 11 in SwiftPM, native/universal executables, Info.plist and App Intents metadata. Both CPU binaries linked and packaged on the current host with validated Swift concurrency backdeployment libraries and weak newer-framework loads. This is build/package evidence; macOS 11/12 runtime remains unverified. Published 0.3.46 artifacts are unchanged and require macOS 13.
+
+Version 0.3.47 packages the macOS 11 deployment target and configured-only signed updater. The distributed prerelease has no deployment update key and retains manual updates. Guarded product updater startup, native update UI, cross-restart recovery, macOS 11/12 runtime, Apple-issued signing/notarization and real hardware/service coordination remain unverified.

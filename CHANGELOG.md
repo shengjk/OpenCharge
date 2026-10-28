@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.47
+
+- Add optional Sparkle 2.9.6 integration with strict publisher-key, fixed-feed, version, channel and archive admission. Automatic checks and downloads remain opt-in; packages without a publisher key retain manual updates.
+- Add authenticated local feed preparation, signed stable/preview history, exact package verification and disposable-app SDK installation tests.
+
 - Target macOS 11 in development packages, including universal binaries and the Swift concurrency compatibility runtime. Preserve each release's verified minimum system version in signed update feeds; older-system runtime validation remains pending.
 
 - Keep the prepared-install settings-reset barrier when service maintenance rejects a subsequent SDK check. Add real prepared-installer resume and maintenance-rejection/retry fixtures.
