@@ -12,7 +12,7 @@ case "$HOST_ARCH" in
 esac
 bash "$PROJECT_DIR/Scripts/build-app.sh"
 CROSS_BUILD="$PROJECT_DIR/.build/universal-$OTHER_ARCH"
-TRIPLE="$OTHER_ARCH-apple-macosx13.0"
+TRIPLE="$OTHER_ARCH-apple-macosx11.0"
 swift build --disable-keychain --disable-netrc -c release --disable-sandbox --scratch-path "$CROSS_BUILD" --triple "$TRIPLE"
 CROSS_BIN="$(swift build --disable-keychain --disable-netrc -c release --disable-sandbox --scratch-path "$CROSS_BUILD" --triple "$TRIPLE" --show-bin-path)"
 STAGING="$(mktemp -d "$PROJECT_DIR/.build/universal-package.XXXXXX")"

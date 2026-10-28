@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Target macOS 11 in development packages, including universal binaries and the Swift concurrency compatibility runtime. Preserve each release's verified minimum system version in signed update feeds; older-system runtime validation remains pending.
+
 - Keep the prepared-install settings-reset barrier when service maintenance rejects a subsequent SDK check. Add real prepared-installer resume and maintenance-rejection/retry fixtures.
 
 - Share the signed-update SDK lifecycle with isolated runtime fixtures, and synchronize SDK preferences and check state with the settings model. Clear stale errors when a new SDK-owned check begins while retaining errors within the current cycle and preserving prepared-install barriers.

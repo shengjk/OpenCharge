@@ -57,9 +57,10 @@ with tempfile.TemporaryDirectory(prefix='signed-feed-fixture-',dir=ROOT/'.build'
  tool=ROOT/'Scripts/prepare-update-feed.py'
  prepared=root/'prepared';run('python3',tool,'prepare',*common,'--output',prepared);checks+=1
  content=(prepared/'appcast-unsigned.xml').read_bytes();request=json.loads((prepared/'signing-request.json').read_text())
+ assert request['schema']==3 and request['minimum_system_version']==info['LSMinimumSystemVersion']+'.0'
  assert request['content_length']==len(content) and request['content_sha256']==hashlib.sha256(content).hexdigest()
  document=ET.fromstring(content);item=document.find('./channel/item');ns={'s':feed.NS}
- assert item.findtext('s:channel',namespaces=ns)=='preview' and item.findtext('s:minimumSystemVersion',namespaces=ns)=='13.0.0'
+ assert item.findtext('s:channel',namespaces=ns)=='preview' and item.findtext('s:minimumSystemVersion',namespaces=ns)==info['LSMinimumSystemVersion']+'.0'
  assert item.findtext('description').startswith('<pre>') and '<script>' not in item.findtext('description')
  assert item.find('enclosure').get('url').endswith('/OpenCharge-macOS-universal.zip');checks+=1
  signed=root/'appcast.xml';feed_signature=swift(prepared/'appcast-unsigned.xml')
@@ -106,11 +107,19 @@ with tempfile.TemporaryDirectory(prefix='signed-feed-fixture-',dir=ROOT/'.build'
  rejected(['python3',tool,'prepare',*common,'--previous-feed',history_input,'--output',root/'unsigned-history'])
  bad_history=root/'bad-history.xml';bad_history.write_bytes(history_file.read_bytes().replace(b'OpenCharge Updates',b'OpenCharge Changed'))
  rejected(['python3',tool,'prepare',*common,'--previous-feed',bad_history,'--output',root/'corrupt-history'])
- # Existing v1 signing requests remain finalizable without adding history.
+ # Existing schema1/2 requests keep their original macOS13 template.
  legacy=root/'legacy';shutil.copytree(prepared,legacy)
- legacy_request=dict(request);legacy_request['schema']=1;legacy_request.pop('previous_feed')
- (legacy/'signing-request.json').write_text(json.dumps(legacy_request))
- run('python3',tool,'finalize','--public-key',key,'--prepared',legacy,'--signature',feed_signature,'--output',root/'legacy.xml');checks+=1
+ legacy_request=dict(request);legacy_request.pop('minimum_system_version')
+ legacy_request['schema']=1;legacy_request.pop('previous_feed')
+ legacy_content=feed.render(legacy_request)
+ legacy_request['content_length']=len(legacy_content);legacy_request['content_sha256']=hashlib.sha256(legacy_content).hexdigest()
+ (legacy/'appcast-unsigned.xml').write_bytes(legacy_content)
+ legacy_signature=swift(legacy/'appcast-unsigned.xml')
+ for schema in [1,2]:
+  old_request=dict(legacy_request);old_request['schema']=schema
+  if schema==2:old_request['previous_feed']=None
+  (legacy/'signing-request.json').write_text(json.dumps(old_request))
+  run('python3',tool,'finalize','--public-key',key,'--prepared',legacy,'--signature',legacy_signature,'--output',root/('legacy'+str(schema)+'.xml'));checks+=1
  replaced_key=dict(legacy_request);replaced_key['public_key']=base64.b64encode(bytes(32)).decode()
  (legacy/'signing-request.json').write_text(json.dumps(replaced_key))
  rejected(['python3',tool,'finalize','--public-key',key,'--prepared',legacy,'--signature',feed_signature,'--output',root/'replaced-key.xml'])
@@ -130,7 +139,10 @@ with tempfile.TemporaryDirectory(prefix='signed-feed-fixture-',dir=ROOT/'.build'
  rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',root/'changed-feed.xml'])
  (prepared/'appcast-unsigned.xml').write_bytes(content)
  original_request=(prepared/'signing-request.json').read_bytes()
- (prepared/'signing-request.json').write_bytes(original_request.replace(b'"schema": 2',b'"schema": 2, "schema": 2'))
+ altered_request=json.loads(original_request);altered_request['minimum_system_version']='13.0.0' if info['LSMinimumSystemVersion']=='11.0' else '11.0.0'
+ (prepared/'signing-request.json').write_text(json.dumps(altered_request))
+ rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',root/'changed-minimum.xml'])
+ (prepared/'signing-request.json').write_bytes(original_request.replace(b'"schema": 3',b'"schema": 3, "schema": 3'))
  rejected(['python3',tool,'finalize','--public-key',key,'--prepared',prepared,'--signature',feed_signature,'--output',root/'duplicate-field.xml'])
  (prepared/'signing-request.json').write_bytes(original_request)
  linked=root/'archive-link';linked.symlink_to(archive)

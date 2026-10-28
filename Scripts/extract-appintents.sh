@@ -41,6 +41,6 @@ fi
 "$PROCESSOR" --output "$APP/Contents/Resources" \
  --toolchain-dir "$(dirname "$(dirname "$(xcrun --find swiftc)")")" \
  --module-name OpenCharge --sdk-root "$SDK_ROOT" --xcode-version "$XCODE_VERSION" \
- --platform-family macOS --deployment-target 13.0 --target-triple "$(uname -m)-apple-macosx13.0" \
+ --platform-family macOS --deployment-target 11.0 --target-triple "$(uname -m)-apple-macosx11.0" \
  --source-file-list "$STAGING/sources.list" --swift-const-vals-list "$STAGING/const.list"
 swift "$PROJECT_DIR/Scripts/verify-appintents.swift" "$APP"

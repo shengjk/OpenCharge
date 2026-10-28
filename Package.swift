@@ -1,6 +1,6 @@
 // swift-tools-version: 5.9
 import PackageDescription
-let package = Package(name: "OpenCharge", platforms: [.macOS(.v13)], products: [
+let package = Package(name: "OpenCharge", platforms: [.macOS(.v11)], products: [
  .executable(name: "OpenCharge", targets: ["OpenCharge"]),
  .executable(name: "chargectl", targets: ["chargectl"]),
  .executable(name: "charged", targets: ["charged"])

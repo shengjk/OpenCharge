@@ -103,4 +103,13 @@ with tempfile.TemporaryDirectory(prefix='feed-history-fixture-',dir=ROOT/'.build
  crlf=entry(1,'stable');crlf['notes']='line one\r\nline two\r'
  retained=feed.render(entry(2,old=previous(feed.render(crlf))))
  assert builds(retained)==['2','1'];checks+=1
+ # Preserve per-release platform floors when merging old and new packages.
+ lower={**entry(2,old=previous(stable)),'minimum_system_version':'11.0.0'}
+ mixed=feed.render(lower)
+ assert [x.findtext('{'+feed.NS+'}minimumSystemVersion') for x in items(mixed)]==['11.0.0','13.0.0'];checks+=1
+ promotion={**entry(2,'stable',previous(mixed)),'minimum_system_version':'11.0.0'}
+ assert items(feed.render(promotion))[0].findtext('{'+feed.NS+'}minimumSystemVersion')=='11.0.0';checks+=1
+ rejected(entry(2,'stable',previous(mixed)))
+ rejected({**entry(3),'minimum_system_version':'10.15.0'})
+ for invalid_minimum in [None,11,[]]:rejected({**entry(3),'minimum_system_version':invalid_minimum})
  print(f'Signed history: {checks} authentication/channel/promotion/retention/parser rejection checks passed; no updater or publication')

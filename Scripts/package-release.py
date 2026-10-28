@@ -61,7 +61,7 @@ def inspect(folder, architecture):
     version, build = info['CFBundleShortVersionString'], info['CFBundleVersion']
     if not re.fullmatch(r'\d+\.\d+\.\d+', version) or not re.fullmatch(r'\d+', build):
         raise ValueError('Invalid package version')
-    if info.get('LSMinimumSystemVersion') != '13.0' or info.get('CFBundleLocalizations') != ['en', 'zh-Hans']:
+    if info.get('LSMinimumSystemVersion') not in {'11.0','13.0'} or info.get('CFBundleLocalizations') != ['en', 'zh-Hans']:
         raise ValueError('Unsupported deployment or language declaration')
     subprocess.run(['python3', str(SCRIPTS / 'localization-resources.py'), 'verify', str(app)], check=True)
     expected = {'arm64'} if architecture == 'arm64' else {'arm64', 'x86_64'}
@@ -108,6 +108,9 @@ def main():
     versions = [inspect(ROOT / folder, architecture) for folder, architecture in ASSETS]
     if versions[0] != versions[1]:
         raise ValueError('Native and universal versions differ')
+    floors = {plistlib.loads((ROOT / folder / 'OpenCharge.app/Contents/Info.plist').read_bytes())['LSMinimumSystemVersion'] for folder, _ in ASSETS}
+    if len(floors) != 1:
+        raise ValueError('Native and universal deployment floors differ')
     version, _ = versions[0]
     destinations = [args.output / ('OpenCharge-macOS-' + architecture + '.zip') for _, architecture in ASSETS]
     manifest_path = args.output / 'SHA256SUMS.txt'
