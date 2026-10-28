@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Skip global Shortcuts parameter registration for alternate-data-directory runs. Replace historical Shortcuts test counts in the compatibility card with current availability and permission requirements.
+
 ## 0.3.47
 
 - Add optional Sparkle 2.9.6 integration with strict publisher-key, fixed-feed, version, channel and archive admission. Automatic checks and downloads remain opt-in; packages without a publisher key retain manual updates.

@@ -68,7 +68,13 @@ struct AppSettingsView: View {
 @main struct OpenChargeApp: App {
  @NSApplicationDelegateAdaptor(OpenChargeDelegate.self) private var delegate
  @StateObject private var model = OpenChargeRuntime.model
- init() { if #available(macOS 13.0, *) { OpenChargeShortcuts.updateAppShortcutParameters() } }
+ init() {
+  // An alternate data directory is used for isolated local validation. Do not
+  // update system-wide shortcut registration for that temporary app copy.
+  if #available(macOS 13.0, *), ProcessInfo.processInfo.environment["OPENCHARGE_DATA_DIR"] == nil {
+   OpenChargeShortcuts.updateAppShortcutParameters()
+  }
+ }
  var body: some Scene {
   Settings {
    AppSettingsView(model: model)

@@ -93,7 +93,7 @@ struct SettingsView: View {
   }
   Card(NSLocalizedString("兼容性与边界", comment: "")) {
    Text(NSLocalizedString("请先退出其他充电管理程序，再启用硬件控制；多个控制器可能相互覆盖。", comment: ""))
-   Text(NSLocalizedString("MagSafe LED 已实现自动指示、闪烁与睡眠熄灯策略，仍待实机验证；关机策略尚未完成；Shortcuts 的 11 个操作已被系统发现，4 个只读操作已实测；不会显示虚假的成功状态。", comment: ""))
+   Text(NSLocalizedString("MagSafe LED 的自动指示、闪烁和睡眠熄灯仍需实机验证，关机策略尚未完成。原生快捷指令需要 macOS 13 或更新版本；修改硬件或系统电源模式仍需单独启用权限和兼容服务。", comment: ""))
    Text(NSLocalizedString("睡眠由系统通知协调；可选退出后保持停充。合盖强制保持唤醒及实际睡眠充电效果仍待硬件验证。", comment: ""))
    Text(String.localizedStringWithFormat(NSLocalizedString("OpenCharge %@ · MIT · 本地运行 · 无账户 · 无遥测", comment: ""), Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")).font(.caption).presentationSecondary()
   }.font(.callout)

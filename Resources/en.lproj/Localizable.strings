@@ -8,7 +8,7 @@
 "80% · 温控优先" = "80% · Temperature protection";
 "GitHub 请求受限，请稍后重试" = "GitHub request limit reached. Try again later.";
 "GitHub 返回 HTTP %lld" = "GitHub returned HTTP %lld";
-"MagSafe LED 已实现自动指示、闪烁与睡眠熄灯策略，仍待实机验证；关机策略尚未完成；Shortcuts 的 11 个操作已被系统发现，4 个只读操作已实测；不会显示虚假的成功状态。" = "Automatic MagSafe LED indication, blinking, and sleep-off policies are implemented but still need physical validation. Shutdown behavior is incomplete. The system has discovered 11 Shortcuts actions, and four read-only actions have been tested. Unconfirmed actions are not reported as successful.";
+"MagSafe LED 的自动指示、闪烁和睡眠熄灯仍需实机验证，关机策略尚未完成。原生快捷指令需要 macOS 13 或更新版本；修改硬件或系统电源模式仍需单独启用权限和兼容服务。" = "Automatic MagSafe LED indication, blinking, and sleep-off behavior still need physical validation; shutdown behavior remains incomplete. Native Shortcuts require macOS 13 or later. Hardware and system power changes still require explicit permission and a compatible service.";
 "MagSafe 灯光" = "MagSafe Light";
 "OpenCharge %@ · MIT · 本地运行 · 无账户 · 无遥测" = "OpenCharge %@ · MIT · Runs locally · No account · No telemetry";
 "OpenCharge · 弹窗预览" = "OpenCharge · Popover Preview";
