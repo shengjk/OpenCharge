@@ -18,10 +18,12 @@ public struct ConfigurationBackup: Codable {
  public var configuration: Configuration
  public init(configuration: Configuration, createdAt: Date = Date()) {
   schemaVersion = 1; self.createdAt = createdAt; self.configuration = configuration
+  self.configuration.pendingOrdinaryQuitRecovery = nil
  }
  public func encoded() throws -> Data {
   let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-  return try encoder.encode(self)
+  var portable = self; portable.configuration.pendingOrdinaryQuitRecovery = nil
+  return try encoder.encode(portable)
  }
  public static func restored(from data: Data) throws -> Configuration {
   guard data.count <= 1_048_576 else { throw ConfigurationBackupError.tooLarge }
@@ -36,6 +38,7 @@ public struct ConfigurationBackup: Codable {
   config.policy.normalize()
   // An imported file must never resume a hardware operation or an overdue task.
   config.hardwareEnabled = false; config.systemActionsEnabled = false
+  config.pendingOrdinaryQuitRecovery = nil
   config.magSafeMode = .system; config.magSafeOffDuringSleep = false
   config.policy.mode = .automatic; config.policy.departure = nil
   config.calibrationCheckpoint = nil; config.sailingCheckpoint = nil; config.chargeLimitChangeID = nil; config.scheduleHistory = nil

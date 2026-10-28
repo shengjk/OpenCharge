@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.49
+
+- Persist unfinished ordinary Cancel Quit restoration before compensation. Retry it on startup with charge control disabled; require helper acknowledgement and saved completion before admitting new charge or LED control.
+- Keep recovery obligations out of portable configuration backups and preserve them during read-only CLI inspection. Numeric firmware exit rollback remains separate, unfinished work.
+
 ## 0.3.48
 
 - Restore ordinary charge state when exit is cancelled after retained inhibition or an ambiguous cleanup request. Keep failed cancellation recovery reachable and require it before re-enabling control. Numeric exit commit remains a separate unresolved lifecycle boundary.

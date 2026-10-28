@@ -3,6 +3,9 @@ import ChargeCore
 import ChargeHardware
 import Darwin
 func output<T: Encodable>(_ value: T) throws { let e = JSONEncoder(); e.outputFormatting = [.prettyPrinted, .sortedKeys]; e.dateEncodingStrategy = .iso8601; print(String(decoding: try e.encode(value), as: UTF8.self)) }
+func recoverOrdinaryQuit(_ configuration: inout Configuration) throws -> String? {
+ try OrdinaryQuitRecovery.restoreIfNeeded(configuration:&configuration,request:HelperClient.request,persist:{try $0.save()})
+}
 func usage() { print("""
 OpenCharge CLI
   status [--json]            Read real battery telemetry
@@ -60,6 +63,7 @@ do {
    let commands = ["off": "magSafeOff", "green": "magSafeGreen", "orange": "magSafeOrange", "orange-blinking": "magSafeBlinkOrange", "restore": "magSafeRestore"]
    let command = commands[args[1]]!
    try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { try HelperClient.request("capabilities") })
+   _ = try recoverOrdinaryQuit(&config)
    print(try HelperClient.request(command))
   }
  case "diagnose-smc": try output(SMCController().capabilities())
@@ -71,8 +75,14 @@ do {
    #else
    return false
    #endif
-  }, request: HelperClient.request))
- case "restore": print(try HelperClient.request("restore"))
+  }, request: { command in
+   let recovered = try recoverOrdinaryQuit(&config)
+   if command == "restore", let recovered { return recovered }
+   return try HelperClient.request(command)
+  }))
+ case "restore":
+  if let recovered = try recoverOrdinaryQuit(&config) { print(recovered) }
+  else { print(try HelperClient.request("restore")) }
  case "export": let url = Configuration.directory.appendingPathComponent("history.json"); print(String(decoding: try Data(contentsOf: url), as: UTF8.self))
  case "help", "--help", "-h": usage()
  default: usage(); exit(2)

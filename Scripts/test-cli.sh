@@ -47,5 +47,14 @@ for arguments in (['hardware'], ['hardware','allowCharge'], ['hardware','restore
  result=subprocess.run([executable]+arguments,capture_output=True,text=True)
  assert result.returncode!=0 and 'hardware allowCharge|inhibitCharge|forceDischarge|restore --confirm' in result.stderr
  assert (root/'configuration.json').read_bytes()==before_hardware, 'rejected hardware request rewrote settings'
-print('CLI isolated configuration and rejected hardware checks passed; no hardware commands executed')
+# Read-only inspection and rejected direct mutations must preserve recovery intent.
+c=json.loads((root/'configuration.json').read_text())
+c['pendingOrdinaryQuitRecovery']=True; c['hardwareEnabled']=True
+(root/'configuration.json').write_text(json.dumps(c))
+before_recovery=(root/'configuration.json').read_bytes()
+for arguments in (['explain'], ['help'], ['hardware','allowCharge'], ['magsafe','green']):
+ result=subprocess.run([executable]+arguments,capture_output=True,text=True)
+ assert result.returncode == (0 if arguments[0] in ('explain','help') else 1)
+ assert (root/'configuration.json').read_bytes()==before_recovery, 'read/rejected request changed pending recovery'
+print('CLI isolated configuration, pending recovery reads and rejected hardware checks passed; no hardware commands executed')
 PY

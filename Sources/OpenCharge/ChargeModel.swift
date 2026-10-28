@@ -150,6 +150,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var quitting = false
  private var quitCleanupPrepared = false
  private var quitChargeRecoveryPending = false
+ private var quitRecoveryIntentStored = false
  var automationPhase: PolicyPhase { quitting ? .exit : calibrationPending ? .calibration : decision.phase ?? engine.phase }
  var needsQuitPreparation: Bool { quitChargeRecoveryPending || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || dischargeExitPending || lastHardwareAction == .forceDischarge || magSafeSessionActive || sleepOverrideSessionActive || sleepController.active }
  var needsDischargeExitWait: Bool { dischargeExitPending }
@@ -157,7 +158,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil) {
+ init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil, startupRecoveryRequest: (String) throws -> String = HelperClient.request, startupRecoveryPersist: (Configuration) throws -> Void = { try $0.save() }) {
   self.helperService = helperService ?? HelperService()
   settingsDefaults = dashboardDefaults
   setupOnLaunch = SetupWizardPresentation.shouldShow(configurationExists:FileManager.default.fileExists(atPath:Configuration.url.path),defaults:dashboardDefaults)
@@ -168,6 +169,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
   menuBarActions = MenuBarActionPreferences(defaults: dashboardDefaults)
   do { config = try Configuration.load() } catch { config = Configuration(); self.error = String.localizedStringWithFormat(NSLocalizedString("配置文件无法读取：%@", comment: ""), error.localizedDescription) }
+  if config.pendingOrdinaryQuitRecovery == true {
+   config.hardwareEnabled = false; quitChargeRecoveryPending = true; quitRecoveryIntentStored = true
+  }
   engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
   appliedChargeLimitChangeID = config.chargeLimitChangeID
   // An explicit opt-in persists; an interrupted calibration prevents resumption.
@@ -186,6 +190,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } } catch { lidLockStatus = NSLocalizedString("合盖监听不可用：", comment: "") + error.localizedDescription } }
   reloadSettingsLock()
   settingsPreferenceObservation = SettingsLockObservation(defaults: dashboardDefaults) { [weak self] in self?.reloadSettingsLock() }
+  if config.pendingOrdinaryQuitRecovery == true {
+   do { try restoreChargeControl(request:startupRecoveryRequest,persist:startupRecoveryPersist) }
+   catch { self.error = NSLocalizedString("恢复仍待重试：",comment:"")+error.localizedDescription }
+  }
   if config.hardwareEnabled {
    do { try configureHardwareChannel(capabilities:HelperClient.request("capabilities"),numericRequired:requiresNumericFirmware()) }
    catch { config.hardwareEnabled = false; self.error = error.localizedDescription; try? config.save() }
@@ -213,8 +221,14 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    let startsFreshCalibration = incoming.policy.mode == .calibration && incoming.calibrationCheckpoint == nil &&
     (config.policy.mode != .calibration || config.calibrationCheckpoint != nil || calibrationPending)
    let enabled = config.hardwareEnabled; let previousLED = config.magSafeMode
+   let peerCompletedRecovery = quitRecoveryIntentStored && config.pendingOrdinaryQuitRecovery == true && incoming.pendingOrdinaryQuitRecovery != true
    let correctSavedOptIn = incoming.hardwareEnabled != enabled
    config = incoming; config.hardwareEnabled = enabled
+   if incoming.pendingOrdinaryQuitRecovery == true {
+    config.hardwareEnabled = false; quitChargeRecoveryPending = true; quitRecoveryIntentStored = true
+   } else if peerCompletedRecovery {
+    quitChargeRecoveryPending = false; quitRecoveryIntentStored = false; lastHardwareAction = .restore
+   }
    if startsFreshCalibration {
     engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
   appliedChargeLimitChangeID = config.chargeLimitChangeID; calibration = .idle; calibrationPending = false
@@ -299,15 +313,25 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   let command = source == "battery" ? (enabled ? "lowPowerBatteryOn" : "lowPowerBatteryOff") : source == "ac" ? (enabled ? "lowPowerACOn" : "lowPowerACOff") : (enabled ? "lowPowerOn" : "lowPowerOff")
   do { lowPowerStatus = try HelperClient.request(command); config.policy.lowPowerMode = enabled; save() } catch { self.error = error.localizedDescription }
  }
- func setMagSafe(_ color: MagSafeColor?) {
+ func setMagSafe(_ color: MagSafeColor?, request: (String) throws -> String = HelperClient.request) {
   guard !settingsResetPending else { return }
+  if quitChargeRecoveryPending || config.pendingOrdinaryQuitRecovery == true {
+   do { try restoreChargeControl(request:request) }
+   catch { self.error = NSLocalizedString("恢复仍待重试：",comment:"")+error.localizedDescription; return }
+  }
   magSafeSelection = color; magSafePolicyFailed = false
   if color == nil { config.magSafeMode = .system; config.magSafeOffDuringSleep = false; save() }
-  updateMagSafe()
+  updateMagSafe(request:request)
  }
- func useMagSafePolicy() { magSafeSelection = nil; magSafePolicyFailed = false; updateMagSafe() }
+ func useMagSafePolicy(request: (String) throws -> String = HelperClient.request) {
+  if quitChargeRecoveryPending || config.pendingOrdinaryQuitRecovery == true {
+   do { try restoreChargeControl(request:request) }
+   catch { self.error = NSLocalizedString("恢复仍待重试：",comment:"")+error.localizedDescription; return }
+  }
+  magSafeSelection = nil; magSafePolicyFailed = false; updateMagSafe(request:request)
+ }
  func updateMagSafe(request: (String) throws -> String = HelperClient.request) {
-  guard !quitting, !settingsResetPending, !magSafePolicyFailed else { return }
+  guard !quitting, !settingsResetPending, !magSafePolicyFailed, !quitChargeRecoveryPending else { return }
   let mode = config.magSafeMode ?? .system
   let wantsControl = magSafeSelection != nil || mode != .system || config.magSafeOffDuringSleep == true
   do {
@@ -593,12 +617,13 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   chargeContextEnabled = ChargeRequestContext.supportsHelper(capabilities)
   multiDisplaySleepEnabled = DischargeSleepRequest.supportsHelper(capabilities)
  }
- func restoreChargeControl(request: (String) throws -> String = HelperClient.request) throws {
+ func restoreChargeControl(request: (String) throws -> String = HelperClient.request, persist: (Configuration) throws -> Void = { try $0.save() }) throws {
   if let firmwareControl {
    try firmwareControl.restore(request:request); firmwareInspection = nil; firmwareStatus = NSLocalizedString("数值固件会话已恢复 · 监测模式", comment: "")
   }
   else { _ = try request("restore") }
-  quitChargeRecoveryPending = false; lastHardwareAction = .restore
+  try OrdinaryQuitRecovery.acknowledgeRestore(configuration:&config,persist:persist)
+  quitChargeRecoveryPending = false; quitRecoveryIntentStored = false; lastHardwareAction = .restore
  }
  func enableHardware(_ enabled: Bool, request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
@@ -658,19 +683,33 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   quitCleanupPrepared = failures.isEmpty
   if !failures.isEmpty { throw HelperError.rejected(failures.joined(separator: "; ")) }
  }
- func cancelQuit(request: (String) throws -> String = HelperClient.request) {
+ func cancelQuit(request: (String) throws -> String = HelperClient.request, persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil) {
   // Never resume a discharge/calibration automatically after a cancelled exit.
-  var recoveryFailure: String?
-  if quitChargeRecoveryPending || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore {
-   do { try restoreChargeControl(request:request) }
-   catch { quitChargeRecoveryPending = true; recoveryFailure = error.localizedDescription }
-  }
+  let needsRecovery = quitChargeRecoveryPending || config.pendingOrdinaryQuitRecovery == true || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore
+  let ordinary = needsRecovery && (firmwareControl == nil || config.pendingOrdinaryQuitRecovery == true)
   config.hardwareEnabled = false
   if config.policy.mode == .calibration { calibrationPending = true }
+  var persistenceFailure: String?
+  do {
+   if ordinary {
+    quitChargeRecoveryPending = true
+    try OrdinaryQuitRecovery.begin(configuration:&config,persist:persist)
+    quitRecoveryIntentStored = true
+   } else { try persist(config) }
+  } catch { persistenceFailure = error.localizedDescription }
+  var recoveryFailure: String?
+  if needsRecovery {
+   do {
+    try restoreChargeControl(request:request,persist:persist)
+    if ordinary { persistenceFailure = nil }
+   }
+   catch { quitChargeRecoveryPending = true; recoveryFailure = error.localizedDescription }
+  }
   quitting = false; quitCleanupPrepared = false
   error = NSLocalizedString("已取消退出，充电控制已关闭；请确认电源状态后手动重新启用。", comment: "")
   if let recoveryFailure { error! += NSLocalizedString("恢复仍待重试：", comment: "") + recoveryFailure }
-  save(); refresh()
+  if let persistenceFailure { error! += "\n"+persistenceFailure }
+  (refresh ?? { self.refresh() })()
  }
  func cleanupOnQuit() { if !quitCleanupPrepared { try? prepareForQuit() } }
  func quit() { NSApp.terminate(nil) }

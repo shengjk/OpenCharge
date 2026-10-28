@@ -393,6 +393,8 @@ public struct Configuration: Codable {
  public var setupCalibrationScheduleID: UUID? = nil
  public var runMissedTasks: Bool? = nil
  public var systemActionsEnabled: Bool? = nil
+ // Local compensation intent, not a portable preference or a fresh opt-in.
+ public var pendingOrdinaryQuitRecovery: Bool? = nil
  public var magSafeMode: MagSafeMode? = nil
  public var magSafeBlinkDischarge: Bool? = nil
  public var magSafeOffDuringSleep: Bool? = nil
@@ -406,7 +408,7 @@ public struct Configuration: Codable {
   if let path = ProcessInfo.processInfo.environment["OPENCHARGE_DATA_DIR"], path.hasPrefix("/") { return URL(fileURLWithPath: path, isDirectory: true) }
   return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("OpenCharge") }
  public static var url: URL { directory.appendingPathComponent("configuration.json") }
- public static func load() throws -> Self { guard FileManager.default.fileExists(atPath: url.path) else { return Self() }; var value = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url)); value.policy.normalize(); return value }
+ public static func load() throws -> Self { guard FileManager.default.fileExists(atPath: url.path) else { return Self() }; var value = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url)); value.policy.normalize(); if value.pendingOrdinaryQuitRecovery == true { value.hardwareEnabled = false }; return value }
  public func save() throws { try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true); let e = JSONEncoder(); e.outputFormatting = [.prettyPrinted, .sortedKeys]; try e.encode(self).write(to: Self.url, options: .atomic); if ProcessInfo.processInfo.environment["OPENCHARGE_DATA_DIR"] == nil { DistributedNotificationCenter.default().postNotificationName(Notification.Name("org.opencharge.configurationChanged"), object: nil) } }
 }
 

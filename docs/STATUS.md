@@ -1,4 +1,4 @@
-# Status — 0.3.48 and development source
+# Status — 0.3.49 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -70,3 +70,5 @@ Version 0.3.47 packages the macOS 11 deployment target and configured-only signe
 Read-only UI acceptance of the unchanged 0.3.47 release observed the English overview/settings and a successful live manual update check. Alternate-data source runs now skip global Shortcuts parameter registration; their cold-start probe preserved the real configuration. The source compatibility text states current OS/permission requirements instead of old test counts. Published 0.3.47 archives are unchanged.
 
 Version 0.3.48 ordinary-exit cancellation restores retained inhibition and keeps failed/ambiguous restoration retryable after control is disabled. Numeric firmware exit already commits its limit and relinquishes the helper journal; a genuinely cancellable numeric commit still needs a separate lifecycle design. App-level acknowledgements do not establish physical recovery or power-off persistence.
+
+Version 0.3.49 persists ordinary Cancel Quit recovery intent and retries it on startup with control disabled. Completion requires both helper acknowledgement and saved clearance. Direct charge and LED grants must complete pending recovery first; portable backups omit this obligation. Injected service/storage failures cover retention and retry. This is cooperative configuration state, not a cross-client ownership protocol: failed intent persistence, older clients, forced termination and real hardware remain validation limits. Numeric exit transaction rollback is still unfinished.

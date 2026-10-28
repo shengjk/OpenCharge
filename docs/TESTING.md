@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 269 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 288 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -556,3 +556,7 @@ The extracted, unchanged 0.3.47 universal release was observed on the current ho
 ## Cancelling ordinary retained-inhibition exit preparation
 
 The model fixture now verifies that cancelling after acknowledged ordinary retained inhibition sends restore, disables control and clears recovery only after acknowledgement. Failed restoration and a lost retain acknowledgement keep retryable responsibility even in monitoring mode. Cancelling before the preparation timer fires also keeps failed restoration reachable. A later quit retries restoration, while a clean second cancellation sends no hardware command. All requests are injected; no real helper request, sleep, shutdown or charge write runs. Numeric exit commit is not reversible through the current ordinary restore command; tests do not claim otherwise.
+
+## Ordinary cancellation recovery across restart
+
+Four core methods cover intent/restore/clear ordering, service and storage failure, direct mutation admission and portable-backup exclusion. The production-model fixture recreates the model from isolated files, verifies startup restoration, disables a contradictory saved opt-in, retains failed restoration or failed clearance, accepts peer completion and retries explicitly. Requests are injected. Isolated CLI checks preserve the pending marker during read-only inspection and rejected setters. These do not exercise a real helper or physical control, nor do they undo a committed numeric firmware exit target.
