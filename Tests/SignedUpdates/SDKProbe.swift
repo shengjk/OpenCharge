@@ -10,6 +10,9 @@ import Sparkle
  var finished = false
  var found: String?
  var error: NSError?
+ var backgroundAdmissions = 0
+ var backgroundRejections = 0
+ var blockBackgroundEnclosures = false
  var admitted = 0
  var policyChecks = 0
  var denied = false
@@ -30,10 +33,11 @@ import Sparkle
  func allowedChannels(for updater: SPUUpdater) -> Set<String> { policy.allowedChannels(for:updater) }
  func updater(_ updater: SPUUpdater, mayPerform check: SPUUpdateCheck) throws {
   observedUpdater = updater;profileEnabled = updater.sendsSystemProfile
-  do { try policy.updater(updater,mayPerform:check) }
-  catch { denied = true; self.error = error as NSError; throw error }
+  do { try policy.updater(updater,mayPerform:check); if check == .updatesInBackground { backgroundAdmissions += 1 } }
+  catch { if check == .updatesInBackground { backgroundRejections += 1 }; denied = true; self.error = error as NSError; throw error }
  }
  func updater(_ updater: SPUUpdater, shouldProceedWithUpdate item: SUAppcastItem, updateCheck: SPUUpdateCheck) throws {
+  if blockBackgroundEnclosures && updateCheck == .updatesInBackground { throw NSError(domain:"org.opencharge.sdk-probe",code:2,userInfo:[NSLocalizedDescriptionKey:"Fixture blocks every background archive before download"]) }
   policyChecks += 1
   try policy.updater(updater,shouldProceedWithUpdate:item,updateCheck:updateCheck); admitted += 1
  }
@@ -49,6 +53,7 @@ import Sparkle
 @MainActor final class ProbeClient: SignedUpdateClient {
  let delegate: ProbeDelegate
  lazy var session = SparkleUpdateSession(delegate:delegate)
+ private var configuredPreviews: Bool?
  var snapshots: [SignedUpdateSnapshot] = []
  var changed: ((SignedUpdateSnapshot) -> Void)?
  var afterChange: (() -> Void)?
@@ -57,6 +62,7 @@ import Sparkle
   delegate.policy.changed = { [weak self] value in self?.changed?(value);self?.afterChange?() }
  }
  func start(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) throws {
+  configuredPreviews = includePreviews
   delegate.policy.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,includePreviews:includePreviews)
   session.changed = { [weak self] value in
    guard let self else { return }; self.snapshots.append(value); self.delegate.policy.receiveSessionState(value)
@@ -64,8 +70,9 @@ import Sparkle
   try session.start(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads)
  }
  func configure(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) {
+  let changed = configuredPreviews != includePreviews; configuredPreviews = includePreviews
   delegate.policy.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,includePreviews:includePreviews)
-  session.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,resetCycle:false)
+  session.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,resetCycle:changed)
  }
  func check() { session.check(.informational) }
 }
@@ -75,11 +82,13 @@ import Sparkle
   let arguments = CommandLine.arguments
   precondition(arguments.count == 4)
   precondition(Bundle.main.bundleIdentifier?.hasPrefix("org.opencharge.sdk-probe.") == true)
-  precondition(arguments[1] == "informational")
+  let preferenceCase = arguments[1].hasPrefix("channel-")
+  precondition(arguments[1] == "informational" || ["channel-optout","channel-optout-downloads","channel-disable","channel-enable"].contains(arguments[1]))
   let feed = URL(string:Bundle.main.infoDictionary?["SUFeedURL"] as? String ?? "")!
   precondition(feed.scheme == "http" && feed.host == "127.0.0.1")
   let app = NSApplication.shared; app.setActivationPolicy(.prohibited)
   let delegate = ProbeDelegate(previews:arguments[2]=="preview",maintenance:arguments[3]=="busy")
+  delegate.blockBackgroundEnclosures = preferenceCase
   let client=ProbeClient(delegate:delegate)
   let domain="org.opencharge.sdk-model."+UUID().uuidString
   let defaults=UserDefaults(suiteName:domain)!
@@ -112,6 +121,20 @@ import Sparkle
   precondition(idle)
   precondition(updates.checkedAt == client.session.snapshot.checkedAt)
   if !delegate.denied, let error=delegate.error { precondition(updates.status == error.localizedDescription) }
+  if preferenceCase {
+   precondition(delegate.finished && delegate.error == nil && !delegate.denied)
+   if arguments[1] == "channel-optout-downloads" { updates.automaticDownloads = true }
+   if arguments[1] == "channel-disable" || arguments[1] == "channel-enable" { updates.automaticChecks = true }
+   updates.includePreviews = true
+   if arguments[1] == "channel-disable" { updates.automaticChecks = false }
+   // Pinned SDK resetUpdateCycleAfterShortDelay fires after one second.
+   // Background enclosures are always rejected above before any download.
+   let settle = Date().addingTimeInterval(4)
+   while Date() < settle { RunLoop.main.run(until:Date().addingTimeInterval(0.025)) }
+   let result: [String:Any] = ["identity":Bundle.main.bundleIdentifier!,"case":arguments[1],"automaticChecks":updates.automaticChecks,"automaticDownloads":updates.automaticDownloads,"sendsSystemProfile":delegate.profileEnabled as Any? ?? NSNull(),"backgroundAdmissions":delegate.backgroundAdmissions,"backgroundRejections":delegate.backgroundRejections]
+   print("SDK_PREFERENCES "+String(decoding:try JSONSerialization.data(withJSONObject:result,options:[.sortedKeys]),as:UTF8.self))
+   return
+  }
   var pendingVerified=false
   if delegate.found != nil && delegate.error == nil, let updater=delegate.observedUpdater {
    // Inject the production ready/finish/abort callbacks after a real completed

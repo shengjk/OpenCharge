@@ -26,6 +26,7 @@ struct SignedUpdateSnapshot: Equatable {
  private var started = false
  private var sdkSnapshot = SignedUpdateSnapshot()
  private var previews = true
+ private var automaticChecksAllowed = false
  private var rejectedPendingCheck = false
  private let maintenanceBusy: () -> Bool
  private let architecture: UpdateArchitecture
@@ -37,6 +38,7 @@ struct SignedUpdateSnapshot: Equatable {
  func start(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) throws {
   guard !started else { return }
   guard case .ready = SignedUpdateConfiguration.evaluate(Bundle.main.infoDictionary ?? [:]) else { throw ReleaseUpdateError.invalidFeed }
+  automaticChecksAllowed = automaticChecks
   previews = includePreviews; snapshot.error = nil
   let session = SparkleUpdateSession(delegate:self); self.session = session
   session.changed = { [weak self] value in self?.receiveSessionState(value) }
@@ -44,6 +46,7 @@ struct SignedUpdateSnapshot: Equatable {
   catch { self.session = nil; sdkSnapshot = SignedUpdateSnapshot(); snapshot.error = error.localizedDescription; refresh(); throw error }
  }
  func configure(automaticChecks: Bool, automaticDownloads: Bool, includePreviews: Bool) {
+  automaticChecksAllowed = automaticChecks
   let channelChanged = previews != includePreviews; previews = includePreviews
   session?.configure(automaticChecks:automaticChecks,automaticDownloads:automaticDownloads,resetCycle:channelChanged)
   refresh()
@@ -52,10 +55,11 @@ struct SignedUpdateSnapshot: Equatable {
   guard let session, session.snapshot.canCheck, !maintenanceBusy() else { return }
   snapshot.error = nil; session.check(); refresh()
  }
- // A status-only sink shared with the SDK session; it never starts a session
- // or changes identity/feed/archive admission. Keep pending/error delegate
+ // Reflect SDK state and live automatic-check consent without starting a
+ // session or changing identity/feed/archive admission. Keep pending/error delegate
  // state even when KVO reports the active check session has finished.
  func receiveSessionState(_ value: SignedUpdateSnapshot) {
+  if let automatic = value.automaticChecks { automaticChecksAllowed = automatic }
   if value.sessionInProgress && !sdkSnapshot.sessionInProgress { snapshot.error = nil }
   sdkSnapshot = value; refresh()
  }
@@ -72,9 +76,14 @@ struct SignedUpdateSnapshot: Equatable {
  func allowedChannels(for updater: SPUUpdater) -> Set<String> { previews ? ["preview"] : [] }
  func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
   rejectedPendingCheck = false
-  do { try requireIdleMaintenance() }
+  do {
+   try requireIdleMaintenance()
+   guard updateCheck != .updatesInBackground || automaticChecksAllowed else {
+    throw NSError(domain:"org.opencharge.updates",code:2,userInfo:[NSLocalizedDescriptionKey:NSLocalizedString("自动检查已关闭，请手动检查更新",comment:"")])
+   }
+  }
   catch {
-   // Refusing a new check does not cancel the installer already waiting for
+   // Refusing a new check for opt-out or maintenance does not cancel the installer waiting for
    // normal quit. Keep the settings-reset barrier across its error callbacks.
    rejectedPendingCheck = snapshot.installationPending
    throw error

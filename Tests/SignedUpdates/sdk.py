@@ -26,6 +26,8 @@ ROOT=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--build-root',type=Path,default=ROOT)
 parser.add_argument('--arch',choices=['native','arm64','x86_64','all'],default='native')
+parser.add_argument('--evidence-output',type=Path)
+parser.add_argument('--case',action='append',help='Select individual informational or channel preference cases')
 args=parser.parse_args();args.build_root=args.build_root.resolve()
 arches=[platform.machine()] if args.arch=='native' else ['arm64','x86_64'] if args.arch=='all' else [args.arch]
 assert platform.machine()=='arm64' or arches==['x86_64'],'This host cannot execute arm64 fixtures'
@@ -75,6 +77,10 @@ with tempfile.TemporaryDirectory(prefix='real-sdk-probe-',dir=ROOT/'.build') as 
   'downgrade':signed(feed.serialize([feed.render_item(entry('0.9.9','99','stable'))])),
   'empty-stable':signed(feed.serialize([preview]))
  }
+ for name in ['channel-optout','channel-optout-downloads','channel-disable','channel-enable']: bodies[name]=valid
+ if args.case:
+  assert set(args.case)<=set(bodies),'Unknown SDK fixture case'
+  bodies={name:bodies[name] for name in args.case}
  routes={};requests=[];lock=threading.Lock()
  class Handler(http.server.BaseHTTPRequestHandler):
   def do_GET(self):
@@ -117,7 +123,19 @@ with tempfile.TemporaryDirectory(prefix='real-sdk-probe-',dir=ROOT/'.build') as 
      run('/usr/bin/codesign','--verify','--deep','--all-architectures','--strict',target)
      home=case/'home';home.mkdir();(home/'Library/Preferences').mkdir(parents=True);(home/'Library/Caches').mkdir(parents=True)
      env=dict(os.environ);env['CFFIXED_USER_HOME']=str(home)
-     output=run('/usr/bin/arch','-'+cpu,target/'Contents/MacOS/SDKProbe','informational','preview' if name=='preview' else 'stable','busy' if name=='busy' else 'idle',env=env,timeout=35)
+     output=run('/usr/bin/arch','-'+cpu,target/'Contents/MacOS/SDKProbe',name if name.startswith('channel-') else 'informational','preview' if name=='preview' else 'stable','busy' if name=='busy' else 'idle',env=env,timeout=35)
+     if name.startswith('channel-'):
+      line=next(x for x in output.splitlines() if x.startswith('SDK_PREFERENCES '));value=json.loads(line[len('SDK_PREFERENCES '):])
+      with lock:seen=[x for x in requests if urllib.parse.urlsplit(x).path==path]
+      value.update({'architecture':cpu,'loopbackRequests':len(seen)})
+      print('OBSERVED '+json.dumps(value,sort_keys=True),flush=True)
+      assert value['identity']==identity and not value['sendsSystemProfile']
+      assert value['automaticChecks']==(name=='channel-enable')
+      assert value['automaticDownloads']==(name=='channel-optout-downloads')
+      assert len(seen)==(2 if name=='channel-enable' else 1), 'Opt-out channel edit initiated an unsolicited feed request'
+      assert value['backgroundAdmissions']==(1 if name=='channel-enable' else 0)
+      if name=='channel-disable':assert value['backgroundRejections']>=1, 'Queued SDK check did not exercise the opt-out admission guard'
+      results.append(value);print('PASS actual SDK preference admission '+cpu+' '+name,flush=True);continue
      line=next(x for x in output.splitlines() if x.startswith('SDK_PROBE '));value=json.loads(line[len('SDK_PROBE '):])
      with lock:seen=[x for x in requests if urllib.parse.urlsplit(x).path==path]
      assert value['identity']==identity and not value['automaticChecks'] and not value['automaticDownloads'] and not value['sendsSystemProfile']
@@ -142,4 +160,7 @@ with tempfile.TemporaryDirectory(prefix='real-sdk-probe-',dir=ROOT/'.build') as 
        if name in ['foreign-archive','package','downgrade'] or (name=='arm-archive' and cpu=='x86_64'):assert value['policyChecks']==1
      print('PASS real SDK informational check '+cpu+' '+name,flush=True)
   finally:server.shutdown();thread.join()
-print('Real SDK: '+str(len(results))+' informational channel/signature/admission checks passed; private loopback and RFC fixtures only; no archive download, installation or publication')
+if args.evidence_output:
+ args.evidence_output.parent.mkdir(parents=True,exist_ok=True)
+ args.evidence_output.write_text(json.dumps(results,indent=2)+'\n')
+print('Real SDK: '+str(len(results))+' informational and preference channel/signature/admission checks passed; private loopback and RFC fixtures only; no archive download, installation or publication')

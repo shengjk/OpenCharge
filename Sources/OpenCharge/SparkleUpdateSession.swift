@@ -37,10 +37,12 @@ import Sparkle
  }
  func configure(automaticChecks: Bool, automaticDownloads: Bool, resetCycle: Bool) {
   guard let updater = controller?.updater else { return }
-  updater.automaticallyChecksForUpdates = automaticChecks
-  updater.automaticallyDownloadsUpdates = automaticDownloads
-  updater.sendsSystemProfile = false
-  if resetCycle { updater.resetUpdateCycleAfterShortDelay() }
+  // The SDK posts a cycle-reset notification even for a repeated checks value.
+  // A changed channel can make that reset check immediately despite opt-out.
+  if updater.automaticallyChecksForUpdates != automaticChecks { updater.automaticallyChecksForUpdates = automaticChecks }
+  if updater.automaticallyDownloadsUpdates != automaticDownloads { updater.automaticallyDownloadsUpdates = automaticDownloads }
+  if updater.sendsSystemProfile { updater.sendsSystemProfile = false }
+  if resetCycle && automaticChecks { updater.resetUpdateCycleAfterShortDelay() }
   refresh()
  }
  func check(_ kind: Check = .userInitiated) {

@@ -68,7 +68,19 @@ import Sparkle
  precondition(!updater.sessionInProgress)
  precondition(driver.feedURLString(for:updater)==SignedUpdateConfiguration.feedURL.absoluteString)
  precondition(driver.allowedChannels(for:updater)==["preview"])
+ // Manual/informational checks remain available; background admission follows
+ // both product preferences and SDK-owned KVO changes, never a cycle-reset hint.
+ do { try driver.updater(updater,mayPerform:.updatesInBackground); preconditionFailure("opt-out background admitted") } catch {}
  try driver.updater(updater,mayPerform:.updates)
+ try driver.updater(updater,mayPerform:.updateInformation)
+ driver.configure(automaticChecks:true,automaticDownloads:false,includePreviews:true)
+ try driver.updater(updater,mayPerform:.updatesInBackground)
+ driver.receiveSessionState(SignedUpdateSnapshot(automaticChecks:false))
+ do { try driver.updater(updater,mayPerform:.updatesInBackground); preconditionFailure("SDK opt-out ignored") } catch {}
+ driver.receiveSessionState(SignedUpdateSnapshot(automaticChecks:true))
+ try driver.updater(updater,mayPerform:.updatesInBackground)
+ driver.configure(automaticChecks:false,automaticDownloads:false,includePreviews:true)
+
  maintenance=true
  do { try driver.updater(updater,mayPerform:.updatesInBackground); preconditionFailure("maintenance admitted") } catch {}
  maintenance=false
@@ -79,6 +91,13 @@ import Sparkle
  precondition(!driver.updater(updater,willInstallUpdateOnQuit:empty,immediateInstallationBlock:{ forced=true }))
  precondition(driver.snapshot.installationPending && !forced)
  driver.updater(updater,didFinishUpdateCycleFor:.updatesInBackground,error:nil)
+ precondition(driver.snapshot.installationPending)
+ // Declining an unwanted background check must retain the prepared-install
+ // barrier until the SDK actually dismisses that installer.
+ do { try driver.updater(updater,mayPerform:.updatesInBackground); preconditionFailure("pending opt-out background admitted") } catch {
+  driver.updater(updater,didAbortWithError:error)
+  driver.updater(updater,didFinishUpdateCycleFor:.updatesInBackground,error:error)
+ }
  precondition(driver.snapshot.installationPending)
  // The prepared installer survives a rejected new check: neither SDK abort
  // nor cycle completion may make settings reset available prematurely.

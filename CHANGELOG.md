@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.51
+
+- Keep signed-update background checks disabled when the user opts out, including channel edits and an already queued SDK cycle. Avoid redundant preference writes and channel-triggered resets while checks are off; recheck consent at background admission using live SDK preference changes.
+- Preserve manual checks, explicit automatic-check opt-in and prepared-installer state when an unwanted new check is rejected. Add real SDK loopback regressions on arm64 and x86_64; no test archive is downloaded or installed.
+
 ## 0.3.50
 
 - Add a helper-side prepared numeric exit extension with canonical transaction identities, retained recovery journal/lease, explicit matching commit, idempotent acknowledgement retry and stale-session rejection. Connect preparation to the application quit flow and commit only after the final exit decision. Cancellation before commit restores captured values. A lost commit reply offers same-transaction confirmation retry or explicit unconfirmed exit without claiming rollback.
