@@ -10,6 +10,7 @@ import Sparkle
  var failed = false
  var quitCount = 0
  let info = Bundle.main.infoDictionary!
+ var scheduledQuit: Bool { (info["FixtureQuitMode"] as? String)?.hasSuffix("on-quit") == true }
  var version: String { info["CFBundleShortVersionString"] as! String }
  var directory: URL { URL(fileURLWithPath:info["FixtureEvidenceDirectory"] as! String,isDirectory:true) }
  func record(_ event: String, _ fields: [String:Any] = [:]) {
@@ -40,7 +41,14 @@ import Sparkle
  func updater(_ updater: SPUUpdater, willExtractUpdate item: SUAppcastItem) { record("will-extract-callback") }
  func updater(_ updater: SPUUpdater, didExtractUpdate item: SUAppcastItem) { record("did-extract-callback") }
  func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem, immediateInstallationBlock: @escaping () -> Void) -> Bool {
-  record("ready");install=immediateInstallationBlock
+  record("ready")
+  if scheduledQuit {
+   // Match the product's NO return: keep the SDK scheduler, never retain or
+   // invoke its immediate-install handler. Only this fixture app is quit.
+   DispatchQueue.main.asyncAfter(deadline:.now()+0.8) { self.record("request-normal-quit");NSApp.terminate(nil) }
+   return false
+  }
+  install=immediateInstallationBlock
   DispatchQueue.main.asyncAfter(deadline:.now()+0.3) { self.record("request-install");self.install?() }
   return true
  }
@@ -54,13 +62,21 @@ import Sparkle
  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
   if version == "1.0.1" || failed { return .terminateNow }
   quitCount += 1;record("quit-request",["attempt":quitCount])
-  if info["FixtureQuitMode"] as? String == "cancel-once" && quitCount == 1 {
+  if (info["FixtureQuitMode"] as? String)?.hasPrefix("cancel-once") == true && quitCount == 1 {
    record("quit-cancelled")
-   DispatchQueue.main.asyncAfter(deadline:.now()+0.7) { self.record("retry-install");self.install?() }
+   DispatchQueue.main.asyncAfter(deadline:.now()+0.7) {
+    if self.scheduledQuit { self.record("retry-normal-quit");NSApp.terminate(nil) }
+    else { self.record("retry-install");self.install?() }
+   }
    return .terminateCancel
   }
   record("cleanup-begin")
-  DispatchQueue.main.asyncAfter(deadline:.now()+0.2) { self.record("cleanup-complete");sender.reply(toApplicationShouldTerminate:true) }
+  // Like product QuitFlow, service deferred termination in AppKit's modal
+  // run loop. A main-queue delay can stall after an ordinary user quit.
+  let timer=Timer(timeInterval:0.2,repeats:false) { _ in
+   MainActor.assumeIsolated { self.record("cleanup-complete");sender.reply(toApplicationShouldTerminate:true) }
+  }
+  RunLoop.main.add(timer,forMode:.common);RunLoop.main.add(timer,forMode:.modalPanel)
   return .terminateLater
  }
  func applicationWillTerminate(_ notification: Notification) { record("terminated") }

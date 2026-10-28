@@ -29,6 +29,8 @@ parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--build-root',type=Path,default=ROOT)
 parser.add_argument('--arch',choices=['native','arm64','x86_64','all'],default='native')
 parser.add_argument('--evidence-output',type=Path)
+MODES=['plain','cancel-once','on-quit','cancel-once-on-quit','bad-signature','tampered-archive']
+parser.add_argument('--case',action='append',choices=MODES,help='Run selected cases; default runs all cases')
 args=parser.parse_args();args.build_root=args.build_root.resolve()
 arches=[platform.machine()] if args.arch=='native' else ['arm64','x86_64'] if args.arch=='all' else [args.arch]
 assert platform.machine()=='arm64' or arches==['x86_64'],'Use native Apple Silicon Python for arm64/all; Intel hosts support x86_64 only'
@@ -110,7 +112,8 @@ with tempfile.TemporaryDirectory(prefix='opencharge-sdk-install-',dir='/private/
   base={'CFBundleIdentifier':'org.opencharge.app','CFBundleExecutable':'OpenCharge','CFBundleName':'SDK Installation Fixture','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.0.0','CFBundleVersion':'1','LSMinimumSystemVersion':'13.0','CFBundleDevelopmentRegion':'en','CFBundleLocalizations':['en','zh-Hans'],'LSUIElement':True,'SUPublicEDKey':key}
   base.update(config.DEFAULTS);(template/'Contents/Info.plist').write_bytes(plistlib.dumps(base))
   run('python3',ROOT/'Scripts/sparkle-package.py','prepare',template,'--source',source);(mac/'OpenCharge').rename(mac/'SDKInstallFixture')
-  for mode in ['plain','cancel-once','bad-signature','tampered-archive']:
+  for mode in args.case or MODES:
+   scheduled_quit=mode.endswith('on-quit')
    case=root/(cpu+'-'+mode);case.mkdir();app=case/'Fixture.app';shutil.copytree(template,app,symlinks=True)
    identity='org.opencharge.sdk-install.'+uuid.uuid4().hex
    bodies={};requests=[];lock=threading.Lock();process=None;log=None
@@ -144,7 +147,22 @@ with tempfile.TemporaryDirectory(prefix='opencharge-sdk-install-',dir='/private/
        process.poll() # Reap exit promptly: the SDK observes the target PID.
        event_file=case/'events.jsonl';events=[json.loads(x) for x in event_file.read_text().splitlines()] if event_file.exists() else []
        if any(x['event'] in ['relaunched-new-version','update-error','start-error'] for x in events):break
+       if scheduled_quit and process.returncode is not None and plistlib.loads((app/'Contents/Info.plist').read_bytes())['CFBundleShortVersionString']=='1.0.1':break
        time.sleep(0.05)
+      if scheduled_quit:
+       print('ON-QUIT '+json.dumps({'architecture':cpu,'case':mode,'events':events,'oldExit':process.poll(),'processLog':(case/'process.log').read_text()[-2500:]}),flush=True)
+       assert process.poll()==0,'Ordinary fixture quit did not finish'
+       assert not any(x['event']=='relaunched-new-version' for x in events),'On-quit installation unexpectedly relaunched'
+       assert plistlib.loads((app/'Contents/Info.plist').read_bytes())['CFBundleShortVersionString']=='1.0.1','On-quit replacement not completed'
+       # Ordinary quit installs silently, without SDK relaunch. Open the owned
+       # replacement explicitly to verify it runs; record who initiated launch.
+       with (case/'events.jsonl').open('a') as evidence:
+        evidence.write(json.dumps({'event':'harness-open-replacement','time':time.time()})+'\n')
+       reopened=subprocess.Popen(['/usr/bin/arch','-'+cpu,str(app/'Contents/MacOS/SDKInstallFixture')],env=env,stdout=log,stderr=log)
+       try:assert reopened.wait(timeout=10)==0
+       finally:
+        if reopened.poll() is None:reopened.terminate();reopened.wait(timeout=5)
+       events=[json.loads(x) for x in (case/'events.jsonl').read_text().splitlines()]
       names=[x['event'] for x in events];version=plistlib.loads((app/'Contents/Info.plist').read_bytes())['CFBundleShortVersionString']
       result={'architecture':cpu,'case':mode,'events':events,'requests':list(requests),'version':version,'oldExit':process.poll(),'identity':identity,'archiveLayout':'versioned-root/dist/app'};results.append(result)
       print('OBSERVED '+json.dumps(result,sort_keys=True),flush=True)
@@ -157,9 +175,14 @@ with tempfile.TemporaryDirectory(prefix='opencharge-sdk-install-',dir='/private/
        assert version=='1.0.1' and 'update-error' not in names and 'relaunched-new-version' in names
        for before,after in [('download-end','did-extract-callback'),('did-extract-callback','ready'),('ready','cleanup-begin'),('cleanup-begin','cleanup-complete'),('cleanup-complete','terminated'),('terminated','relaunched-new-version')]:assert names.index(before)<names.index(after),(before,after)
        assert next(x['pid'] for x in events if x['event']=='launched')!=next(x['pid'] for x in events if x['event']=='relaunched-new-version')
-       if mode=='cancel-once':
-        assert names.count('quit-request')==2 and names.index('quit-cancelled')<names.index('retry-install')<names.index('cleanup-begin')
+       if mode.startswith('cancel-once'):
+        retry='retry-normal-quit' if scheduled_quit else 'retry-install'
+        assert names.count('quit-request')==2 and names.index('quit-cancelled')<names.index(retry)<names.index('cleanup-begin')
        else:assert names.count('quit-request')==1
+       if scheduled_quit:
+        assert 'request-install' not in names and 'retry-install' not in names
+        assert names.index('ready')<names.index('cycle-end')<names.index('request-normal-quit')
+        assert names.index('terminated')<names.index('harness-open-replacement')<names.index('relaunched-new-version')
        run('/usr/bin/codesign','--verify','--deep','--all-architectures','--strict',app)
        assert set(run('/usr/bin/lipo','-archs',app/'Contents/MacOS/SDKInstallFixture').split())=={cpu}
       print('PASS real SDK archive fixture '+cpu+' '+mode,flush=True)
