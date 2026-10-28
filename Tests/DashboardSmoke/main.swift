@@ -146,11 +146,36 @@ import ChargeHardware
   precondition(quitCommands == ["restore"])
   let quitReading = model.reading!.date
   model.refresh(); precondition(model.reading!.date == quitReading, "quit preparation must stop policy refreshes")
-  model.cancelQuit(); precondition(!model.config.hardwareEnabled && model.reading!.date > quitReading)
+  model.cancelQuit(request:{ _ in preconditionFailure("normal exit was already restored") }); precondition(!model.config.hardwareEnabled && model.reading!.date > quitReading)
   model.config.hardwareEnabled = true; model.config.policy.stopOnQuit = true
   try model.prepareForQuit(request: { quitCommands.append($0); return "fixture retained" })
   precondition(quitCommands.last == "retainChargeInhibit")
-  model.cancelQuit(); model.config.policy.stopOnQuit = false; model.error = nil
+  quitCommands = []
+  model.cancelQuit(request:{ quitCommands.append($0); return "fixture cancelled retention" })
+  precondition(quitCommands == ["restore"] && !model.config.hardwareEnabled && !model.needsQuitPreparation)
+  // A failed cancellation must keep recovery reachable even in monitoring mode.
+  model.config.hardwareEnabled = true
+  try model.prepareForQuit(request:{ _ in "fixture retained" })
+  model.cancelQuit(request:{ _ in throw CocoaError(.fileWriteUnknown) })
+  precondition(!model.config.hardwareEnabled && model.needsQuitPreparation && model.error?.contains("恢复仍待重试") == true)
+  quitCommands = []; try model.prepareForQuit(request:{ quitCommands.append($0); return "fixture recovery" })
+  precondition(quitCommands == ["restore"] && !model.needsQuitPreparation)
+  model.cancelQuit(request:{ _ in preconditionFailure("clean cancellation wrote again") })
+  // Lost acknowledgement can leave inhibition active despite a thrown error.
+  model.config.hardwareEnabled = true
+  do { try model.prepareForQuit(request:{ _ in throw CocoaError(.fileWriteUnknown) }); preconditionFailure("ambiguous retain accepted") } catch {}
+  quitCommands = []; model.cancelQuit(request:{ quitCommands.append($0); return "fixture ambiguous rollback" })
+  precondition(quitCommands == ["restore"] && !model.config.hardwareEnabled && !model.needsQuitPreparation)
+  model.config.policy.stopOnQuit = false; model.error = nil
+  // Cancellation can occur before the first preparation timer fires.
+  model.config.hardwareEnabled = true; model.decision = Decision(.allowCharge,"fixture active",limit:80)
+  let quitRollbackPlan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:.allowCharge,percent:50,target:80,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true)
+  model.applyHardwareDecision(quitRollbackPlan,request:{ _ in "fixture active charge" },setIdleSleep:{ _ in })
+  model.cancelQuit(request:{ _ in throw CocoaError(.fileWriteUnknown) })
+  precondition(!model.config.hardwareEnabled && model.needsQuitPreparation)
+  quitCommands = []; try model.prepareForQuit(request:{ quitCommands.append($0); return "fixture early-cancel recovery" })
+  precondition(quitCommands == ["restore"] && !model.needsQuitPreparation)
+  model.cancelQuit(request:{ _ in preconditionFailure("clean early-cancel retried hardware") })
   print("Quit preparation policy/suspension/cancel checks passed; injected helper only")
   model.setDashboardFocused(true)
   precondition(!model.dashboard.paused && model.dashboard.limit == 80)

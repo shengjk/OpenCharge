@@ -149,8 +149,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var dischargeExitPending = false
  private var quitting = false
  private var quitCleanupPrepared = false
+ private var quitChargeRecoveryPending = false
  var automationPhase: PolicyPhase { quitting ? .exit : calibrationPending ? .calibration : decision.phase ?? engine.phase }
- var needsQuitPreparation: Bool { config.hardwareEnabled || firmwareControl?.mayOwnSession == true || dischargeExitPending || lastHardwareAction == .forceDischarge || magSafeSessionActive || sleepOverrideSessionActive || sleepController.active }
+ var needsQuitPreparation: Bool { quitChargeRecoveryPending || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || dischargeExitPending || lastHardwareAction == .forceDischarge || magSafeSessionActive || sleepOverrideSessionActive || sleepController.active }
  var needsDischargeExitWait: Bool { dischargeExitPending }
  private var timer: Timer?
  private var observers: [NSObjectProtocol] = []
@@ -597,6 +598,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    try firmwareControl.restore(request:request); firmwareInspection = nil; firmwareStatus = NSLocalizedString("数值固件会话已恢复 · 监测模式", comment: "")
   }
   else { _ = try request("restore") }
+  quitChargeRecoveryPending = false; lastHardwareAction = .restore
  }
  func enableHardware(_ enabled: Bool, request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
@@ -605,7 +607,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if enabled { do {
    sleepOverrideFailed = false
    guard !calibrationPending else { throw HelperError.rejected(NSLocalizedString("请先选择继续或取消上次校准", comment: "")) }
-   if firmwareControl?.mayOwnSession == true { try restoreChargeControl(request:request) }
+   if quitChargeRecoveryPending || firmwareControl?.mayOwnSession == true { try restoreChargeControl(request:request) }
    helperStatus = try request("capabilities"); sleepOverrideCapability = SleepProtectionPlan.supportsHelper(helperStatus)
    try configureHardwareChannel(capabilities:helperStatus,numericRequired:requiresNumericFirmware()); config.hardwareEnabled = true } catch { self.error = error.localizedDescription; config.hardwareEnabled = false } }
   else { do { try restoreChargeControl(request:request); helperStatus = NSLocalizedString("服务已确认恢复", comment: ""); lastHardwareAction = .restore; config.hardwareEnabled = false } catch { self.error = String.localizedStringWithFormat(NSLocalizedString("恢复请求失败；服务会在心跳超时后尝试恢复：%@", comment: ""), error.localizedDescription); config.hardwareEnabled = false } }
@@ -633,10 +635,23 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if sleepOverrideSessionActive { do { _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false } catch { failures.append(error.localizedDescription) } }
   if magSafeSessionActive { do { _ = try request("magSafeRestore"); magSafeSessionActive = false } catch { failures.append(error.localizedDescription) } }
   do { try sleepController.setPreventIdleSleep(false) } catch { failures.append(error.localizedDescription) }
-  if config.hardwareEnabled || firmwareControl?.mayOwnSession == true || lastHardwareAction == .forceDischarge {
+  // A cancelled/ambiguous earlier exit must be restored before another attempt.
+  if quitChargeRecoveryPending {
+   do { try restoreChargeControl(request:request) } catch { failures.append(error.localizedDescription) }
+  }
+  if !quitChargeRecoveryPending && (config.hardwareEnabled || firmwareControl?.mayOwnSession == true || lastHardwareAction == .forceDischarge) {
    do {
-    if let firmwareControl { try firmwareControl.finishExit(policy:config.policy,phase:automationPhase,active:config.hardwareEnabled,request:request); lastHardwareAction = .restore }
-    else { _ = try request(config.policy.stopOnQuit ? "retainChargeInhibit" : "restore"); lastHardwareAction = config.policy.stopOnQuit ? .inhibitCharge : .restore }
+    if let firmwareControl {
+     try firmwareControl.finishExit(policy:config.policy,phase:automationPhase,active:config.hardwareEnabled,request:request)
+     lastHardwareAction = .restore
+    }
+    else {
+     // Set before delivery: an error may arrive after the helper applied it.
+     quitChargeRecoveryPending = true
+     _ = try request(config.policy.stopOnQuit ? "retainChargeInhibit" : "restore")
+     quitChargeRecoveryPending = config.policy.stopOnQuit
+     lastHardwareAction = config.policy.stopOnQuit ? .inhibitCharge : .restore
+    }
    }
    catch { failures.append(error.localizedDescription) }
   }
@@ -646,8 +661,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func cancelQuit(request: (String) throws -> String = HelperClient.request) {
   // Never resume a discharge/calibration automatically after a cancelled exit.
   var recoveryFailure: String?
-  if firmwareControl?.mayOwnSession == true {
-   do { try restoreChargeControl(request:request) } catch { recoveryFailure = error.localizedDescription }
+  if quitChargeRecoveryPending || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore {
+   do { try restoreChargeControl(request:request) }
+   catch { quitChargeRecoveryPending = true; recoveryFailure = error.localizedDescription }
   }
   config.hardwareEnabled = false
   if config.policy.mode == .calibration { calibrationPending = true }
@@ -687,7 +703,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard allowChargeSettingsEdit() else { throw HelperServiceError.ineligible(error ?? "") }
   guard !updates.busy else { throw HelperServiceError.ineligible(NSLocalizedString("请等待更新检查或下载结束后再重置设置", comment: "")) }
   settingsResetStatus = nil; settingsResetPending = true
-  let restoreCharge = config.hardwareEnabled || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore || dischargeExitPending
+  let restoreCharge = quitChargeRecoveryPending || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore || dischargeExitPending
   var stopped = config; stopped.hardwareEnabled = false; stopped.systemActionsEnabled = false
   // Stop this live model even when storage fails, so its next timer cannot rearm control.
   config = stopped
@@ -747,7 +763,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    // Validate before touching current hardware or configuration.
    if magSafeSessionActive { _ = try HelperClient.request("magSafeRestore"); magSafeSessionActive = false }
    magSafeSelection = nil; magSafePolicyFailed = false
-   if config.hardwareEnabled || firmwareControl?.mayOwnSession == true { try restoreChargeControl() }
+   if quitChargeRecoveryPending || config.hardwareEnabled || firmwareControl?.mayOwnSession == true { try restoreChargeControl() }
    try sleepController.setPreventIdleSleep(false)
    try restored.save(); config = restored; engine = ChargeEngine(sailingCheckpoint: restored.sailingCheckpoint); appliedChargeLimitChangeID = restored.chargeLimitChangeID; calibrationPending = false
    lastHardwareAction = .restore; refresh()
@@ -762,7 +778,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   do {
    if deleteFiles { try helperService.validateFullRemoval() } else { try helperService.validateRemoval() }
    // SMAppService unregister terminates the daemon: restore while its journal is alive.
-   if (!deleteFiles && helperService.status == .enabled) || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || magSafeSessionActive || sleepOverrideSessionActive {
+   if quitChargeRecoveryPending || (!deleteFiles && helperService.status == .enabled) || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || magSafeSessionActive || sleepOverrideSessionActive {
     try restoreChargeControl(request:request)
     _ = try request("magSafeRestore")
    }

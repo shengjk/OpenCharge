@@ -1,6 +1,6 @@
 # Using a compiled OpenCharge preview
 
-Version 0.3.47 declares macOS 11 or later; macOS 11/12 runtime remains unverified. Published 0.3.46 packages require macOS 13. Native Shortcuts require macOS 13 or later. Choose the arm64 archive for Apple silicon, or the universal archive for Apple silicon and Intel. Hardware support depends on the model and service capabilities; a universal executable does not validate all firmware.
+Version 0.3.48 declares macOS 11 or later; macOS 11/12 runtime remains unverified. Published 0.3.46 packages require macOS 13. Native Shortcuts require macOS 13 or later. Choose the arm64 archive for Apple silicon, or the universal archive for Apple silicon and Intel. Hardware support depends on the model and service capabilities; a universal executable does not validate all firmware.
 
 1. Verify the archive against `SHA256SUMS.txt`, then extract it.
 2. Open `dist/OpenCharge.app`. You can copy the complete app to `/Applications`. Keep the extracted directory if you need the helper scripts or CLI.
@@ -24,7 +24,7 @@ The interface includes only Simplified Chinese and English, selected through mac
 
 # 使用编译好的 OpenCharge 预览版
 
-0.3.47 声明最低 macOS 11，但尚未在 macOS 11/12 实机验证。已发布的 0.3.46 包仍要求 macOS 13。原生快捷指令要求 macOS 13 或更新版本。Apple 芯片可选择 arm64 包，或选择同时包含 Apple 芯片和 Intel 可执行文件的 universal 包。通用架构不代表所有机型固件都已验证。
+0.3.48 声明最低 macOS 11，但尚未在 macOS 11/12 实机验证。已发布的 0.3.46 包仍要求 macOS 13。原生快捷指令要求 macOS 13 或更新版本。Apple 芯片可选择 arm64 包，或选择同时包含 Apple 芯片和 Intel 可执行文件的 universal 包。通用架构不代表所有机型固件都已验证。
 
 核对 `SHA256SUMS.txt` 后解压，打开 `dist/OpenCharge.app`，也可将完整应用复制到“应用程序”。如需使用命令行和服务脚本，请保留解压目录。编译包已包含应用、命令行、后台服务、安装／移除脚本和说明，不需要安装 Swift 编译器。
 

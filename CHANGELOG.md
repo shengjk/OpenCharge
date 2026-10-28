@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.48
+
+- Restore ordinary charge state when exit is cancelled after retained inhibition or an ambiguous cleanup request. Keep failed cancellation recovery reachable and require it before re-enabling control. Numeric exit commit remains a separate unresolved lifecycle boundary.
+
 - Skip global Shortcuts parameter registration for alternate-data-directory runs. Replace historical Shortcuts test counts in the compatibility card with current availability and permission requirements.
 
 ## 0.3.47

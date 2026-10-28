@@ -147,6 +147,16 @@ private final class ResetManagedDefaults: UserDefaults {
  defaults.set("light",forKey:"appearance"); defaults.forced = ["appearance"]
  try m.resetSettings(request:{_ in preconditionFailure("monitoring reset must not require service")},releaseIdle:{},applyDock:{_ in})
  precondition(defaults.string(forKey:"appearance") == "light" && defaults.string(forKey:"thirdPartyKey") == "unknown preserved")
+ // An ambiguous retained-exit request can leave recovery while both the
+ // configuration and last acknowledged ordinary action look like monitoring.
+ try clean(); let retained = model()
+ retained.config.hardwareEnabled = true; retained.config.policy.stopOnQuit = true
+ rejects { try retained.prepareForQuit(request:{ _ in throw HelperError.unavailable }) }
+ retained.cancelQuit(request:{ _ in throw HelperError.unavailable })
+ precondition(!retained.config.hardwareEnabled && retained.needsQuitPreparation)
+ var retainedCalls: [String] = []
+ try retained.resetSettings(request:{ retainedCalls.append($0); return "fixture recovered" },releaseIdle:{},applyDock:{_ in})
+ precondition(retainedCalls == ["restore"] && !retained.needsQuitPreparation)
  // Busy update work is an independent reset gate, with an entirely injected response.
  try clean()
  let updates = AppUpdates(defaults:defaults,currentVersion:"0.3.40")

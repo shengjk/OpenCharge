@@ -1,4 +1,4 @@
-# Status — 0.3.47 and development source
+# Status — 0.3.48 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -68,3 +68,5 @@ Version 0.3.47 packages target macOS 11 in SwiftPM, native/universal executables
 Version 0.3.47 packages the macOS 11 deployment target and configured-only signed updater. The distributed prerelease has no deployment update key and retains manual updates. Guarded product updater startup, native update UI, cross-restart recovery, macOS 11/12 runtime, Apple-issued signing/notarization and real hardware/service coordination remain unverified.
 
 Read-only UI acceptance of the unchanged 0.3.47 release observed the English overview/settings and a successful live manual update check. Alternate-data source runs now skip global Shortcuts parameter registration; their cold-start probe preserved the real configuration. The source compatibility text states current OS/permission requirements instead of old test counts. Published 0.3.47 archives are unchanged.
+
+Version 0.3.48 ordinary-exit cancellation restores retained inhibition and keeps failed/ambiguous restoration retryable after control is disabled. Numeric firmware exit already commits its limit and relinquishes the helper journal; a genuinely cancellable numeric commit still needs a separate lifecycle design. App-level acknowledgements do not establish physical recovery or power-off persistence.
