@@ -32,6 +32,8 @@ public struct DischargeExit: Sendable {
   }
   if now - started >= timeout { phase = .needsDecision }
  }
+ public mutating func recoveryInvalidated() { guard phase == .preparing || phase == .waiting || phase == .needsDecision else { return }; phase = .needsDecision }
+ public mutating func confirmationFailed() { guard phase == .ready else { return }; phase = .needsDecision }
  public mutating func cancel() { guard phase != .ready && phase != .cancelled && phase != .idle else { return }; phase = .cancelled }
  public mutating func force() { guard phase == .needsDecision else { return }; phase = .ready }
 }

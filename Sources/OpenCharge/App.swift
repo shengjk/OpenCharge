@@ -29,7 +29,7 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
    return .terminateCancel
   }
   guard let model, model.needsQuitPreparation else { return .terminateNow }
-  let flow = QuitFlow(waitForPower: model.needsDischargeExitWait, prepare: { try model.prepareForQuit() }, cancelControl: { model.cancelQuit() }, reply: { [weak self] allowed in
+  let flow = QuitFlow(waitForPower: model.needsDischargeExitWait, prepare: { try model.prepareForQuit() }, cancelControl: { model.cancelQuit() }, renewPreparation: { try model.renewPreparedQuit() }, finalize: { try model.commitQuit() }, commitStarted: { model.numericExitCommitStarted }, reply: { [weak self] allowed in
    self?.quitFlow = nil; sender.reply(toApplicationShouldTerminate: allowed)
   })
   quitFlow = flow; flow.start(); return .terminateLater

@@ -1,7 +1,7 @@
 import XCTest
 @testable import ChargeCore
 
-private let appCapabilities = "firmwareProtocol:fixedV1,firmwareRead:CH0B+BCLM,firmwareWrite:fixedV1,internalBattery:present,chargeRecovery:ready,firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1"
+private let appCapabilities = "firmwareProtocol:fixedV1,firmwareRead:CH0B+BCLM,firmwareWrite:fixedV1,internalBattery:present,chargeRecovery:ready,firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1,firmwareExit:preparedV1"
 private final class AppFixture {
  var calls: [String] = []
  var failure: String?
@@ -99,16 +99,50 @@ final class FirmwareAppSessionTests: XCTestCase {
    XCTAssertEqual(f.calls.last,"firmwarePlan:inhibit:75"); XCTAssertNil(f.app.status?.chargingAllowed)
   } catch { XCTFail("\(error)") }
  }
- func testExitUsesCurrentExitPhaseAndAmbiguousFailureRecovers() {
+ func testExitUsesCurrentExitPhaseAndAmbiguousPreparationRetriesSameIdentity() {
   let f = AppFixture(); var p = ChargePolicy(); p.sailing = true
   do {
-   try f.app.apply(.inhibitCharge,policy:p,phase:.sailing,request:f.request); f.calls = []; f.failure = "firmwareExit:80"
-   do { try f.app.finishExit(policy:p,phase:.exit,active:true,request:f.request); XCTFail("delivery failure") } catch {}
-   XCTAssertEqual(f.calls,["firmwareExit:80"]); XCTAssertTrue(f.app.cleanupPending); XCTAssertTrue(f.app.mayOwnSession)
-   f.failure = nil; f.calls = []; try f.app.finishExit(policy:p,phase:.exit,active:true,request:f.request)
-   XCTAssertEqual(f.calls,["restore"]); XCTAssertFalse(f.app.mayOwnSession)
+   try f.app.apply(.inhibitCharge,policy:p,phase:.sailing,request:f.request); f.calls = []
+   do { try f.app.prepareExit(policy:p,phase:.exit,active:true,request:{f.calls.append($0);throw FirmwareSessionError.rejected("lost reply")}); XCTFail("delivery failure") } catch {}
+   let first = f.calls[0]
+   XCTAssertEqual(FirmwareCommand.parse(first),.exitPrepare(80,f.app.preparedExit!.id))
+   XCTAssertTrue(f.app.cleanupPending); XCTAssertTrue(f.app.mayOwnSession)
+   f.calls = []; try f.app.prepareExit(policy:p,phase:.exit,active:true,request:f.request)
+   XCTAssertEqual(f.calls,[first]); XCTAssertFalse(f.app.cleanupPending); XCTAssertTrue(f.app.mayOwnSession)
+   f.calls = []; try f.app.renewExitPreparation(request:f.request); XCTAssertEqual(f.calls,[first])
+   try f.app.restore(request:f.request); XCTAssertFalse(f.app.mayOwnSession); XCTAssertNil(f.app.preparedExit)
   } catch { XCTFail("\(error)") }
  }
+ func testFinalCommitFailureRetriesSameTokenAndCannotClaimCancellationRollback() {
+  let f = AppFixture(), p = ChargePolicy()
+  do {
+   try f.app.apply(.allowCharge,policy:p,phase:.charging,request:f.request)
+   try f.app.prepareExit(policy:p,phase:.exit,active:true,request:f.request)
+   let command = FirmwareCommand.exitCommit(f.app.preparedExit!.id).wireValue!
+   f.failure = command; f.calls = []
+   do { try f.app.commitExit(request:f.request); XCTFail("lost commit reply") } catch {}
+   XCTAssertTrue(f.app.exitCommitAttempted); XCTAssertTrue(f.app.cleanupPending)
+   XCTAssertEqual(f.calls,[command]); f.calls = []
+   do { try f.app.restore(request:f.request); XCTFail("cannot prove committed target rollback") } catch {}
+   do { try f.app.apply(.allowCharge,policy:p,phase:.charging,request:f.request); XCTFail("new control while confirming") } catch {}
+   try f.app.renewExitPreparation(request:f.request)
+   XCTAssertTrue(f.calls.isEmpty)
+   f.failure = nil; try f.app.commitExit(request:f.request)
+   XCTAssertEqual(f.calls,[command]); XCTAssertFalse(f.app.mayOwnSession); XCTAssertTrue(f.app.exitCommitAttempted)
+   f.calls = []; try f.app.commitExit(request:f.request); XCTAssertTrue(f.calls.isEmpty)
+  } catch { XCTFail("\(error)") }
+ }
+ func testOldHelperCannotSilentlyFallBackToIrreversibleExit() {
+  do {
+   let app = try FirmwareAppSession(capabilities:appCapabilities.replacingOccurrences(of:",firmwareExit:preparedV1",with:""))
+   try app.apply(.allowCharge,policy:ChargePolicy(),phase:.charging,request:{_ in "ack"})
+   var calls: [String] = []
+   do { try app.prepareExit(policy:ChargePolicy(),phase:.exit,active:true,request:{calls.append($0);return "unexpected"}); XCTFail("old helper") } catch {}
+   XCTAssertTrue(calls.isEmpty); XCTAssertTrue(app.mayOwnSession); XCTAssertNil(app.preparedExit)
+   try app.restore(request:{calls.append($0);return "ack"}); XCTAssertEqual(calls,["restore"])
+  } catch { XCTFail("\(error)") }
+ }
+
  func testFailedMutationAndFailedRestoreRetainCleanupResponsibility() {
   let f = AppFixture(); let p = ChargePolicy(); f.failure = "firmwarePlan:allow:80"
   do { try f.app.apply(.allowCharge,policy:p,phase:.charging,request:f.request); XCTFail("must fail") } catch {}

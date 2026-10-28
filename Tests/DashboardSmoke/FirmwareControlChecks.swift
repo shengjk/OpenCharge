@@ -5,13 +5,14 @@ import ChargeHardware
 @MainActor private final class NumericRoot {
  let readProfile: String
  init(profile: String = "CH0B+BCLM") { readProfile = profile }
- var capabilities: String { "chargeControl:fixture,firmwareProtocol:fixedV1,firmwareRead:\(readProfile),firmwareWrite:fixedV1,internalBattery:present,chargeRecovery:ready,firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1,sleepOverride:interfacesDetected,sleepRecovery:phasesV1" }
+ var capabilities: String { "chargeControl:fixture,firmwareProtocol:fixedV1,firmwareRead:\(readProfile),firmwareWrite:fixedV1,internalBattery:present,chargeRecovery:ready,firmwarePlan:atomicSleepV1,firmwareDischarge:inflowV1,firmwareExit:preparedV1,sleepOverride:interfacesDetected,sleepRecovery:phasesV1" }
  var calls: [String] = []
  var limit = 80
  var inflow = false
  var protected = false
  var creates = 0
  var dropAfter: String?
+ var dropPrefix: String?
  var restoreFails = false
  var protectionFails = false
  lazy var helper = FirmwareControlSession(status:{"limit=\(self.limit),charging=inhibited"},preflight:{},beforeMutation:{},
@@ -33,7 +34,7 @@ import ChargeHardware
   if command == "sleepOverrideRestore" { protected = false; return "released" }
   guard let value = FirmwareCommand.parse(command) else { preconditionFailure("unexpected ordinary setter: "+command) }
   let result = try helper.execute(value,recoveryPending:false,sleepObserverAvailable:true)
-  if dropAfter == command { throw HelperError.unavailable }
+  if dropAfter == command || dropPrefix.map({command.hasPrefix($0)}) == true { throw HelperError.unavailable }
   return result
  }
 }
@@ -62,7 +63,11 @@ import ChargeHardware
  precondition(root.inflow && root.creates == 2)
  m.config.policy.sailing = true; m.config.policy.stopOnQuit = true
  root.calls = []; try m.prepareForQuit(request:root.request)
- precondition(root.calls == ["sleepOverrideRestore","firmwareExit:80"] && !root.inflow && root.limit == 80)
+ precondition(root.calls.count == 2 && root.calls[0] == "sleepOverrideRestore" && !root.inflow && root.limit == 80)
+ guard case .exitPrepare(80, _)? = FirmwareCommand.parse(root.calls[1]) else { preconditionFailure("must stage numeric exit") }
+ precondition(root.helper.pendingExit != nil && root.helper.active)
+ try m.commitQuit(request:root.request)
+ precondition(root.helper.pendingExit == nil && !root.helper.active && root.limit == 80)
  precondition(m.automationPhase == .exit)
 
  var clean = Configuration(); clean.historyEnabled = false; try clean.save()
@@ -92,11 +97,24 @@ import ChargeHardware
  cancelled.enableHardware(true,request:exitLoss.request,refresh:{})
  cancelled.config.policy.limit = 75; cancelled.decision = Decision(.allowCharge,"fixture",limit:75)
  cancelled.applyHardwareDecision(charging,request:exitLoss.request,setIdleSleep:{_ in})
- exitLoss.dropAfter = "firmwareExit:75"
+ exitLoss.dropPrefix = "firmwareExitPrepare:"
  do { try cancelled.prepareForQuit(request:exitLoss.request); preconditionFailure("lost exit acknowledgement") } catch {}
  precondition(exitLoss.limit == 75 && cancelled.needsQuitPreparation)
- exitLoss.dropAfter = nil; exitLoss.calls = []; cancelled.cancelQuit(request:exitLoss.request)
- precondition(exitLoss.calls == ["restore"] && exitLoss.limit == 75 && !cancelled.config.hardwareEnabled && !cancelled.needsQuitPreparation)
+ exitLoss.dropPrefix = nil; exitLoss.calls = []; cancelled.cancelQuit(request:exitLoss.request,refresh:{})
+ precondition(exitLoss.calls == ["restore"] && exitLoss.limit == 80 && !cancelled.config.hardwareEnabled && !cancelled.needsQuitPreparation)
+ // A lost final commit reply can no longer be presented as a cancelled rollback.
+ try clean.save(); let confirming = model(), commitLoss = NumericRoot(profile:readProfile)
+ confirming.enableHardware(true,request:commitLoss.request,refresh:{})
+ confirming.config.policy.limit = 75; confirming.decision = Decision(.allowCharge,"fixture",limit:75)
+ confirming.applyHardwareDecision(charging,request:commitLoss.request,setIdleSleep:{_ in})
+ try confirming.prepareForQuit(request:commitLoss.request)
+ commitLoss.dropPrefix = "firmwareExitCommit:"
+ do { try confirming.commitQuit(request:commitLoss.request); preconditionFailure("lost commit acknowledgement") } catch {}
+ precondition(commitLoss.limit == 75 && !commitLoss.helper.active && confirming.numericExitCommitStarted)
+ commitLoss.calls = []; confirming.cancelQuit(request:commitLoss.request,refresh:{})
+ precondition(commitLoss.calls.isEmpty && confirming.numericExitCommitStarted)
+ commitLoss.dropPrefix = nil; try confirming.commitQuit(request:commitLoss.request)
+ precondition(commitLoss.calls.count == 1 && commitLoss.calls[0].hasPrefix("firmwareExitCommit:") && commitLoss.limit == 75)
  print("Numeric app selection, protected bootstrap, repeated discharge/wake, current Exit target, ambiguous-response recovery and disable use injected actual helper state; no hardware/IOPM/service requests")
 }
 

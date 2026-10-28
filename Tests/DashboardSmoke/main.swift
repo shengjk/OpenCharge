@@ -12,6 +12,7 @@ import ChargeHardware
   try menuBarAppearanceChecks()
   try updateChecks()
   try await signedUpdateChecks()
+  quitFinalizationChecks()
   try quitRestartRecoveryChecks()
   try await unavailableHelperChecks()
   try await helperOperationQuitChecks()

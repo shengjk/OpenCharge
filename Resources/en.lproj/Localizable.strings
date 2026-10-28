@@ -618,3 +618,11 @@
 "自动下载并在退出时安装更新" = "Automatically download updates and install on quit";
 "更新会连接 GitHub 并验证发布者签名，不发送电池读数或本机标识。安装前会执行退出清理，硬件服务需单独管理。自动检查和自动下载默认关闭。" = "Updates connect to GitHub and verify the publisher signature without sending battery readings or device identifiers. Installation follows quit cleanup; manage the hardware service separately. Automatic checks and downloads are off by default.";
 "上次检查于 %@" = "Last checked at %@";
+
+"数值退出需要更新辅助服务以支持可取消退出" = "Update the helper to support cancellable numeric exit.";
+
+"退出确认未完成：" = "Exit confirmation is incomplete: ";
+
+"退出确认已开始，可能已经写入最终限额。可重试确认或仍然退出；此时取消无法保证恢复原值。" = "Final exit confirmation has started and may have committed the limit. Retry confirmation or exit anyway; cancellation can no longer guarantee restoration of the original values.";
+
+"重试确认" = "Retry Confirmation";

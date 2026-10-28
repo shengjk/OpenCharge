@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 292 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 294 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -564,3 +564,9 @@ Four core methods cover intent/restore/clear ordering, service and storage failu
 ## Prepared numeric exit helper extension
 
 Four core methods cover bounded canonical transaction commands and independent capability advertisement, prepare/commit ordering, same-transaction retries, replacement rejection, explicit commit, stale commit rejection after new control, and preflight/storage-callback failure propagation. The existing actual helper-state/backend fixture adds preparation with retained file journals, cancellation to the captured original limit, explicit commit preserving its selected limit, reconstructed-controller same-boot recovery and external-writer preservation for both paired and BCLM-only profiles. Registers and inflow callbacks are injected. These checks do not establish application quit-flow integration, real IPC transport acceptance, real process termination recovery or physical behavior.
+
+## Application numeric exit finalization
+
+The app prepares a fixed target/identity, retains ownership, retries ambiguous preparation with the same identity and commits at the final termination decision. Core regressions cover older-helper refusal and commit-response loss without a false rollback claim. The production-model fixture exercises cancellation restoring original values and commit acknowledgement retry through actual helper state for both numeric profiles. An offscreen QuitFlow fixture verifies preparation/confirmation/reply ordering, cancellation before commit, same-commit retry, explicit unconfirmed exit and cancellable local failures.
+
+`bash Scripts/test-quit-native.sh` is an explicit opt-in native test. It opens a disposable fake-only AppKit fixture and scripts seven deferred-termination scenarios, including prepared-session renewal while power sampling is paused. It runs no ChargeModel, helper or telemetry and does not affect an installed application. Its JSON records verify real `terminateLater`/`reply` and termination ordering. This is separate from physical hardware, helper IPC and deployment signing acceptance.

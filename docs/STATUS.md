@@ -1,4 +1,4 @@
-# Status — 0.3.49 and development source
+# Status — 0.3.50 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -73,4 +73,4 @@ Version 0.3.48 ordinary-exit cancellation restores retained inhibition and keeps
 
 Version 0.3.49 persists ordinary Cancel Quit recovery intent and retries it on startup with control disabled. Completion requires both helper acknowledgement and saved clearance. Direct charge and LED grants must complete pending recovery first; portable backups omit this obligation. Injected service/storage failures cover retention and retry. This is cooperative configuration state, not a cross-client ownership protocol: failed intent persistence, older clients, forced termination and real hardware remain validation limits. Numeric exit transaction rollback is still unfinished.
 
-Unreleased helper source provides a prepared numeric exit protocol: retained recovery responsibility until a matching commit, cancellation through the captured-value restore path, bounded transaction identities and stale/new-session rejection. The current app quit flow has not adopted it. Product final-decision and ambiguous commit-response handling, actual helper transport, administrator installation and physical validation remain open; published 0.3.49 packages are unchanged.
+Unreleased helper source provides a prepared numeric exit protocol: retained recovery responsibility until a matching commit, cancellation through the captured-value restore path, bounded transaction identities and stale/new-session rejection. The application now stages before waiting and commits only at its final exit decision. It retries a lost final reply with the same identity and offers explicit unconfirmed exit; cancellation after commit delivery cannot claim rollback. Matching-helper installation, actual transport, physical effects and crash/receipt recovery remain validation boundaries. Published 0.3.49 packages are unchanged.

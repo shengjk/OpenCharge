@@ -667,7 +667,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if !quitChargeRecoveryPending && (config.hardwareEnabled || firmwareControl?.mayOwnSession == true || lastHardwareAction == .forceDischarge) {
    do {
     if let firmwareControl {
-     try firmwareControl.finishExit(policy:config.policy,phase:automationPhase,active:config.hardwareEnabled,request:request)
+     try firmwareControl.prepareExit(policy:config.policy,phase:automationPhase,active:config.hardwareEnabled,request:request)
      lastHardwareAction = .restore
     }
     else {
@@ -683,7 +683,17 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   quitCleanupPrepared = failures.isEmpty
   if !failures.isEmpty { throw HelperError.rejected(failures.joined(separator: "; ")) }
  }
+ var numericExitCommitStarted: Bool { firmwareControl?.exitCommitAttempted == true }
+ func renewPreparedQuit(request: (String) throws -> String = HelperClient.request) throws {
+  try firmwareControl?.renewExitPreparation(request:request)
+ }
+ func commitQuit(request: (String) throws -> String = HelperClient.request) throws {
+  try firmwareControl?.commitExit(request:request)
+ }
  func cancelQuit(request: (String) throws -> String = HelperClient.request, persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil) {
+  guard !numericExitCommitStarted else {
+   error = NSLocalizedString("退出确认已开始，可能已经写入最终限额。可重试确认或仍然退出；此时取消无法保证恢复原值。",comment:""); return
+  }
   // Never resume a discharge/calibration automatically after a cancelled exit.
   let needsRecovery = quitChargeRecoveryPending || config.pendingOrdinaryQuitRecovery == true || firmwareControl?.mayOwnSession == true || lastHardwareAction != .restore
   let ordinary = needsRecovery && (firmwareControl == nil || config.pendingOrdinaryQuitRecovery == true)
@@ -711,7 +721,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if let persistenceFailure { error! += "\n"+persistenceFailure }
   (refresh ?? { self.refresh() })()
  }
- func cleanupOnQuit() { if !quitCleanupPrepared { try? prepareForQuit() } }
+ func cleanupOnQuit() { if needsQuitPreparation && !quitCleanupPrepared && !numericExitCommitStarted { try? restoreChargeControl() } }
  func quit() { NSApp.terminate(nil) }
 
  func handleURL(_ url: URL) {
