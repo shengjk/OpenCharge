@@ -13,11 +13,15 @@ public enum FirmwareHelperCapabilities {
  public static func supportsAtomicSleepPlan(_ reply: String) -> Bool {
   supports(reply, discharge:false, atomic:true)
  }
- private static func supports(_ reply: String, discharge: Bool, atomic: Bool = false) -> Bool {
+ public static func supportsCancellableExit(_ reply: String) -> Bool {
+  supports(reply, discharge:false, atomic:true, cancellableExit:true)
+ }
+ private static func supports(_ reply: String, discharge: Bool, atomic: Bool = false, cancellableExit: Bool = false) -> Bool {
   guard reply.utf8.count <= 4096, !reply.contains("\n"), !reply.contains("\r") else { return false }
   var expected = ["firmwareProtocol":"fixedV1", "firmwareRead":"", "firmwareWrite":"fixedV1", "chargeRecovery":"ready", "internalBattery":"present"]
   if discharge { expected["firmwareDischarge"] = "inflowV1" }
   if atomic { expected["firmwarePlan"] = "atomicSleepV1" }
+  if cancellableExit { expected["firmwareExit"] = "preparedV1" }
   var found: [String:String] = [:]
   for part in reply.split(separator:",",omittingEmptySubsequences:false) {
    let item = part.trimmingCharacters(in:.whitespaces)

@@ -68,6 +68,7 @@ func capabilities() -> String {
  values.append("chargeTransition:\(powerObserver != nil ? "epochV1" : "unavailable")")
  values.append("dischargeSleep:\(powerObserver != nil && sleepOverrides != nil ? "displaySnapshotV1" : "unavailable")")
  values.append("firmwareProtocol:fixedV1")
+ values.append("firmwareExit:preparedV1")
  values.append("firmwarePlan:\(powerObserver != nil ? "atomicSleepV1" : "unavailable")")
  values.append("chargeRecovery:\(restoreBeforeCommands ? "pending" : "ready")")
  return values.joined(separator: ", ")
@@ -261,6 +262,7 @@ source.setEventHandler {
   let admitted = try chargeTransition.admittedCommand(receivedCommand)
   let multiDisplayAction = DischargeSleepRequest.underlying(admitted)
   let command = multiDisplayAction ?? admitted
+  try firmwareSession.requireExternalAdmission(command)
   guard serviceFileRemoval?.pending != true || ServiceFileRemovalRequest.permitsWhilePending(command) else { throw HelperError.rejected("service file removal pending; only inspection/restoration/removal allowed") }
   if let removal = ServiceFileRemovalRequest.parse(command) {
    guard let removalIdentity, let serviceFileRemoval else { throw HelperError.rejected("signed native file removal unavailable") }
@@ -288,7 +290,10 @@ source.setEventHandler {
     dischargeSleepEntry.accept(multipleDisplays:multiDisplayAction != nil,at:ProcessInfo.processInfo.systemUptime,preventDisplaySleep:DischargeSleepRequest.preventsDisplaySleep(admitted))
    default: break
    }
-   if case .exit = firmware { needsRestore = false; currentAction = nil; pauseOnSleep = false; lease.clear() }
+   if !firmwareSession.active {
+    switch firmware { case .exit, .exitCommit: needsRestore = false; currentAction = nil; pauseOnSleep = false; lease.clear()
+    default: break }
+   }
    else if firmwareSession.active {
     currentAction = nil; pauseOnSleep = false
     switch firmware { case .status, .sessionStatus: break

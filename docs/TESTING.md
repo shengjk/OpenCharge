@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 288 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 292 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -560,3 +560,7 @@ The model fixture now verifies that cancelling after acknowledged ordinary retai
 ## Ordinary cancellation recovery across restart
 
 Four core methods cover intent/restore/clear ordering, service and storage failure, direct mutation admission and portable-backup exclusion. The production-model fixture recreates the model from isolated files, verifies startup restoration, disables a contradictory saved opt-in, retains failed restoration or failed clearance, accepts peer completion and retries explicitly. Requests are injected. Isolated CLI checks preserve the pending marker during read-only inspection and rejected setters. These do not exercise a real helper or physical control, nor do they undo a committed numeric firmware exit target.
+
+## Prepared numeric exit helper extension
+
+Four core methods cover bounded canonical transaction commands and independent capability advertisement, prepare/commit ordering, same-transaction retries, replacement rejection, explicit commit, stale commit rejection after new control, and preflight/storage-callback failure propagation. The existing actual helper-state/backend fixture adds preparation with retained file journals, cancellation to the captured original limit, explicit commit preserving its selected limit, reconstructed-controller same-boot recovery and external-writer preservation for both paired and BCLM-only profiles. Registers and inflow callbacks are injected. These checks do not establish application quit-flow integration, real IPC transport acceptance, real process termination recovery or physical behavior.

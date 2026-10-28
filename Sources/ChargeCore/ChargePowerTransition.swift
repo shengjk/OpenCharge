@@ -40,7 +40,7 @@ public struct ChargePowerTransition: Sendable {
   if DischargeSleepRequest.underlying(command) != nil { throw ChargeControlSuspension.systemSleep }
   if let firmware = FirmwareCommand.parse(command) {
    switch firmware {
-   case .status, .sessionStatus, .exit: return
+   case .status, .sessionStatus, .exit, .exitPrepare, .exitCommit: return
    default: throw ChargeControlSuspension.systemSleep
    }
   }

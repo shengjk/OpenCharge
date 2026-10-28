@@ -68,6 +68,35 @@ private final class Fixture {
   check(f.events.firstIndex(of:"release:32")! < f.events.firstIndex(of:"write:BCLM:75")!)
   check(try !f.record()); try f.backend.restore(); check(f.values["BCLM"] == [75])
 
+  // Two-phase exit retains the real journal until an explicit matching commit.
+  for outcome in ["cancel","commit","restart","external"] {
+   let x = try Fixture(), id = UUID(); try x.ready(); try x.force(); x.events = []
+   _ = try x.helper.execute(.exitPrepare(75,id),recoveryPending:false,sleepObserverAvailable:true)
+   check(x.token == nil && x.values["BCLM"] == [75] && x.helper.active && x.helper.pendingExit?.id == id)
+   check(try x.record()); check(x.events.firstIndex(of:"release:31")! < x.events.firstIndex(of:"write:BCLM:75")!)
+   x.events = []
+   _ = try x.helper.execute(.exitPrepare(75,id),recoveryPending:false,sleepObserverAvailable:true)
+   check(x.events.isEmpty)
+   if outcome == "commit" {
+    _ = try x.helper.execute(.exitCommit(id),recoveryPending:false,sleepObserverAvailable:true)
+    check(try !x.record()); check(!x.helper.active && x.values["BCLM"] == [75])
+    try x.backend.restore(); check(x.values["BCLM"] == [75])
+   } else if outcome == "restart" {
+    let recovered = SMCFirmwareChargeController(eligibleHost:true,batteryPresent:true,keyProfile:keyProfile,
+     read:{x.values[$0].map {SMCByteReading(dataType:"ui8 ",bytes:$0)}},write:{try x.write($0,[$1])},
+     authorized:{true},recoveryStore:x.store.firmwareStore(),bootSession:x.boot)
+    try recovered.restore(); check(x.values["BCLM"] == [80]); check(try !x.record())
+   } else if outcome == "external" {
+    x.values["BCLM"] = [90]
+    rejects { _ = try x.helper.execute(.exitCommit(id),recoveryPending:false,sleepObserverAvailable:true) }
+    try x.backend.restore(); check(x.values["BCLM"] == [90]); check(try !x.record())
+   } else {
+    try x.backend.restore(); x.helper.reset()
+    check(x.values["BCLM"] == [80]); check(try !x.record())
+    rejects { _ = try x.helper.execute(.exitCommit(id),recoveryPending:false,sleepObserverAvailable:true) }
+   }
+  }
+
   for destination in ["limit","inhibit","ordinary","restore","exit"] {
    let x = try Fixture(); try x.ready(); try x.force(); x.events = []
    switch destination {

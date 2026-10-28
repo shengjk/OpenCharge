@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a helper-side prepared numeric exit extension with canonical transaction identities, retained recovery journal/lease, explicit matching commit, idempotent acknowledgement retry and stale-session rejection. The application quit flow is not yet connected to this extension; released numeric cancellation behavior is unchanged.
+
 ## 0.3.49
 
 - Persist unfinished ordinary Cancel Quit restoration before compensation. Retry it on startup with charge control disabled; require helper acknowledgement and saved completion before admitting new charge or LED control.
