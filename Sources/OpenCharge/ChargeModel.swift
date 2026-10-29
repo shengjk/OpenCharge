@@ -724,9 +724,14 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  func cleanupOnQuit() { if needsQuitPreparation && !quitCleanupPrepared && !numericExitCommitStarted { try? restoreChargeControl() } }
  func quit() { NSApp.terminate(nil) }
 
- func handleURL(_ url: URL) {
+ func handleURL(_ url: URL, refresh: (() -> Void)? = nil) {
+  guard !quitting else { return }
+  guard !settingsResetPending else { error = NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停",comment:""); return }
   guard url.scheme == "opencharge", let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
-  if url.host == "limit", let text = components.queryItems?.first(where: { $0.name == "value" })?.value, let value = Double(text), value.isFinite, (20...100).contains(value) { config.setChargeLimit(value); save(); refresh() }
+  if url.host == "limit", let text = components.queryItems?.first(where: { $0.name == "value" })?.value, let value = Double(text), value.isFinite, (20...100).contains(value) {
+   guard config.policy.mode != .calibration, !calibrationPending else { error = NSLocalizedString("校准期间不能修改上限",comment:""); return }
+   config.setChargeLimit(value); save(); (refresh ?? { self.refresh() })()
+  }
   else if url.host == "mode", let value = components.queryItems?.first(where: { $0.name == "value" })?.value, let mode = ChargeMode(rawValue: value) { changeMode(mode) }
   else { error = NSLocalizedString("自动化 URL 参数无效", comment: "") }
  }

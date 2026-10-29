@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.52
+
+- Reject direct URL and CLI charge-limit changes during calibration, matching the existing UI and Shortcuts rule. Preserve calibration state and saved configuration on rejection.
+- Pause URL mutations during quit preparation and unfinished settings reset. Keep valid automation available independently of the GUI administrator restriction.
+
 ## 0.3.51
 
 - Keep signed-update background checks disabled when the user opts out, including channel edits and an already queued SDK cycle. Avoid redundant preference writes and channel-triggered resets while checks are off; recheck consent at background admission using live SDK preference changes.

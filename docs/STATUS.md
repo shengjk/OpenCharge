@@ -1,4 +1,4 @@
-# Status — 0.3.51 and development source
+# Status — 0.3.52 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -25,7 +25,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Languages | Packages include native English and Simplified Chinese resources, localized dynamic statuses and App Shortcut phrases, plural rules, and native bundle fallback checks | Visual layout and accessibility review, live Shortcuts/Siri localization, CLI help and raw helper diagnostic text remain incomplete or unverified |
 | Distribution | Native and universal builds, local signatures, CI definition | Notarized releases and broader model matrix |
 
-Unsupported or incomplete: guaranteed forced-clamshell behavior, powered-off charging guarantees, desktop widgets and macOS versions older than 13. Unknown hardware profiles are refused rather than guessed.
+Unsupported or incomplete: guaranteed forced-clamshell behavior, powered-off charging guarantees and desktop WidgetKit extensions. Packages target macOS 11; runtime behavior on macOS 11/12 remains unverified. Unknown hardware profiles are refused rather than guessed.
 
 The installed development helper was validated only through read-only capabilities. Hardware control and scheduled system actions remain disabled on the validation machine. No physical effects are claimed from capability detection or fake-backend tests.
 
@@ -76,3 +76,5 @@ Version 0.3.49 persists ordinary Cancel Quit recovery intent and retries it on s
 Unreleased helper source provides a prepared numeric exit protocol: retained recovery responsibility until a matching commit, cancellation through the captured-value restore path, bounded transaction identities and stale/new-session rejection. The application now stages before waiting and commits only at its final exit decision. It retries a lost final reply with the same identity and offers explicit unconfirmed exit; cancellation after commit delivery cannot claim rollback. Matching-helper installation, actual transport, physical effects and crash/receipt recovery remain validation boundaries. Published 0.3.49 packages are unchanged.
 
 Version 0.3.51 prevents signed-updater channel edits or a queued SDK reset from starting a background feed request after automatic checks are disabled. The production admission gate follows explicit preferences and SDK KVO changes; manual/informational checks and previously prepared installation state are preserved. Actual pinned-SDK loopback cases run on arm64 and Rosetta x86_64 without archive download. This does not complete configured product bootstrap, native updater UI, cross-restart installation or production signing acceptance. Distributed packages remain unconfigured for signed updates and retain manual updates.
+
+Version 0.3.52 enforces the existing calibration limit lock at direct URL and CLI entry points. URL mutations pause during quit preparation and unfinished settings reset; valid automation retains its separate admission from the GUI administrator lock. Production-model and isolated CLI tests check rejection without configuration changes. Physical calibration, global URL dispatch and full reference parity remain unverified.

@@ -47,6 +47,14 @@ for arguments in (['hardware'], ['hardware','allowCharge'], ['hardware','restore
  result=subprocess.run([executable]+arguments,capture_output=True,text=True)
  assert result.returncode!=0 and 'hardware allowCharge|inhibitCharge|forceDischarge|restore --confirm' in result.stderr
  assert (root/'configuration.json').read_bytes()==before_hardware, 'rejected hardware request rewrote settings'
+# Direct limit changes cannot override a calibration, including its checkpoints.
+c=json.loads((root/'configuration.json').read_text()); c['policy']['mode']='calibration'
+(root/'configuration.json').write_text(json.dumps(c)); before_calibration=(root/'configuration.json').read_bytes()
+for limit in ('20','75','100'):
+ result=subprocess.run([executable,'limit',limit],capture_output=True,text=True)
+ assert result.returncode!=0 and 'calibration' in result.stderr
+ assert (root/'configuration.json').read_bytes()==before_calibration, 'CLI limit rewrote calibration'
+c['policy']['mode']='paused';(root/'configuration.json').write_text(json.dumps(c))
 # Read-only inspection and rejected direct mutations must preserve recovery intent.
 c=json.loads((root/'configuration.json').read_text())
 c['pendingOrdinaryQuitRecovery']=True; c['hardwareEnabled']=True
