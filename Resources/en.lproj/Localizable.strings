@@ -628,3 +628,9 @@
 "重试确认" = "Retry Confirmation";
 
 "自动检查已关闭，请手动检查更新" = "Automatic update checks are off. Check for updates manually.";
+
+"较低充电上限提醒" = "Low Charge Limit Notice";
+
+"长期维持较低电量可能导致电量估算失准，严重时可能意外关机。请留意电量读数，并按需使用校准功能。此提醒只显示一次，不会更改充电策略。" = "Keeping the battery at a lower charge for long periods may make charge estimates inaccurate and, in severe cases, lead to an unexpected shutdown. Watch the battery readings and use calibration when needed. This notice appears once and does not change your charging policy.";
+
+"知道了" = "Got It";

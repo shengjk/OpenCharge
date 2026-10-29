@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.53
+
+- Show a one-time informational notice after a manual charge-limit commit at 75% or lower. Remember it across app launches and clear it with the scoped settings reset. The notice does not change the charge policy or perform an additional hardware action.
+- Include English and Simplified Chinese alert text and isolated regressions for the threshold, acknowledgement, GUI lock and calibration/quit admission.
+
 ## 0.3.52
 
 - Reject direct URL and CLI charge-limit changes during calibration, matching the existing UI and Shortcuts rule. Preserve calibration state and saved configuration on rejection.

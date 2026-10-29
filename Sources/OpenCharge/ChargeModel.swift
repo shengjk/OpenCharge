@@ -241,6 +241,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } catch { self.error = error.localizedDescription }
  }
  func save() { do { try config.save() } catch { self.error = error.localizedDescription } }
+ func showLowChargeLimitNotice(present: @MainActor () -> Void = LowChargeLimitNotice.present) {
+  guard !quitting, !settingsResetPending, !calibrationPending, config.policy.mode != .calibration else { return }
+  LowChargeLimitNotice.showIfNeeded(limit:config.policy.limit,defaults:settingsDefaults,present:present)
+ }
  func reloadSettingsLock() {
   let locked = settingsDefaults.bool(forKey: "settingsLock")
   if settingsLocked != locked { settingsLocked = locked }

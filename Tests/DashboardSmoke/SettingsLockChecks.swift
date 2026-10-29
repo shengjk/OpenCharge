@@ -41,7 +41,7 @@ import ChargeHardware
  model.chargeSetting(\.estimatedPercentPerHour).wrappedValue = 20
  model.editChargeSettings { preconditionFailure("locked custom editor must not execute") }
  model.setChargeLimitFromGUI(65)
- model.applyChargeSettingsFromGUI()
+ model.applyChargeSettingsFromGUI(presentLowLimitNotice:{})
  model.profileFromGUI(70, 10, 40)
  model.toggleChargingFromMenu()
  precondition(model.settingsLocked && model.error != nil && reads == initialReads)
@@ -65,7 +65,7 @@ import ChargeHardware
  defaults.removeObject(forKey: "settingsLock")
  model.reloadSettingsLock(); precondition(!model.settingsLocked)
  sailing.wrappedValue = false
- model.setChargeLimitFromGUI(65); model.applyChargeSettingsFromGUI()
+ model.setChargeLimitFromGUI(65); model.applyChargeSettingsFromGUI(presentLowLimitNotice:{})
  let unlocked = try Configuration.load(); precondition(!unlocked.policy.sailing && unlocked.policy.limit == 65)
  precondition(defaults.object(forKey: "settingsLock") == nil && !model.config.hardwareEnabled)
  print("Administrator charging-settings preference blocks fresh and stale GUI edits/right-click without touching backend saves, schedules, modes, injected LPM or URL automation; isolated defaults/configuration only")

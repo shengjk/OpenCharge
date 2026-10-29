@@ -1,4 +1,4 @@
-# Status — 0.3.52 and development source
+# Status — 0.3.53 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -81,3 +81,6 @@ Version 0.3.52 enforces the existing calibration limit lock at direct URL and CL
 
 
 Development-source URL validation now includes six explicit-target native macOS delivery scenarios through the production delegate and an isolated model. No default URL handler was changed. Production cold-start dispatch and default-handler selection remain unverified; see [Testing](TESTING.md#explicit-target-native-url-delivery).
+
+
+Version 0.3.53 adds a one-time informational notice for manual charge-limit commits at or below 75%. The acknowledgement is stored in application preferences and removed by the scoped settings reset. The alert has English and Simplified Chinese text. Isolated tests verify threshold, repeat suppression and policy preservation; live alert layout and physical charging remain separate acceptance checks.

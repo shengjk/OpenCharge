@@ -589,3 +589,8 @@ A pre-fix production-model regression showed that a URL limit change rewrote cal
 Six current-host scenarios passed: normal changes (including bounds and an encoded decimal), the GUI settings lock, active calibration, interrupted calibration, quit preparation and a failed settings reset. Rejected changes preserve configuration bytes, in-memory state and telemetry-read count. Hardware and system-power controls remain disabled. The fixture declares no URL scheme; the default handler is queried before and after and remains unchanged. Only each temporary app's own registration is removed during cleanup.
 
 This verifies explicit-target delivery into the production delegate with an isolated model. It does not establish default-handler selection, production cold-start ordering, real Shortcuts UI execution or physical charging behavior.
+
+
+## One-time low-limit notice
+
+The dashboard fixture uses the production notice policy and GUI commit path with an injected presenter, isolated preferences/configuration and a simulated battery. It covers the inclusive 75% boundary, values above the threshold and invalid values, reentrant delivery, a reopened preference suite, reset of acknowledgement, the administrator GUI lock and calibration/quit admission. It inspects the native alert object and checks that repeat presentation does not change saved policy. No alert is displayed and no helper or hardware action is performed by this fixture; live layout remains unverified.

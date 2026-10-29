@@ -14,8 +14,8 @@ extension ChargeModel {
  func setChargeLimitFromGUI(_ value: Double) {
   editChargeSettings { self.config.setChargeLimit(value) }
  }
- func applyChargeSettingsFromGUI() {
-  editChargeSettings { self.config.policy.normalize(); self.save(); self.refresh() }
+ func applyChargeSettingsFromGUI(presentLowLimitNotice: @MainActor () -> Void = LowChargeLimitNotice.present) {
+  editChargeSettings { self.config.policy.normalize(); self.save(); self.refresh(); self.showLowChargeLimitNotice(present:presentLowLimitNotice) }
  }
  func profileFromGUI(_ limit: Double, _ width: Double, _ heat: Double) {
   editChargeSettings { self.profile(limit, width, heat) }
