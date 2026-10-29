@@ -1,4 +1,4 @@
-# Status — 0.3.54 and development source
+# Status — 0.3.55 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -27,7 +27,7 @@ This is a development release. Implemented policy, OS integration and physical h
 
 Unsupported or incomplete: guaranteed forced-clamshell behavior, powered-off charging guarantees and desktop WidgetKit extensions. Packages target macOS 11; runtime behavior on macOS 11/12 remains unverified. Unknown hardware profiles are refused rather than guessed.
 
-The installed development helper was validated only through read-only capabilities. Hardware control and scheduled system actions remain disabled on the validation machine. No physical effects are claimed from capability detection or fake-backend tests.
+The installed development helper was updated from the reviewed 0.3.54 package for one explicitly authorized bounded test on MacBookPro17,1. Inhibit/allow/restore requests were acknowledged; current fell to zero and charging stopped during the inhibit window. Charging did not visibly resume in the later observation window; it was observed only after another controller was reopened, so successful OpenCharge resumption remains unverified. The app control opt-in and scheduled system actions remain disabled. Capability detection and fake-backend tests do not establish physical effects.
 
 
 Version 0.3.38 fixes fresh ordinary-session startup when the selected policy requires system/lid sleep protection. It establishes inhibition before protection and enters the requested action only after protection succeeds; subsequent healthy policy rounds reuse the session. This applies to the updated app with the existing sleep-capable helper protocol. An independently restarted helper can still reject a previously cached app session; that failure requires recovery and re-enabling control. No hardware or sleep effects have been physically verified by this increment.
@@ -87,3 +87,6 @@ Version 0.3.53 adds a one-time informational notice for manual charge-limit comm
 
 
 Version 0.3.54 adds normal Quit requests for eligible regular applications in the energy lists. The target is checked using its process ID, bundle identity, kernel start time and current-user ownership. Background processes and OpenCharge itself have no Quit action. A sent request is labelled as requested; the target app retains its save/cancel behavior. Isolated and disposable native-app tests cover admission, delivery and cancellation. No user application was closed during validation.
+
+
+Version 0.3.55 aligns explicit CLI mode/profile changes and the mode-setting App Intent around fresh-run semantics. Old calibration checkpoints and pause-at-current flags are cleared; calibration history, charge limits and recovery obligations remain. The application's separate Resume action retains interrupted-run continuation. Isolated CLI, core and actual Intent/model-reload checks pass; real calibration cycles remain unverified.

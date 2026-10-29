@@ -26,7 +26,7 @@ struct SetChargeModeIntent: AppIntent {
  static var openAppWhenRun = true
  @Parameter(title: "模式") var mode: AutomationMode
  func perform() async throws -> some IntentResult {
-  var config = try Configuration.load(); config.policy.mode = ChargeMode(rawValue: mode.rawValue)!; config.policy.pauseAtCurrent = nil; if mode == .calibration { config.calibrationCheckpoint = nil }; try config.save(); return .result()
+  var config = try Configuration.load(); config.setAutomationMode(ChargeMode(rawValue: mode.rawValue)!); try config.save(); return .result()
  }
 }
 @available(macOS 13.0, *)

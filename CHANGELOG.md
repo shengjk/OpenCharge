@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.55
+
+- Clear saved calibration checkpoints and pause-at-current state when an explicit CLI mode or profile request replaces a calibration run. Starting calibration from the CLI now starts a fresh run instead of reusing an old phase.
+- Share this automation transition with the mode-setting App Intent. Keep saved-run continuation as the separate in-app Resume action and retain calibration history, limits and recovery obligations.
+- Add an isolated CLI regression, configuration checks and actual Intent/production-model reload coverage.
+
 ## 0.3.54
 
 - Add normal Quit actions to the significant-energy application lists in the dashboard and menu popover. Check the current user, application identifier and kernel process start time before sending a request; omit actions for background processes and OpenCharge itself.

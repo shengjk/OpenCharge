@@ -55,6 +55,20 @@ for limit in ('20','75','100'):
  assert result.returncode!=0 and 'calibration' in result.stderr
  assert (root/'configuration.json').read_bytes()==before_calibration, 'CLI limit rewrote calibration'
 c['policy']['mode']='paused';(root/'configuration.json').write_text(json.dumps(c))
+# Explicit automation mode/profile requests replace any old calibration run.
+for checkpoint in ({'stage':'draining'}, {'stage':'holding','holdingSince':12345}):
+ for arguments in ([['mode',mode] for mode in ['automatic','paused','discharge','topUp','calibration']]+[['profile',profile] for profile in ['desk','balanced','travel']]):
+  c=json.loads((root/'configuration.json').read_text());c['policy']['mode']='calibration';c['policy']['pauseAtCurrent']=True;c['calibrationCheckpoint']=checkpoint
+  (root/'configuration.json').write_text(json.dumps(c))
+  subprocess.run([executable]+arguments,check=True,capture_output=True,text=True)
+  changed=json.loads((root/'configuration.json').read_text())
+  assert changed.get('calibrationCheckpoint') is None, 'new mode/profile retained an old calibration checkpoint: '+str(arguments)
+  assert changed['policy'].get('pauseAtCurrent') is None
+before_invalid=(root/'configuration.json').read_bytes()
+for arguments in (['mode','bad'],['profile','bad']):
+ result=subprocess.run([executable]+arguments,capture_output=True,text=True)
+ assert result.returncode!=0 and (root/'configuration.json').read_bytes()==before_invalid
+
 # Read-only inspection and rejected direct mutations must preserve recovery intent.
 c=json.loads((root/'configuration.json').read_text())
 c['pendingOrdinaryQuitRecovery']=True; c['hardwareEnabled']=True

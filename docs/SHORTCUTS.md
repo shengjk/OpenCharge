@@ -16,3 +16,6 @@ The URL command `opencharge://limit?value=75` accepts finite limits from 20 thro
 
 
 The opt-in native URL fixture also verifies explicit-target macOS delivery into the production URL delegate for normal, locked, calibration, interrupted-calibration, quit and reset states. It uses an isolated model and simulated battery; default-handler selection and production cold-start behavior remain unverified. See [Testing](TESTING.md#explicit-target-native-url-delivery).
+
+
+Explicit CLI `mode` and `profile` requests, and the mode-setting App Intent, replace the previous calibration run: they clear its checkpoint and pause-at-current flag. A new calibration request starts at the filling phase. To continue a saved interrupted calibration, use the application's separate Resume action instead.
