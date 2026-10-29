@@ -13,3 +13,6 @@ The application normally evaluates policy every ten seconds and on relevant even
 Local intent checks inject percentage readings and use isolated configuration. They do not send charge, LED, sleep or power-mode commands to the installed service.
 
 The URL command `opencharge://limit?value=75` accepts finite limits from 20 through 100. Direct URL and CLI limit changes are rejected while calibration is active or awaiting continuation; rejection preserves the saved configuration and calibration checkpoint. URL mutations also pause during quit preparation or an unfinished settings reset. The administrator charging-settings lock is scoped to the GUI and does not disable otherwise valid automation. Explicit mode/profile commands remain separate operations.
+
+
+The opt-in native URL fixture also verifies explicit-target macOS delivery into the production URL delegate for normal, locked, calibration, interrupted-calibration, quit and reset states. It uses an isolated model and simulated battery; default-handler selection and production cold-start behavior remain unverified. See [Testing](TESTING.md#explicit-target-native-url-delivery).

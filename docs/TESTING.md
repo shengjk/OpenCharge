@@ -580,3 +580,12 @@ A pre-fix run observed two feed requests and one admitted background check after
 ## URL and CLI calibration admission
 
 A pre-fix production-model regression showed that a URL limit change rewrote calibration configuration. The updated fixture covers interrupted and active calibration, unchanged disk bytes/in-memory limit/change identity, no refresh after rejection, valid 20/100 limits, invalid numbers, separate GUI-lock scope, quit preparation and failed settings-reset persistence. An isolated CLI test rejects direct limit changes during calibration without rewriting its configuration. Telemetry is injected and all controls remain disabled; this does not test LaunchServices dispatch or actual charging.
+
+
+## Explicit-target native URL delivery
+
+`bash Scripts/test-url-native.sh` is an opt-in AppKit integration test requiring an active macOS desktop session. It builds the production URL delegate and model into a temporary app with its own bundle identity, configuration, preferences and injected battery readings. The runner delivers `opencharge://limit` URLs through macOS `open -a` to that exact running app and verifies the receiving process identity.
+
+Six current-host scenarios passed: normal changes (including bounds and an encoded decimal), the GUI settings lock, active calibration, interrupted calibration, quit preparation and a failed settings reset. Rejected changes preserve configuration bytes, in-memory state and telemetry-read count. Hardware and system-power controls remain disabled. The fixture declares no URL scheme; the default handler is queried before and after and remains unchanged. Only each temporary app's own registration is removed during cleanup.
+
+This verifies explicit-target delivery into the production delegate with an isolated model. It does not establish default-handler selection, production cold-start ordering, real Shortcuts UI execution or physical charging behavior.
