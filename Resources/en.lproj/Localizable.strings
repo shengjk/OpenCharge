@@ -47,7 +47,7 @@
 "五分钟窗口" = "Five-minute window";
 "仅图标" = "Icon only";
 "仅在完整睡眠控制已确认启用且当前用户处于前台时请求锁屏；每次合盖最多请求一次。私有接口不可用时不会模拟锁屏或隐藏窗口，系统锁定效果仍需实测。" = "Request a lock only after full sleep control is acknowledged and the current user has the foreground session, at most once per lid closure. An unavailable private interface will not be replaced with a simulated lock or hidden windows. Actual locking still requires validation.";
-"仅在本机读取，约每 30 秒更新。系统能耗指标不等于瓦数；接口不可用时显示原因。" = "Read locally, approximately every 30 seconds. System energy metrics are not watts. If the interface is unavailable, the reason is shown.";
+"能耗信息仅在本机读取，约每 30 秒更新；系统指标不等于瓦数。退出按钮会请求应用正常退出。" = "Energy information is read locally and refreshed about every 30 seconds; the system metric is not watts. Quit requests a normal application exit.";
 "仍然退出" = "Quit Anyway";
 "从备份恢复…" = "Restore from Backup…";
 "仪表盘" = "Dashboard";
@@ -634,3 +634,15 @@
 "长期维持较低电量可能导致电量估算失准，严重时可能意外关机。请留意电量读数，并按需使用校准功能。此提醒只显示一次，不会更改充电策略。" = "Keeping the battery at a lower charge for long periods may make charge estimates inaccurate and, in severe cases, lead to an unexpected shutdown. Watch the battery readings and use calibration when needed. This notice appears once and does not change your charging policy.";
 
 "知道了" = "Got It";
+
+"已请求正常退出；应用可能要求保存文件或取消退出。" = "Normal quit requested. The app may ask to save files or cancel quitting.";
+
+"退出请求未能发送，请刷新后重试。" = "The quit request could not be sent. Refresh the list and try again.";
+
+"应用已退出或状态已变化，请刷新列表后重试。" = "The app has exited or changed. Refresh the list before trying again.";
+
+"已请求退出" = "Quit Requested";
+
+"请求应用正常退出；应用可以要求保存文件或取消。" = "Request a normal quit. The app can ask to save files or cancel.";
+
+"退出应用 %@" = "Quit app %@";

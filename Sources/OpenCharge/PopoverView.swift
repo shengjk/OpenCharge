@@ -90,7 +90,7 @@ struct PopoverEnergyView: View {
  var body: some View {
   VStack(alignment: .leading, spacing: 9) {
    ForEach(monitor.rows) { row in
-    HStack { if let icon = row.icon { Image(nsImage: icon).resizable().frame(width: 20, height: 20) }; Text(row.name).lineLimit(1); Spacer(); Text(row.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "—").presentationSecondary() }.font(.caption)
+    HStack { if let icon = row.icon { Image(nsImage: icon).resizable().frame(width: 20, height: 20) }; Text(row.name).lineLimit(1); Spacer(); Text(row.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "—").presentationSecondary(); if let target = row.quitTarget { EnergyQuitButton(monitor:monitor,target:target,name:row.name) } }.font(.caption)
    }
    Text(monitor.status).font(.caption).presentationSecondary()
   }

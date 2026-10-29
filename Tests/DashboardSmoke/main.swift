@@ -13,6 +13,7 @@ import ChargeHardware
   try updateChecks()
   try await signedUpdateChecks()
   quitFinalizationChecks()
+  energyQuitChecks()
   try lowChargeLimitNoticeChecks()
   try urlAutomationChecks()
   try quitRestartRecoveryChecks()

@@ -20,12 +20,26 @@ struct SignificantEnergyView: View {
      Spacer()
      Text(String.localizedStringWithFormat(NSLocalizedString("能耗指标 %@", comment: ""), String(format: "%.0f", row.impact))).font(.body.monospacedDigit())
      Text(row.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "CPU —").font(.body.monospacedDigit()).presentationSecondary()
+     if let target = row.quitTarget { EnergyQuitButton(monitor:monitor,target:target,name:row.name) }
     }
    }
    Text(monitor.status).font(.caption).presentationSecondary()
    if let date = monitor.updatedAt { Text(String.localizedStringWithFormat(NSLocalizedString("更新于 %@", comment: ""), DateDisplay.string(date, style:.time))).font(.caption).presentationSecondary() }
-   Text(NSLocalizedString("仅在本机读取，约每 30 秒更新。系统能耗指标不等于瓦数；接口不可用时显示原因。", comment: "")).font(.caption).presentationSecondary()
+   Text(NSLocalizedString("能耗信息仅在本机读取，约每 30 秒更新；系统指标不等于瓦数。退出按钮会请求应用正常退出。", comment: "")).font(.caption).presentationSecondary()
   }
  }
  private func refresh() { monitor.refresh(sensitivity: EnergySensitivity(rawValue: sensitivity) ?? .balanced, force: true) }
+}
+
+
+struct EnergyQuitButton: View {
+ @ObservedObject var monitor: EnergyMonitor
+ let target: EnergyQuitTarget
+ let name: String
+ var body: some View {
+  Button(monitor.quitRequested.contains(target) ? NSLocalizedString("已请求退出", comment: "") : NSLocalizedString("退出", comment: "")) { monitor.requestQuit(target) }
+   .disabled(monitor.quitRequested.contains(target))
+   .help(NSLocalizedString("请求应用正常退出；应用可以要求保存文件或取消。", comment: ""))
+   .accessibilityLabel(String.localizedStringWithFormat(NSLocalizedString("退出应用 %@", comment: ""),name))
+ }
 }

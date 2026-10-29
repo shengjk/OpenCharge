@@ -594,3 +594,10 @@ This verifies explicit-target delivery into the production delegate with an isol
 ## One-time low-limit notice
 
 The dashboard fixture uses the production notice policy and GUI commit path with an injected presenter, isolated preferences/configuration and a simulated battery. It covers the inclusive 75% boundary, values above the threshold and invalid values, reentrant delivery, a reopened preference suite, reset of acknowledgement, the administrator GUI lock and calibration/quit admission. It inspects the native alert object and checks that repeat presentation does not change saved policy. No alert is displayed and no helper or hardware action is performed by this fixture; live layout remains unverified.
+
+
+## Energy application normal quit
+
+The production dashboard fixture checks exact process/bundle/start-time matching, missing or stale identity, self/background/terminated targets, failed sending and duplicate pending requests with injected actions. No real application is targeted by these checks.
+
+`bash Scripts/test-energy-quit-native.sh` is an opt-in AppKit integration test. Use `--arch all` to build and run arm64 and x86_64 (Rosetta is required for x86_64 on Apple silicon). Each scenario creates a unique temporary application and directly owns its process handle. A controller using the production adapter may target only that exact executable, bundle identity, recorded process and kernel start time. One target exits after a normal quit request; another cancels two requests and remains alive until its test finish marker. This verifies that a successfully sent request is not proof of exit. Targets, controller calls and cleanup are confined to the disposable fixtures. No installed app, root helper or charging state is changed. The initial fixture used AppKit launchDate, which is absent for applications started directly without LaunchServices; production identity now uses kernel start time instead. Wider UI layout, OS and session environments remain unverified.

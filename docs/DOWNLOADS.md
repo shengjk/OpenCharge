@@ -1,6 +1,6 @@
 # Using a compiled OpenCharge preview
 
-Version 0.3.53 declares macOS 11 or later; macOS 11/12 runtime remains unverified. Published 0.3.46 packages require macOS 13. Native Shortcuts require macOS 13 or later. Choose the arm64 archive for Apple silicon, or the universal archive for Apple silicon and Intel. Hardware support depends on the model and service capabilities; a universal executable does not validate all firmware.
+Version 0.3.54 declares macOS 11 or later; macOS 11/12 runtime remains unverified. Published 0.3.46 packages require macOS 13. Native Shortcuts require macOS 13 or later. Choose the arm64 archive for Apple silicon, or the universal archive for Apple silicon and Intel. Hardware support depends on the model and service capabilities; a universal executable does not validate all firmware.
 
 1. Verify the archive against `SHA256SUMS.txt`, then extract it.
 2. Open `dist/OpenCharge.app`. You can copy the complete app to `/Applications`. Keep the extracted directory if you need the helper scripts or CLI.

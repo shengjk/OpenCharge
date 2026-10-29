@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.54
+
+- Add normal Quit actions to the significant-energy application lists in the dashboard and menu popover. Check the current user, application identifier and kernel process start time before sending a request; omit actions for background processes and OpenCharge itself.
+- Distinguish a successfully sent request from an observed exit, preserve application cancellation/save handling and suppress duplicate pending requests until refreshed. Include English and Simplified Chinese statuses.
+- Add isolated admission checks and opt-in native tests using disposable applications that accept or cancel normal quit requests.
+
 ## 0.3.53
 
 - Show a one-time informational notice after a manual charge-limit commit at 75% or lower. Remember it across app launches and clear it with the scoped settings reset. The notice does not change the charge policy or perform an additional hardware action.

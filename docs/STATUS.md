@@ -1,4 +1,4 @@
-# Status — 0.3.53 and development source
+# Status — 0.3.54 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -16,7 +16,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Menu-bar appearance | Four icon styles, observed battery fill, opt-in Low Power Mode tint, configurable right-click and accessible state | Broader native appearance, multi-display and accessibility environments |
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
-| Energy applications | Optional system metric reader, bounded ranking and CPU display | More OS versions; private API may be unavailable |
+| Energy applications | Optional system metric reader, bounded ranking, CPU display and user-initiated normal Quit in both lists | More OS versions; private API may be unavailable; wider UI/session validation remains open |
 | Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless; owned legacy file removal/job unregistration and explicit modern-route handoff; serialized operations | Actual signed administrator interaction, legacy runtime, interrupted-process recovery, real manual-uninstaller behavior and production signing/notarization |
 | Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
 | Sleep control | Helper-owned sleep admission and app suspension handling; public idle assertion; required calibration/clamshell protection; optional until-limit system/lid SPI; schema-2 global recovery and same-boot lid cleanup; opt-in foreground lid-lock request | Physical lid/display transitions, private-interface compatibility, powerd interference, actual sleep/boot recovery |
@@ -84,3 +84,6 @@ Development-source URL validation now includes six explicit-target native macOS 
 
 
 Version 0.3.53 adds a one-time informational notice for manual charge-limit commits at or below 75%. The acknowledgement is stored in application preferences and removed by the scoped settings reset. The alert has English and Simplified Chinese text. Isolated tests verify threshold, repeat suppression and policy preservation; live alert layout and physical charging remain separate acceptance checks.
+
+
+Version 0.3.54 adds normal Quit requests for eligible regular applications in the energy lists. The target is checked using its process ID, bundle identity, kernel start time and current-user ownership. Background processes and OpenCharge itself have no Quit action. A sent request is labelled as requested; the target app retains its save/cancel behavior. Isolated and disposable native-app tests cover admission, delivery and cancellation. No user application was closed during validation.
