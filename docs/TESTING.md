@@ -647,7 +647,7 @@ The guard stopped the identified app, received fixed restore acknowledgement, an
 The user subsequently approved a persistent basic ordinary-control pilot separately from the bounded cutoff check. The saved 80% / 35°C / Sailing-width-5 configuration was retained with only hardware opt-in changed to enabled. A read-only observer sampled configuration, telemetry, capabilities and process inventory five times over approximately 122 seconds: the opt-in remained enabled, the competing controller stayed absent and charging current was zero. The observer sent no mutating helper requests. The identical 0.3.57 bundle was installed in the personal Applications directory and passed complete file/link manifest and strict-signature checks; a normal copy-and-start handoff retained the opt-in and policy. Login-startup settings were unchanged. These observations do not complete the natural target-crossing or application recharge-cycle gates.
 
 
-## Ordinary prepared exit (development source after 0.3.57)
+## Ordinary prepared exit (0.3.58)
 
 `Scripts/test-core.sh` includes five ordinary-exit methods (300 core methods total): bounded canonical request identities, capability ambiguity, prepare/renew/commit ordering, stale receipts, independent cleanup failures and app-side lost replies. `Scripts/test-dashboard.sh` includes real `ChargeModel` negotiation, renewal, cancellation after lost confirmation and final confirmation, using injected requests and isolated configuration. Existing legacy-helper and numeric-exit fixtures remain in that suite.
 

@@ -23,7 +23,7 @@ These are separate lifetimes. Current source implements the following paths:
 | --- | --- | --- |
 | Ordinary app quit with retention off | The app requests owned-state restoration. | A successful service reply is not a physical charging observation. |
 | Ordinary app quit with retention on | The app requests retained inhibition. Published 0.3.57 uses a live retained lease outside its normal 45-awake-second expiry; the newer protocol below separates preparation and confirmation. | Retention depends on the helper continuing to run; it does not guarantee inhibition after service shutdown, crash, reboot or power-off. |
-| Graceful helper termination | Published 0.3.57 attempts owned charge, LED and sleep restoration. Newer source can retain explicitly confirmed ordinary inhibition as described below. | Restoration can fail or be interrupted; this is not a tested OS shutdown sequence. |
+| Graceful helper termination | Published 0.3.57 attempts owned charge, LED and sleep restoration. Version 0.3.58 can retain explicitly confirmed ordinary inhibition as described below. | Restoration can fail or be interrupted; this is not a tested OS shutdown sequence. |
 | Numeric app quit | The app stages the phase-derived target with a transaction identity, retains recovery responsibility during preparation, then explicitly commits at final termination. Successful commit relinquishes ownership. | An acknowledged commit is not proof that the hardware preserves that target after power-off. Ordinary quit/sleep switches do not replace the numeric projection. |
 | Sleep and wake | The helper's IOKit observer handles sleep admission, sleep entry and wake. | Its powered-on notification is a wake callback, not a boot or shutdown acceptance test. There is no separate power-off callback in this observer. |
 
@@ -32,7 +32,7 @@ The app uses the same deferred termination path for normal Quit and termination 
 Implementation references: [app termination](../Sources/OpenCharge/App.swift), [app cleanup](../Sources/OpenCharge/ChargeModel.swift), [helper lifecycle](../Sources/charged/main.swift), [retained lease](../Sources/ChargeCore/ControlLease.swift), [power observer](../Sources/ChargeHardware/SystemPowerObserver.swift), [numeric exit session](../Sources/ChargeCore/FirmwareAppSession.swift), [exit projection](../Sources/ChargeCore/FirmwareLimitProjection.swift) and [ordinary recovery](../Sources/ChargeHardware/SMCChargeController.swift).
 
 
-## Ordinary prepared exit — development source after 0.3.57
+## Ordinary prepared exit — 0.3.58
 
 Matching app/helper source negotiates the independent `ordinaryExit:preparedV1` capability. When ordinary “stop charging on quit” is selected, preparation requests inhibition through the existing fixed-key planner, releases adapter discharge and sleep protection, and keeps the original-value journal. Each preparation has a canonical UUID. Identical retries renew the awake watchdog without repeating hardware writes; another preparation cannot replace a pending one. Competing ordinary/numeric control requests are refused until restore or final confirmation.
 

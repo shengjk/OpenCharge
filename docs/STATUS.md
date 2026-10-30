@@ -1,4 +1,4 @@
-# Status — 0.3.57 and development source
+# Status — 0.3.58 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -101,3 +101,6 @@ Native 0.3.57 read-only acceptance now covers battery-level, temperature and lim
 A subsequent actual 0.3.57 GUI test observed charging at 1364 mA before activation and a fresh not-charging/0 mA driver snapshot after enabling an 85% policy while the battery was already at 89%. The temporary heat threshold was 40°C with explicit approval. Recovery acknowledged and restored the original 80%/35°C/monitoring configuration. This covers above-target inhibition only; the full application stop/resume cycle and natural target crossing remain unverified. See [Hardware evidence](HARDWARE.md#actual-application-above-target-inhibition--0357).
 
 A separately approved basic daily pilot now uses 80% / Sailing width 5% / enabled 35°C heat protection, with hardware opt-in saved and the competing controller exited. Five read-only samples over about 122 seconds found the opt-in continuously enabled, the service ready and charging current at zero. The same verified 0.3.57 bundle was installed into the personal Applications directory; reopening retained the enabled choice and the original policy. Login-startup settings were unchanged. The application recharge cycle, advanced functions, sleep/boot and wider hardware validation remain open.
+
+
+Version 0.3.58 packages the negotiated ordinary prepared-exit protocol. Preparation retains the normal watchdog; explicit confirmation permits graceful service termination to keep inhibition and its original-value journal. Cancellation after a lost ordinary confirmation remains recoverable; the next same-boot service startup restores captured originals. The installed daily pilot has not updated to this helper, and physical service-exit, shutdown and boot behavior remain unverified. See [Quit and discharge recovery](QUIT.md).

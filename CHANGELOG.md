@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## 0.3.58
+
 - Add capability-negotiated ordinary exit preparation and explicit confirmation. Pending exits keep the awake watchdog; confirmed exits can preserve inhibition across graceful service termination while retaining the original-value recovery journal.
+- Retire any previous numeric-exit receipt after ordinary exit preparation acquires the backend, preventing a stale numeric acknowledgement from clearing the ordinary lease.
 - Keep ordinary cancellation recoverable after an ambiguous final reply, independently clean LED/sleep ownership, and restore captured charge values on the next same-boot service startup.
 - Cover app negotiation, repeated requests, cancellation, cleanup failures and production fixed-key journal recovery with injected actuators on both executable architectures. Physical service-exit and powered-off effects remain unverified.
 

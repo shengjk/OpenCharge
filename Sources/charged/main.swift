@@ -292,7 +292,7 @@ source.setEventHandler {
     available:true,
     prepare:{
      attemptedAction = true; needsRestore = true; lease.request(at:ProcessInfo.processInfo.systemUptime)
-     try restoreSleep(); try controller.apply(.retainInhibit)
+     try restoreSleep(); try controller.apply(.retainInhibit); firmwareSession.reset()
      currentAction = .inhibitCharge; pauseOnSleep = false; dischargeSleepEntry.clear()
     }, renew:{ lease.request(at:ProcessInfo.processInfo.systemUptime) },
     commit:{ lease.request(at:ProcessInfo.processInfo.systemUptime,retained:true) }))

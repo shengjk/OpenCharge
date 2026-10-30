@@ -154,6 +154,6 @@ Five read-only observations over about 122 seconds found the opt-in enabled, onl
 This is a basic daily pilot on the current host. The observed battery was already above the daily target. Natural target crossing, application charging resumption, calibration, sleep/boot recovery and other model/OS behavior remain unverified. The app stops charging above the limit; this pilot does not actively discharge the battery to the target.
 
 
-## Ordinary confirmed-exit recovery — development source after 0.3.57
+## Ordinary confirmed-exit recovery — 0.3.58
 
 The ordinary prepared-exit extension preserves the fixed-key recovery journal across an explicitly confirmed graceful service exit. Preparation retains the normal watchdog, final confirmation selects retention, and pending recovery overrides retention. The next same-boot helper startup still restores captured original values; it does not treat the retained target as a new unrestricted default. Existing compare-and-restore protection against external changes is unchanged. See [Quit and discharge recovery](QUIT.md) for request, cancellation, compatibility and evidence limits. The current daily pilot has not installed or exercised this new helper behavior.

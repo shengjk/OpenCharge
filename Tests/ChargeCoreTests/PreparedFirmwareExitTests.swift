@@ -55,6 +55,11 @@ final class PreparedFirmwareExitTests: XCTestCase {
    try f.run(.exitCommit(id)); XCTAssertEqual(f.events,["preflight","arm","commit:75"])
    XCTAssertFalse(f.session.active); XCTAssertNil(f.session.pendingExit)
    f.events = []; try f.run(.exitCommit(id)); XCTAssertTrue(f.events.isEmpty)
+   // Ordinary backend handoff uses reset after it acquires the controller.
+   // Retiring the numeric receipt must reject an old commit before any callback.
+   f.session.reset()
+   do { try f.run(.exitCommit(id)); XCTFail("retired numeric receipt acknowledged into ordinary ownership") } catch {}
+   XCTAssertTrue(f.events.isEmpty)
    try f.run(.plan(.allow,sleepTarget:80)); f.events = []
    do { try f.run(.exitCommit(id)); XCTFail("old commit entered new session") } catch {}
    XCTAssertTrue(f.events.isEmpty); XCTAssertTrue(f.session.active)
