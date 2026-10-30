@@ -620,3 +620,16 @@ The dashboard fixture also verifies that a stale GUI charge-limit commit cannot 
 The separately authorized fresh-driver physical follow-up is recorded in [Hardware](HARDWARE.md#fresh-driver-physical-follow-up). It exercised the reviewed 0.3.54 helper and is separate from the simulated/native UI checks in this section.
 
 The App Intents validation fixture additionally seeds an interrupted draining checkpoint and temporary pause marker before each dedicated Top Up, Discharge and Calibration request, then verifies the requested mode with both stale fields cleared. A valid charge-limit request from automatic mode also clears those fields; active calibration still rejects limit changes. Baseline production actions failed four checks before the 0.3.57 fix. Tests use an isolated data directory with hardware disabled.
+
+
+## Native read-only Shortcuts numeric outputs
+
+A 0.3.57 native acceptance check used a copy of the existing read-only workflow, leaving the original intact:
+
+1. Add Get Battery Level, Get Battery Temperature and Get Charge Limit actions.
+2. Add the system Calculate action with `+ 1`. Select each getter's magic variable as its first operand and run once per selection.
+3. Check that the calculation returns a number. For a saved limit of 80, the limit calculation must return 81. Battery level and temperature depend on the current sample.
+4. For command-line consumption, add Stop and Output with Calculation Result, then run the named workflow using `shortcuts run` and an output path.
+5. Compare the saved configuration before and after; hardware control must remain disabled.
+
+All three arithmetic checks passed in the English system UI after a cold start of the app whose executable matched the published 0.3.57 arm64 package. The battery-level workflow also wrote a numeric result through the system Shortcuts CLI. Configuration bytes were unchanged. The initial command failed under restricted execution; the same reviewed read-only workflow completed through the ordinary system context. These checks cover current-host numeric consumption, not Siri, Chinese discovery, setters or physical charging effects.
