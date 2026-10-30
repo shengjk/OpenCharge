@@ -44,6 +44,19 @@ import ChargeHardware
  precondition(saved.hardwareEnabled && saved.policy.limit == 40 && saved.policy.mode == .discharge && saved.policy.pauseAtCurrent == nil && saved.calibrationCheckpoint == nil && saved.policy.departure == nil && !saved.policy.automaticDischarge && refreshes == 1)
  model.evaluatePolicy(ChargeSample(percent:70,temperature:30,connected:true));precondition(model.decision.action == .forceDischarge && model.decision.effectiveLimit == 40)
  model.evaluatePolicy(ChargeSample(percent:40,temperature:30,connected:true));precondition(model.decision.action == .inhibitCharge && model.config.policy.mode == .automatic)
+ // Completion returns to ordinary Sailing: hold within the band, resume only
+ // at its lower boundary, then inhibit at the shared upper target again.
+ for percent in [39.5,35.1] {
+  model.evaluatePolicy(ChargeSample(percent:percent,temperature:30,connected:true))
+  precondition(model.decision.action == .inhibitCharge && model.decision.phase == .sailing && model.config.policy.mode == .automatic)
+ }
+ model.evaluatePolicy(ChargeSample(percent:35,temperature:30,connected:true));precondition(model.decision.action == .allowCharge && model.config.policy.mode == .automatic)
+ model.evaluatePolicy(ChargeSample(percent:40,temperature:30,connected:true));precondition(model.decision.action == .inhibitCharge)
+ let held = try Configuration.load();precondition(held.sailingCheckpoint == true)
+ var monitorOnly = held;monitorOnly.hardwareEnabled = false;try monitorOnly.save()
+ let restarted = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
+ restarted.evaluatePolicy(ChargeSample(percent:39.5,temperature:30,connected:true))
+ precondition(restarted.decision.action == .inhibitCharge && restarted.decision.phase == .sailing && !restarted.config.hardwareEnabled,"restart after completion must preserve the hold without starting a new discharge")
  model.config.policy.useHardwarePercent = false
  precondition(model.startTargetDischargeFromGUI(35,refresh:{refreshes += 1}))
  let beforeStopFailure = try bytes()
@@ -62,5 +75,5 @@ import ChargeHardware
   if let data=bitmap.representation(using:.png,properties:[:]) { try data.write(to:url.appendingPathComponent("target-discharge.png")) }
  }
  model.config.hardwareEnabled = false
- print("PASS target discharge card: fresh adapter/percentage, range/reserve/lock/calibration/automatic mode guards, save failure, shared target, stale-state cleanup, target completion, stop-to-pause and nonmutating mount; isolated configuration and injected refresh, no real helper actions")
+ print("PASS target discharge card: fresh adapter/percentage, range/reserve/lock/calibration/automatic mode guards, save failure, shared target, stale-state cleanup, target completion, Sailing hold/recharge/restart, stop-to-pause and nonmutating mount; isolated configuration and injected refresh, no real helper actions")
 }
