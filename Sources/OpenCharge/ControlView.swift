@@ -36,6 +36,7 @@ struct ControlView: View {
     if m.setChargeLimitFromGUI(value) { m.applyChargeSettingsFromGUI() }
    }.frame(width: 70).disabled(m.config.policy.mode == .calibration || m.settingsLocked).onAppear { limitDraft = String(Int(m.config.policy.limit)) }.onChange(of: m.config.policy.limit) { value in limitDraft = String(Int(value)) }; Text("%"); Spacer() }
   }
+  TargetDischargeCard(model:m)
   Card(NSLocalizedString("航行与温度", comment: "")) {
    Toggle(NSLocalizedString("航行模式", comment: ""), isOn: m.chargeSetting(\.sailing)).disabled(m.settingsLocked)
    HStack { Text(NSLocalizedString("保持区间", comment: "")); Spacer(); Stepper("\(Int(m.config.policy.sailingWidth))%", value: m.chargeSetting(\.sailingWidth), in: 1...20) }.disabled(!m.config.policy.sailing).disabled(m.settingsLocked)
@@ -46,7 +47,6 @@ struct ControlView: View {
    Picker(NSLocalizedString("温控恢复规则", comment: ""), selection: Binding(get: { m.config.policy.thermalBehavior ?? .fiveMinuteWindows }, set: { value in m.editChargeSettings { m.config.policy.thermalBehavior = value } })) { Text(NSLocalizedString("五分钟窗口", comment: "")).tag(ThermalBehavior.fiveMinuteWindows); Text(NSLocalizedString("降温 2°C", comment: "")).tag(ThermalBehavior.degreeHysteresis) }.disabled(m.settingsLocked)
    Toggle(NSLocalizedString("充至满电期间也启用温控（可选增强）", comment: ""), isOn: Binding(get: { m.config.policy.topUpThermalProtection }, set: { value in m.editChargeSettings { m.config.policy.protectDuringTopUp = value } })).disabled(m.settingsLocked)
    Toggle(NSLocalizedString("校准期间也启用温控（可选增强）", comment: ""), isOn: Binding(get: { m.config.policy.protectDuringCalibration ?? false }, set: { value in m.editChargeSettings { m.config.policy.protectDuringCalibration = value } })).disabled(m.settingsLocked)
-   Toggle(NSLocalizedString("高于上限时自动放电", comment: ""), isOn: m.chargeSetting(\.automaticDischarge)).disabled(m.settingsLocked)
   }
   Card(NSLocalizedString("电量基准与睡眠", comment: "")) {
    Toggle(NSLocalizedString("使用硬件电量作为控制基准", comment: ""), isOn: Binding(get: { m.config.policy.useHardwarePercent ?? false }, set: { value in m.editChargeSettings { m.config.policy.useHardwarePercent = value } })).disabled(m.settingsLocked)

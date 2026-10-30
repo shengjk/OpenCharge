@@ -646,3 +646,19 @@
 "请求应用正常退出；应用可以要求保存文件或取消。" = "Request a normal quit. The app can ask to save files or cancel.";
 
 "退出应用 %@" = "Quit app %@";
+
+"放电至指定电量" = "Discharge to a Target";
+"目标电量：%lld%%" = "Target level: %lld%%";
+"与日常充电上限共用目标；调整这里的数值不会立即放电，点击开始后才应用。" = "Shares the daily charge limit. Editing this value does not start discharging; it applies when you press Start.";
+"手动放电目标：%lld%%" = "Manual discharge target: %lld%%";
+"放电至 %lld%%" = "Discharge to %lld%%";
+"请先在设置中开启硬件控制，再开始放电" = "Enable hardware control in Settings before starting discharge.";
+"开始手动放电会关闭出行充电计划，避免计划改变本次目标。" = "Starting manual discharge turns off the departure charging plan so it cannot change this target.";
+"接电时使用电池供电，降至目标后停止主动放电；放电速度取决于电脑耗电。" = "Use battery power while plugged in, then stop active discharge at the target. The rate depends on the power used by your Mac.";
+"自动放电开启时按日常上限运行；关闭后可使用上方手动按钮。" = "Automatic discharge follows the daily limit. Turn it off to use the manual button above.";
+"请先结束校准，再开始手动放电" = "Finish calibration before starting manual discharge.";
+"请先关闭自动放电，再开始手动放电" = "Turn off automatic discharge before starting manual discharge.";
+"放电目标必须是 20–100% 的整数" = "The discharge target must be a whole percentage from 20 to 100%.";
+"放电目标不能低于主动放电保底，请先调整保底设置" = "The discharge target cannot be below the discharge reserve. Adjust the reserve first.";
+"电量不可读，无法开始放电" = "The battery level is unavailable. Discharge could not start.";
+"放电目标必须低于当前电量" = "The discharge target must be below the current battery level.";

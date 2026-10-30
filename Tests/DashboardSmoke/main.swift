@@ -14,6 +14,7 @@ import ChargeHardware
   try await signedUpdateChecks()
   quitFinalizationChecks()
   try chargeLimitCommitChecks()
+  try targetDischargeChecks()
   try await automationModeChecks()
   energyQuitChecks()
   try lowChargeLimitNoticeChecks()

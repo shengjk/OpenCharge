@@ -80,7 +80,7 @@ struct PopoverContents: View {
 struct PopoverDischargeButton: View {
  @ObservedObject var model: ChargeModel
  var body: some View {
-  Button(model.automationPhase == .discharging ? NSLocalizedString("停止放电", comment: "") : NSLocalizedString("放电", comment: "")) { model.toggleDischargeFromPopover() }
+  Button(model.automationPhase == .discharging ? NSLocalizedString("停止放电", comment: "") : String.localizedStringWithFormat(NSLocalizedString("放电至 %lld%%",comment:""),Int64(model.config.policy.limit))) { model.toggleDischargeFromPopover() }
    .disabled(model.config.policy.automaticDischarge)
    .help(model.config.policy.automaticDischarge ? NSLocalizedString("自动放电已开启；请在充电控制中关闭后使用手动按钮。", comment: "") : NSLocalizedString("开始或停止手动放电", comment: ""))
  }

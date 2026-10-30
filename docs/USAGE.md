@@ -81,3 +81,18 @@ For selected Intel models requiring numeric firmware control, direct allow/inhib
 Low Power Mode observation is separate from saved battery/adapter preferences. If the effective-state interface is unavailable, the initial status remains unavailable; the status icon does not claim Low Power Mode is active, and the right-click toggle refuses to send an on/off command after its read-only capability check. Explicit source-specific requests still use the helper's existing readback and permission rules. Optional icon tint never changes the system setting.
 
 Login startup is an explicit setting for the next login. The development compatibility route and validation limits are described in [Login startup](LOGIN-STARTUP.md). It does not enable charging control or system power actions.
+
+
+## Discharge to a target
+
+In **Charge Control → Discharge to a Target**, select a whole percentage from 20 to 100 and press **Discharge to X%**. The target must be below the freshly read current battery level and at least the configured discharge reserve. The Mac must be connected to power and hardware control must already be enabled. With automatic discharge enabled, turn it off before starting a manual request; calibration must be finished or cancelled first.
+
+The number is a draft until you press the button. Starting saves both the daily charge limit and manual discharge mode together; this is a shared target, not an independent temporary threshold. If a departure charging plan is active, starting manual discharge turns it off so that it cannot override this target. Other existing schedules can still change policy when they execute.
+
+At the target, the policy stops active discharge and returns to automatic control using that same daily limit. **Stop Discharging** instead selects paused charging immediately. Discharge uses battery power while the adapter remains connected; its rate depends on the Mac's power use. Configured reserve and supported hardware capabilities still apply. The automatic-discharge switch is now in this card. The menu-bar popup also displays the manual target percentage.
+
+## 放电至指定电量
+
+在 **充电控制 → 放电至指定电量** 中选好整数百分比，再点击 **放电至 X%**。目标范围为 20–100%，必须低于当前电量，且不能低于“主动放电保底”。需要接通电源并事先开启硬件控制；自动放电开启时请先关闭，校准期间请先结束或取消校准。
+
+调整数值本身不会启动放电。点击后会一起保存日常充电上限和手动放电模式，两者共用目标。已有出行充电计划会被关闭，避免改写本次目标；其他定时任务仍可能在执行时改变策略。达到目标后停止主动放电并恢复自动模式，日常上限保留为该值；点击“停止放电”则进入暂停充电状态。放电速度取决于电脑耗电。

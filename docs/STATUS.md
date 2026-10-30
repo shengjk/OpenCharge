@@ -1,4 +1,4 @@
-# Status — 0.3.58 and development source
+# Status — 0.3.59 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -104,3 +104,6 @@ A separately approved basic daily pilot now uses 80% / Sailing width 5% / enable
 
 
 Version 0.3.58 packages the negotiated ordinary prepared-exit protocol. Preparation retains the normal watchdog; explicit confirmation permits graceful service termination to keep inhibition and its original-value journal. Cancellation after a lost ordinary confirmation remains recoverable; the next same-boot service startup restores captured originals. The installed daily pilot has not updated to this helper, and physical service-exit, shutdown and boot behavior remain unverified. See [Quit and discharge recovery](QUIT.md).
+
+
+Version 0.3.59 adds a dedicated target-discharge card with staged percentage selection, shared daily-limit semantics, explicit start/stop and fresh-sample admission. The production-model fixture verifies policy requests, reaching the target, stopping and failures with isolated configuration and injected refresh. It does not physically discharge the validation host.

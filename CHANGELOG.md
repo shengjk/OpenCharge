@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.59
+
+- Add a dedicated Discharge to a Target card in Charge Control, with a staged 20–100% target, explicit start/stop buttons and the automatic-discharge setting in the same area. The popup button now shows its target percentage.
+- Apply the target and manual mode together only after a successful save. The target is shared with the daily charge limit; an active departure plan is cleared when starting, with an explanation in the card.
+- Validate fresh power-source and selected battery-percentage readings, reserve, active/interrupted calibration, administrator lock and hardware opt-in before accepting a request. Rejected or failed saves do not change policy or trigger refresh.
+- Cover target completion, stopping to paused mode, staged view mounting and rejection/recovery paths with isolated files and injected refresh. Physical discharge remains unverified.
+
 ## 0.3.58
 
 - Add capability-negotiated ordinary exit preparation and explicit confirmation. Pending exits keep the awake watchdog; confirmed exits can preserve inhibition across graceful service termination while retaining the original-value recovery journal.

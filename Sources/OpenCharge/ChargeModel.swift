@@ -265,6 +265,37 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard !config.policy.automaticDischarge else { return }
   toggleDischarge()
  }
+ @discardableResult func startTargetDischargeFromGUI(_ target: Double,
+   persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil) -> Bool {
+  guard allowChargeSettingsEdit(), !settingsResetPending else { return false }
+  guard config.hardwareEnabled else { error = NSLocalizedString("请先在设置中开启硬件控制，再开始放电",comment:""); return false }
+  guard config.policy.mode != .calibration, !calibrationPending else { error = NSLocalizedString("请先结束校准，再开始手动放电",comment:""); return false }
+  guard !config.policy.automaticDischarge else { error = NSLocalizedString("请先关闭自动放电，再开始手动放电",comment:""); return false }
+  guard target.isFinite, (20...100).contains(target), target.rounded(.towardZero) == target else { error = NSLocalizedString("放电目标必须是 20–100% 的整数",comment:""); return false }
+  guard target >= config.policy.reserve else { error = NSLocalizedString("放电目标不能低于主动放电保底，请先调整保底设置",comment:""); return false }
+  do {
+   let sample = try readBattery()
+   guard sample.physicalAdapterConnected ?? sample.connected else { throw HelperError.rejected(NSLocalizedString("请连接电源后开始此操作",comment:"")) }
+   guard let percent = config.policy.useHardwarePercent == true ? sample.hardwarePercent : sample.percent,
+     percent.isFinite, (0...100).contains(percent) else { throw HelperError.rejected(NSLocalizedString("电量不可读，无法开始放电",comment:"")) }
+   guard Int(Float(target)) < Int(Float(percent)) else { throw HelperError.rejected(NSLocalizedString("放电目标必须低于当前电量",comment:"")) }
+   var next = config
+   next.setChargeLimit(target); next.setAutomationMode(.discharge)
+   next.policy.departure = nil
+   try persist(next)
+   config = next; calibrationPending = false; engine.modeChanged(to:.discharge); calibration = engine.calibration
+   error = nil; (refresh ?? { self.refresh() })(); return true
+  } catch { self.error = error.localizedDescription; return false }
+ }
+ @discardableResult func stopTargetDischargeFromGUI(persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil) -> Bool {
+  guard allowChargeSettingsEdit(), !settingsResetPending, config.policy.mode == .discharge else { return false }
+  do {
+   var next = config; next.setAutomationMode(.paused)
+   try persist(next)
+   config = next; calibrationPending = false; engine.modeChanged(to:.paused)
+   error = nil; (refresh ?? { self.refresh() })(); return true
+  } catch { self.error = error.localizedDescription; return false }
+ }
  func toggleChargingFromMenu() {
   guard !quitting, allowChargeSettingsEdit() else { return }
   guard !calibrationPending else { error = NSLocalizedString("校准已中断，请先选择继续或取消", comment: ""); return }
