@@ -50,6 +50,7 @@ var ledNeedsRestore = false
 var ledRecoveryPending = false
 func restoreLED() throws { try ledSession?.restore(); ledNeedsRestore = false; ledRecoveryPending = false; ledLease.clear() }
 func restoreSMC() throws {
+ ordinaryExitSession.reset()
  chargeTransition.invalidate()
  var failure: Error?
  do { try controller?.apply(.restore); firmwareSession.reset() } catch { failure = error }
@@ -69,6 +70,7 @@ func capabilities() -> String {
  values.append("dischargeSleep:\(powerObserver != nil && sleepOverrides != nil ? "displaySnapshotV1" : "unavailable")")
  values.append("firmwareProtocol:fixedV1")
  values.append("firmwareExit:preparedV1")
+ values.append("ordinaryExit:preparedV1")
  values.append("firmwarePlan:\(powerObserver != nil ? "atomicSleepV1" : "unavailable")")
  values.append("chargeRecovery:\(restoreBeforeCommands ? "pending" : "ready")")
  return values.joined(separator: ", ")
@@ -87,6 +89,7 @@ var address = sockaddr_un(); address.sun_family = sa_family_t(AF_UNIX); address.
 withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: Array(path.utf8CString).map { UInt8(bitPattern: $0) }) }
 let bound = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) } }
 guard bound == 0, chmod(path, 0o600) == 0, listen(fd, 8) == 0 else { log("socket setup failed"); exit(1) }
+let ordinaryExitSession = OrdinaryExitSession()
 var firmwareMutationGeneration: UInt64 = 0
 var lease = ControlLease()
 var chargeTransition = ChargePowerTransition()
@@ -147,11 +150,17 @@ func synchronizeConsoleOwner() {
   catch { log("restoration retry failed: \(error.localizedDescription)") }
  }
 }
+func cleanupForServiceExit() throws {
+ chargeTransition.invalidate()
+ try ordinaryExitSession.cleanupForServiceExit(recoveryPending:restoreBeforeCommands,
+  restoreCharge:{ try controller?.apply(.restore); firmwareSession.reset() },
+  restoreLED:restoreLED, restoreSleep:restoreSleep)
+}
 signal(SIGTERM, SIG_IGN); signal(SIGINT, SIG_IGN)
 let shutdownSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
-shutdownSource.setEventHandler { do { try restoreSMC() } catch { log("shutdown restoration failed: \(error.localizedDescription)") }; unlink(path); exit(0) }; shutdownSource.resume()
+shutdownSource.setEventHandler { do { try cleanupForServiceExit() } catch { log("shutdown restoration failed: \(error.localizedDescription)") }; unlink(path); exit(0) }; shutdownSource.resume()
 let interruptSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-interruptSource.setEventHandler { do { try restoreSMC() } catch { log("shutdown restoration failed: \(error.localizedDescription)") }; unlink(path); exit(0) }; interruptSource.resume()
+interruptSource.setEventHandler { do { try cleanupForServiceExit() } catch { log("shutdown restoration failed: \(error.localizedDescription)") }; unlink(path); exit(0) }; interruptSource.resume()
 let timer = DispatchSource.makeTimerSource(queue: .main)
 timer.schedule(deadline: .now(), repeating: 1)
 timer.setEventHandler {
@@ -263,6 +272,7 @@ source.setEventHandler {
   let multiDisplayAction = DischargeSleepRequest.underlying(admitted)
   let command = multiDisplayAction ?? admitted
   try firmwareSession.requireExternalAdmission(command)
+  try ordinaryExitSession.requireExternalAdmission(command)
   guard serviceFileRemoval?.pending != true || ServiceFileRemovalRequest.permitsWhilePending(command) else { throw HelperError.rejected("service file removal pending; only inspection/restoration/removal allowed") }
   if let removal = ServiceFileRemovalRequest.parse(command) {
    guard let removalIdentity, let serviceFileRemoval else { throw HelperError.rejected("signed native file removal unavailable") }
@@ -276,15 +286,27 @@ source.setEventHandler {
   }
   else if command == "chargeContext" { response = "OK " + chargeTransition.contextReply }
   else if command == "capabilities" { response = "OK " + capabilities() }
+  else if let ordinaryExit = OrdinaryExitCommand.parse(command) {
+   guard let controller, !firmwareSession.active else { throw HelperError.rejected("Ordinary exit backend unavailable") }
+   response = "OK " + (try ordinaryExitSession.execute(ordinaryExit,recoveryPending:restoreBeforeCommands,
+    available:true,
+    prepare:{
+     attemptedAction = true; needsRestore = true; lease.request(at:ProcessInfo.processInfo.systemUptime)
+     try restoreSleep(); try controller.apply(.retainInhibit)
+     currentAction = .inhibitCharge; pauseOnSleep = false; dischargeSleepEntry.clear()
+    }, renew:{ lease.request(at:ProcessInfo.processInfo.systemUptime) },
+    commit:{ lease.request(at:ProcessInfo.processInfo.systemUptime,retained:true) }))
+  }
   else if let firmware = FirmwareCommand.parse(command) {
    let oldMutation = firmwareMutationGeneration
    do {
     response = "OK " + (try firmwareSession.execute(firmware, recoveryPending: restoreBeforeCommands, sleepObserverAvailable: powerObserver != nil))
    } catch {
     // A rejected preflight must not tear down a healthy ordinary charge session.
-    if firmwareMutationGeneration != oldMutation || firmwareSession.requiresRecoveryAfterFailure(firmware) { attemptedAction = true }
+    if firmwareMutationGeneration != oldMutation || firmwareSession.requiresRecoveryAfterFailure(firmware) { ordinaryExitSession.reset(); attemptedAction = true }
     throw error
    }
+   if firmwareMutationGeneration != oldMutation { ordinaryExitSession.reset() }
    switch firmware {
    case .plan, .allow, .inhibit, .discharge, .limit, .exit:
     dischargeSleepEntry.accept(multipleDisplays:multiDisplayAction != nil,at:ProcessInfo.processInfo.systemUptime,preventDisplaySleep:DischargeSleepRequest.preventsDisplaySleep(admitted))
@@ -314,6 +336,7 @@ source.setEventHandler {
   }
   else if command == "retainChargeInhibit" {
    guard !restoreBeforeCommands, let controller else { throw HelperError.rejected("SMC or cleanup unavailable") }
+   ordinaryExitSession.reset()
    try restoreSleep()
    attemptedAction = true; needsRestore = true; lease.request(at: ProcessInfo.processInfo.systemUptime)
    try controller.apply(.retainInhibit); firmwareSession.reset(); currentAction = .inhibitCharge; dischargeSleepEntry.clear(); lease.request(at: ProcessInfo.processInfo.systemUptime, retained: true)
@@ -351,6 +374,7 @@ source.setEventHandler {
    guard let action = HardwareAction(rawValue: command) else { throw HelperError.rejected("unknown action") }
    guard !restoreBeforeCommands || action == .restore else { throw HelperError.rejected("previous session cleanup pending") }
    guard let controller else { throw HelperError.rejected("SMC unavailable: \(smcFailure ?? "unknown")") }
+   ordinaryExitSession.reset()
    attemptedAction = true
    lease.request(at: ProcessInfo.processInfo.systemUptime); needsRestore = true
    if action == .restore { try restoreSleep() }

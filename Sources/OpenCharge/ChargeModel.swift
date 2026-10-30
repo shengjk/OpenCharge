@@ -145,6 +145,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private let sleepController = SleepController()
  private var lastHardwareAction: ChargeAction = .restore
  private var firmwareControl: FirmwareAppSession?
+ private var ordinaryExitControl: OrdinaryExitAppSession?
  var usesNumericFirmware: Bool { firmwareControl != nil }
  private var dischargeExitPending = false
  private var quitting = false
@@ -611,6 +612,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   #endif
  }
  func configureHardwareChannel(capabilities: String, numericRequired: Bool = false) throws {
+  guard ordinaryExitControl?.id == nil else { throw HelperError.rejected("Restore pending ordinary exit before changing charge channel") }
   guard firmwareControl?.mayOwnSession != true else { throw HelperError.rejected(NSLocalizedString("请先完成上次数值固件会话的恢复", comment: "")) }
   if FirmwareHelperCapabilities.supportsAtomicSleepPlan(capabilities) {
    firmwareControl = try FirmwareAppSession(capabilities:capabilities)
@@ -621,6 +623,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
    firmwareControl = nil
   }
+  ordinaryExitControl = firmwareControl == nil && OrdinaryExitCommand.supportsHelper(capabilities) ? OrdinaryExitAppSession() : nil
   chargeContextEnabled = ChargeRequestContext.supportsHelper(capabilities)
   multiDisplaySleepEnabled = DischargeSleepRequest.supportsHelper(capabilities)
  }
@@ -630,6 +633,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   }
   else { _ = try request("restore") }
   try OrdinaryQuitRecovery.acknowledgeRestore(configuration:&config,persist:persist)
+  ordinaryExitControl?.restored()
   quitChargeRecoveryPending = false; quitRecoveryIntentStored = false; lastHardwareAction = .restore
  }
  func enableHardware(_ enabled: Bool, request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil) {
@@ -680,7 +684,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     else {
      // Set before delivery: an error may arrive after the helper applied it.
      quitChargeRecoveryPending = true
-     _ = try request(config.policy.stopOnQuit ? "retainChargeInhibit" : "restore")
+     if config.policy.stopOnQuit, let ordinaryExitControl { try ordinaryExitControl.prepare(request:request) }
+     else { _ = try request(config.policy.stopOnQuit ? "retainChargeInhibit" : "restore") }
      quitChargeRecoveryPending = config.policy.stopOnQuit
      lastHardwareAction = config.policy.stopOnQuit ? .inhibitCharge : .restore
     }
@@ -693,9 +698,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  var numericExitCommitStarted: Bool { firmwareControl?.exitCommitAttempted == true }
  func renewPreparedQuit(request: (String) throws -> String = HelperClient.request) throws {
   try firmwareControl?.renewExitPreparation(request:request)
+  try ordinaryExitControl?.renew(request:request)
  }
  func commitQuit(request: (String) throws -> String = HelperClient.request) throws {
   try firmwareControl?.commitExit(request:request)
+  try ordinaryExitControl?.commit(request:request)
  }
  func cancelQuit(request: (String) throws -> String = HelperClient.request, persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil) {
   guard !numericExitCommitStarted else {
