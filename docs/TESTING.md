@@ -609,3 +609,12 @@ An isolated run of the previous compiled CLI reproduced `profile desk` followed 
 
 
 The separately approved one-host physical gate test used the reviewed 0.3.54 helper and fixed inhibit/allow/restore requests. Inhibition was observed; standalone allowance was not established in the bounded observation window. See [Hardware](HARDWARE.md#bounded-physical-observation-on-one-m1-model) for the exact scope. This does not extend the calibration regression above to real calibration execution.
+
+
+## Refresh while native UI loops run
+
+`bash Scripts/test-control-refresh-native.sh` is an opt-in native test. A disposable app constructs the actual production model with isolated configuration, injected battery readings, disabled hardware control and disabled system actions. Its normal ten-second refresh timer runs while AppKit holds a native modal window for twelve seconds, then while the event-tracking run-loop mode runs for twelve seconds. Before the fix both refresh counts were zero; after the fix both were one. This verifies model callbacks in those modes, not an actual drag, live helper renewal, or hardware behavior under a modal UI. Temporary app registration and configuration are scoped to the fixture.
+
+The dashboard fixture also verifies that a stale GUI charge-limit commit cannot change memory, disk bytes or change identity during active/interrupted calibration, an administrator lock or a pending settings reset; an ordinary commit remains accepted. Slider staging is implemented in the view. Attempts to inspect a held slider through the UI tool outlasted the disposable windows, so that gesture acceptance remains unverified.
+
+The separately authorized fresh-driver physical follow-up is recorded in [Hardware](HARDWARE.md#fresh-driver-physical-follow-up). It exercised the reviewed 0.3.54 helper and is separate from the simulated/native UI checks in this section.

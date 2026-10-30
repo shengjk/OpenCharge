@@ -11,8 +11,11 @@ extension ChargeModel {
    self.editChargeSettings { self.config.policy[keyPath: keyPath] = value }
   })
  }
- func setChargeLimitFromGUI(_ value: Double) {
-  editChargeSettings { self.config.setChargeLimit(value) }
+ @discardableResult func setChargeLimitFromGUI(_ value: Double) -> Bool {
+  guard !settingsResetPending else { error = NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停",comment:""); return false }
+  guard config.policy.mode != .calibration, !calibrationPending else { error = NSLocalizedString("校准期间不能修改上限",comment:""); return false }
+  guard allowChargeSettingsEdit() else { return false }
+  config.setChargeLimit(value); return true
  }
  func applyChargeSettingsFromGUI(presentLowLimitNotice: @MainActor () -> Void = LowChargeLimitNotice.present) {
   editChargeSettings { self.config.policy.normalize(); self.save(); self.refresh(); self.showLowChargeLimitNotice(present:presentLowLimitNotice) }

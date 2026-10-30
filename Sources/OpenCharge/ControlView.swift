@@ -10,12 +10,30 @@ import ChargeHardware
 struct ControlView: View {
  @EnvironmentObject var m: ChargeModel
  @State private var limitDraft = ""
+ @State private var sliderDraft = 80.0
+ @State private var editingSlider = false
  var body: some View {
   ChargeSettingsLockNotice(model: m)
-  Card(NSLocalizedString("充电上限", comment: "")) { HStack { Text(NSLocalizedString("日常目标", comment: "")); Spacer(); Text("\(Int(m.config.policy.limit))%").font(.title.bold()).presentationMint() }; Slider(value: Binding(get: { m.config.policy.limit }, set: { m.setChargeLimitFromGUI($0) }), in: 20...100, step: 1) { Text(NSLocalizedString("充电上限", comment: "")) } onEditingChanged: { editing in if !editing { m.applyChargeSettingsFromGUI() } }.disabled(m.config.policy.mode == .calibration || m.settingsLocked); HStack { Text("20%"); Spacer(); Text("100%") }.font(.caption).presentationSecondary()
+  Card(NSLocalizedString("充电上限", comment: "")) { HStack { Text(NSLocalizedString("日常目标", comment: "")); Spacer(); Text("\(Int(editingSlider ? sliderDraft : m.config.policy.limit))%").font(.title.bold()).presentationMint() }; Slider(value: $sliderDraft, in: 20...100, step: 1) { Text(NSLocalizedString("充电上限", comment: "")) } onEditingChanged: { editing in
+    editingSlider = editing
+    if !editing {
+     if m.setChargeLimitFromGUI(sliderDraft) { m.applyChargeSettingsFromGUI() }
+     sliderDraft = m.config.policy.limit
+    }
+   }.disabled(m.config.policy.mode == .calibration || m.settingsLocked)
+    .accessibilityIdentifier("charge-limit-slider")
+    .onChange(of:sliderDraft) { value in
+     // Keyboard/accessibility steps can arrive without a tracked drag.
+     if !editingSlider && value != m.config.policy.limit {
+      if m.setChargeLimitFromGUI(value) { m.applyChargeSettingsFromGUI() }
+      sliderDraft = m.config.policy.limit
+     }
+    }
+    .onAppear { sliderDraft = m.config.policy.limit }
+    .onChange(of:m.config.policy.limit) { value in if !editingSlider { sliderDraft = value } }; HStack { Text("20%"); Spacer(); Text("100%") }.font(.caption).presentationSecondary()
    HStack { Text(NSLocalizedString("精确上限", comment: "")); CommitTextField(title: "20–100", text: $limitDraft) {
     guard let value = Double(limitDraft), value.isFinite, (20...100).contains(value) else { m.error = NSLocalizedString("充电上限必须在 20–100%", comment: ""); return }
-    m.setChargeLimitFromGUI(value); m.applyChargeSettingsFromGUI()
+    if m.setChargeLimitFromGUI(value) { m.applyChargeSettingsFromGUI() }
    }.frame(width: 70).disabled(m.config.policy.mode == .calibration || m.settingsLocked).onAppear { limitDraft = String(Int(m.config.policy.limit)) }.onChange(of: m.config.policy.limit) { value in limitDraft = String(Int(value)) }; Text("%"); Spacer() }
   }
   Card(NSLocalizedString("航行与温度", comment: "")) {

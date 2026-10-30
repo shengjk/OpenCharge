@@ -1,4 +1,4 @@
-# Status — 0.3.55 and development source
+# Status — 0.3.56 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -18,7 +18,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking, CPU display and user-initiated normal Quit in both lists | More OS versions; private API may be unavailable; wider UI/session validation remains open |
 | Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless; owned legacy file removal/job unregistration and explicit modern-route handoff; serialized operations | Actual signed administrator interaction, legacy runtime, interrupted-process recovery, real manual-uninstaller behavior and production signing/notarization |
-| Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot charge/LED recovery journals | Real writes, physical charge/LED crash recovery, user switching and reboot behavior |
+| Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot recovery journals; basic ordinary gating observed with reviewed 0.3.54 helper on one M1 host | Policy cutoff, physical discharge/LED/crash recovery, user switching, other binaries/models and reboot behavior |
 | Sleep control | Helper-owned sleep admission and app suspension handling; public idle assertion; required calibration/clamshell protection; optional until-limit system/lid SPI; schema-2 global recovery and same-boot lid cleanup; opt-in foreground lid-lock request | Physical lid/display transitions, private-interface compatibility, powerd interference, actual sleep/boot recovery |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
 | Software updates | Manual / opt-in scheduled checks, preview channel, bounded verified ZIP download with quarantine metadata | Signed automatic installation, notarization and broader network environments |
@@ -27,7 +27,7 @@ This is a development release. Implemented policy, OS integration and physical h
 
 Unsupported or incomplete: guaranteed forced-clamshell behavior, powered-off charging guarantees and desktop WidgetKit extensions. Packages target macOS 11; runtime behavior on macOS 11/12 remains unverified. Unknown hardware profiles are refused rather than guessed.
 
-The installed development helper was updated from the reviewed 0.3.54 package for one explicitly authorized bounded test on MacBookPro17,1. Inhibit/allow/restore requests were acknowledged; current fell to zero and charging stopped during the inhibit window. Charging did not visibly resume in the later observation window; it was observed only after another controller was reopened, so successful OpenCharge resumption remains unverified. The app control opt-in and scheduled system actions remain disabled. Capability detection and fake-backend tests do not establish physical effects.
+The reviewed 0.3.54 development helper is installed on MacBookPro17,1. After an initially inconclusive bounded test, a separately authorized follow-up observed allow/inhibit/allow in driver snapshots newer than the first acknowledgement of each phase: positive current, zero current, then positive current. The helper was renewed within its lease, restoration was acknowledged and the previous controller was reopened. This proves basic gating on this one host, not app policy-limit cutoff, forced discharge, calibration, sleep/boot recovery, other helper binaries or other models. The app control opt-in and scheduled system actions remain disabled. Capability detection and fake-backend tests do not establish physical effects.
 
 
 Version 0.3.38 fixes fresh ordinary-session startup when the selected policy requires system/lid sleep protection. It establishes inhibition before protection and enters the requested action only after protection succeeds; subsequent healthy policy rounds reuse the session. This applies to the updated app with the existing sleep-capable helper protocol. An independently restarted helper can still reject a previously cached app session; that failure requires recovery and re-enabling control. No hardware or sleep effects have been physically verified by this increment.
@@ -90,3 +90,6 @@ Version 0.3.54 adds normal Quit requests for eligible regular applications in th
 
 
 Version 0.3.55 aligns explicit CLI mode/profile changes and the mode-setting App Intent around fresh-run semantics. Old calibration checkpoints and pause-at-current flags are cleared; calibration history, charge limits and recovery obligations remain. The application's separate Resume action retains interrupted-run continuation. Isolated CLI, core and actual Intent/model-reload checks pass; real calibration cycles remain unverified.
+
+
+Version 0.3.56 keeps the production refresh timer active in modal-panel and event-tracking modes. An isolated native fixture observed no refresh in either 12-second loop before the fix, and one scheduled refresh in each after the fix. Hardware was disabled and battery data injected. Slider input is staged until editing ends; model admission rejects calibration/reset/managed-lock changes. A mouse-held slider interaction was not completed because the UI tool did not connect before the disposable windows closed; it remains unverified. These tests do not establish live hardware renewal while a user operates the UI.

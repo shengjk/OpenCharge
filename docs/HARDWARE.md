@@ -127,3 +127,10 @@ This is partial physical evidence for ordinary CHTE gating on one host. It does 
 
 
 A separate read-only 75-second observation after the test found two successive battery-driver `UpdateTime` values 60 seconds apart. This is one observed interval on one host, not a guaranteed refresh rate and not proof that data latency caused the earlier missing resumption. Future physical verification needs to account for reporting cadence and the helper's 45-awake-second control lease; simply extending a one-shot request's observation window past its lease would not validate sustained control.
+
+
+## Fresh-driver physical follow-up
+
+A second explicitly authorized test on the same MacBookPro17,1 used the already installed reviewed 0.3.54 helper, with the other controller temporarily exited. It allowed, inhibited and allowed again, renewing the same action about every 15 seconds. Each stage required a battery-driver timestamp strictly newer than its first acknowledgement. The three fresh observations reported charging at 1512 mA, not charging at 0 mA, then charging at 1553 mA. The complete test took about 135 seconds; the largest acknowledgement gap was under 17 seconds, within the 45-awake-second lease. Restore was acknowledged and the previous controller was reopened with its saved settings.
+
+This follow-up establishes basic ordinary gating and independent resumption on that one host with that helper. It supersedes the initial missing-resumption observation above, without proving app-level policy cutoff, forced discharge, a complete calibration, sleep/boot or crash recovery, other binaries, OS versions or models. No service update, discharge, calibration, sleep, LED, Low Power Mode or system charging preference change was performed in this follow-up.

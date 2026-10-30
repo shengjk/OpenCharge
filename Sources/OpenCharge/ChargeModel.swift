@@ -203,7 +203,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    guard let self else { throw HelperError.rejected(NSLocalizedString("应用策略实例已结束", comment: "")) }
    return self.automationPhase
   }
-  timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in Task { @MainActor in self?.refresh() } }
+  // Policy and helper-lease refresh must continue inside native panels and tracking.
+  let timer = Timer(timeInterval:10,repeats:true) { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
+  self.timer = timer
+  for mode in [RunLoop.Mode.common,.modalPanel,.eventTracking] { RunLoop.main.add(timer,forMode:mode) }
   observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.sleep() } })
   observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.refresh() } })
  }

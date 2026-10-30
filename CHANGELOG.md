@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.56
+
+- Keep periodic model refresh active in native modal panels and event-tracking loops. Invoke it directly on the main run loop so the UI does not postpone the policy and helper-lease refresh.
+- Stage charge-limit slider changes until editing ends, and reject stale GUI limit commits during calibration or unfinished settings reset.
+- Add isolated native run-loop coverage and commit-admission regressions. Record a separately authorized one-host physical allow/inhibit/allow follow-up, with driver timestamps newer than each first acknowledgement.
+
 ## 0.3.55
 
 - Clear saved calibration checkpoints and pause-at-current state when an explicit CLI mode or profile request replaces a calibration run. Starting calibration from the CLI now starts a fresh run instead of reusing an old phase.
