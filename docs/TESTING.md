@@ -633,3 +633,12 @@ A 0.3.57 native acceptance check used a copy of the existing read-only workflow,
 5. Compare the saved configuration before and after; hardware control must remain disabled.
 
 All three arithmetic checks passed in the English system UI after a cold start of the app whose executable matched the published 0.3.57 arm64 package. The battery-level workflow also wrote a numeric result through the system Shortcuts CLI. Configuration bytes were unchanged. The initial command failed under restricted execution; the same reviewed read-only workflow completed through the ordinary system context. These checks cover current-host numeric consumption, not Siri, Chinese discovery, setters or physical charging effects.
+
+
+## Actual GUI above-target cutoff observation
+
+A separately authorized real-device check used the published 0.3.57 arm64 GUI with the already installed reviewed 0.3.54 helper. It first exited the competing controller and used a backed-up temporary automatic policy: limit 85%, Sailing and automatic discharge off, temperature protection enabled at 40°C. An independent process bound the app's PID, user, executable path and kernel birth time, with a 420-second control deadline and bounded stop/restore/configuration recovery.
+
+The battery rose beyond the preparation window before activation. The physical acceptance was therefore recorded as an above-target cutoff subset, with the full three-stage application cycle explicitly left incomplete. At 89%, an observed charging baseline of 1364 mA was followed by GUI service confirmation of Pause Charging and a not-charging/0 mA driver snapshot roughly 67 seconds after activation. The accepted snapshot timestamp was strictly later than activation plus fifteen seconds; earlier cached samples were not counted as fresh acceptance.
+
+The guard stopped the identified app, received fixed restore acknowledgement, and restored original configuration bytes. The complete guarded run took about 164 seconds. Read-only follow-up after reopening the original controller and monitoring app confirmed the 80% daily limit, 35°C heat setting, disabled hardware opt-in, recovery-ready service and unchanged Low Power Mode. No service update, discharge, calibration, sleep, LED or power-mode mutation was part of this check. This result is one-model above-target inhibition evidence, not full hardware parity or persistent takeover authorization.
