@@ -11,7 +11,7 @@ struct SetChargeLimitIntent: AppIntent {
  @Parameter(title: "充电上限", default: 80) var percentage: Int
  func perform() async throws -> some IntentResult {
   guard (20...100).contains(percentage) else { throw HelperError.rejected(NSLocalizedString("充电上限必须在 20–100%", comment: "")) }
-  var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected(NSLocalizedString("校准期间不能修改上限", comment: "")) }; config.setChargeLimit(Double(percentage)); config.policy.mode = .automatic; try config.save(); return .result()
+  var config = try Configuration.load(); guard config.policy.mode != .calibration else { throw HelperError.rejected(NSLocalizedString("校准期间不能修改上限", comment: "")) }; config.setChargeLimit(Double(percentage)); config.setAutomationMode(.automatic); try config.save(); return .result()
  }
 }
 @available(macOS 13.0, *)
@@ -78,7 +78,7 @@ struct OpenChargeShortcuts: AppShortcutsProvider {
 struct StartChargingIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 充至满电"
  static var openAppWhenRun = true
- func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .topUp; try c.save(); return .result() }
+ func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.setAutomationMode(.topUp); try c.save(); return .result() }
 }
 @available(macOS 13.0, *)
 struct StopChargingIntent: AppIntent {
@@ -99,13 +99,13 @@ struct StopChargingIntent: AppIntent {
 struct StartDischargeIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 开始放电"
  static var openAppWhenRun = true
- func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .discharge; try c.save(); return .result() }
+ func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.setAutomationMode(.discharge); try c.save(); return .result() }
 }
 @available(macOS 13.0, *)
 struct StartCalibrationIntent: AppIntent {
  static var title: LocalizedStringResource = "OpenCharge 开始校准"
  static var openAppWhenRun = true
- func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.policy.mode = .calibration; c.calibrationCheckpoint = nil; try c.save(); return .result() }
+ func perform() async throws -> some IntentResult { var c = try Configuration.load(); c.setAutomationMode(.calibration); try c.save(); return .result() }
 }
 
 

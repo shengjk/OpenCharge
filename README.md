@@ -18,7 +18,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 
 ## Quick start
 
-Version 0.3.56 targets macOS 11+. Building requires Swift 5.9+ and Apple's command-line developer tools on a compatible build host. Runtime behavior on macOS 11/12 remains unverified; published 0.3.46 packages still require macOS 13. Native Shortcuts packaging also requires an installed App Intents metadata processor (normally supplied by Xcode).
+Version 0.3.57 targets macOS 11+. Building requires Swift 5.9+ and Apple's command-line developer tools on a compatible build host. Runtime behavior on macOS 11/12 remains unverified; published 0.3.46 packages still require macOS 13. Native Shortcuts packaging also requires an installed App Intents metadata processor (normally supplied by Xcode).
 
 ```sh
 git clone https://github.com/shengjk/OpenCharge.git

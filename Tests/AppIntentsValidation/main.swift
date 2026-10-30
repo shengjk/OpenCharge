@@ -60,6 +60,35 @@ import ChargeHardware
    let indefinite = SetChargeModeIntent(); indefinite.mode = .paused; _ = try await indefinite.perform()
    if try Configuration.load().policy.pauseAtCurrent != nil { failures += 1; print("FAIL explicit manual pause retained temporary semantics") }
    print("PASS current-percentage pause, invalid-reading isolation and calibration cancellation")
+   let starts: [(String, ChargeMode, () async throws -> Void)] = [
+    ("top up", .topUp, { _ = try await StartChargingIntent().perform() }),
+    ("discharge", .discharge, { _ = try await StartDischargeIntent().perform() }),
+    ("calibration", .calibration, { _ = try await StartCalibrationIntent().perform() })
+   ]
+   for (name, mode, start) in starts {
+    var interrupted = Configuration()
+    interrupted.policy.mode = .calibration
+    interrupted.policy.pauseAtCurrent = true
+    interrupted.calibrationCheckpoint = CalibrationCheckpoint(stage: .draining)
+    try interrupted.save()
+    try await start()
+    let saved = try Configuration.load()
+    if saved.policy.mode != mode || saved.calibrationCheckpoint != nil || saved.policy.pauseAtCurrent != nil || saved.hardwareEnabled {
+     failures += 1; print("FAIL dedicated \(name) retained old calibration/pause state")
+    }
+   }
+   var interruptedLimit = Configuration()
+   interruptedLimit.policy.mode = .automatic
+   interruptedLimit.policy.pauseAtCurrent = true
+   interruptedLimit.calibrationCheckpoint = CalibrationCheckpoint(stage: .draining)
+   try interruptedLimit.save()
+   let freshLimit = SetChargeLimitIntent(); freshLimit.percentage = 82
+   _ = try await freshLimit.perform()
+   let savedLimit = try Configuration.load()
+   if savedLimit.policy.mode != .automatic || savedLimit.policy.limit != 82 || savedLimit.calibrationCheckpoint != nil || savedLimit.policy.pauseAtCurrent != nil || savedLimit.hardwareEnabled {
+    failures += 1; print("FAIL explicit limit retained old calibration/pause state")
+   }
+   print("Checked dedicated start intents and explicit limit against stale persisted state")
    _ = try await StartCalibrationIntent().perform()
    let blocked = SetChargeLimitIntent(); blocked.percentage = 80
    do { _ = try await blocked.perform(); failures += 1; print("FAIL changed limit during calibration") } catch { print("PASS limit blocked during calibration") }

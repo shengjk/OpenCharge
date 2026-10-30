@@ -29,5 +29,13 @@ import ChargeHardware
  precondition(!model.calibrationPending && model.calibration == .idle)
  model.evaluatePolicy(ChargeSample(percent:50,temperature:25,connected:true))
  precondition(model.calibration == .filling && !model.config.hardwareEnabled)
+ config.policy.mode = .calibration; config.policy.pauseAtCurrent = true
+ config.calibrationCheckpoint = CalibrationCheckpoint(stage: .draining); try config.save()
+ model.reloadExternalConfiguration()
+ _ = try await StartCalibrationIntent().perform()
+ model.reloadExternalConfiguration()
+ precondition(model.calibration == .idle && !model.calibrationPending && model.config.policy.pauseAtCurrent == nil)
+ model.evaluatePolicy(ChargeSample(percent:50,temperature:25,connected:true))
+ precondition(model.calibration == .filling && !model.config.hardwareEnabled)
  print("PASS explicit automation mode: actual intent clears old calibration/pause state for all modes; interrupted production model starts a new filling phase after reload; fake telemetry, no helper or global configuration")
 }

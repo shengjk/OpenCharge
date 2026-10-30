@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.57
+
+- Clear saved calibration and temporary pause state for dedicated Top Up, Discharge and Calibration Shortcuts, using the same explicit mode transition as the mode-setting action.
+- Apply the same reset when a valid charge-limit Shortcut selects automatic mode; changing a limit during active calibration remains rejected.
+- Add actual App Intent regressions and production-model reload coverage with isolated configuration and hardware control disabled.
+
 ## 0.3.56
 
 - Keep periodic model refresh active in native modal panels and event-tracking loops. Invoke it directly on the main run loop so the UI does not postpone the policy and helper-lease refresh.
