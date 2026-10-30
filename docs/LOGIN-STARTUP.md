@@ -1,6 +1,6 @@
 # Login startup
 
-Enable or disable login startup in Settings. Inspection is read-only; only the explicit button changes registration. The packaged app still requires macOS 13. The compatibility implementation below is development source, not proof of execution on macOS 11/12.
+Enable or disable login startup in Settings. Inspection is read-only; only the explicit button changes registration. Current packages declare a macOS 11 minimum. The login compatibility implementation below remains unverified on actual macOS 11/12 systems.
 
 On macOS 13 and later, the app uses SMAppService.mainApp. Earlier systems use an owned per-user plist at `~/Library/LaunchAgents/org.opencharge.login.plist`, with a fixed `/usr/bin/open -g` argument array pointing to this app. `RunAtLoad` is true and `KeepAlive` is false. No shell, root helper, current-session bootstrap, background worker or immediate app launch is added. File changes take effect at the next login.
 

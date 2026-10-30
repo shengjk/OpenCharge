@@ -54,7 +54,7 @@ sudo bash Scripts/uninstall-helper.sh
 
 发布包仍要求 macOS 13。旧系统后端目前只完成源码可用性编译和隔离测试，尚未在 macOS 11/12 上执行管理员安装、注销或重装，也没有生产开发者签名与公证验收。
 
-The macOS 11/12 source backend uses Authorization Services and SMJobBless after reciprocal app/helper signing checks. Explicit unregistration uses SMJobRemove with an exit wait on a background queue. It stops the job and retains installed files; use the compatible signed full-removal action described below for file removal. Development scripts refuse native-service configurations. Installation does not enable charging control. Ad-hoc builds are rejected before authorization. The distributed minimum remains macOS 13; real legacy-system authorization, installation, reinstallation and migration are unverified.
+The macOS 11/12 source backend uses Authorization Services and SMJobBless after reciprocal app/helper signing checks. Explicit unregistration uses SMJobRemove with an exit wait on a background queue. It stops the job and retains installed files; use the compatible signed full-removal action described below for file removal. Development scripts refuse native-service configurations. Installation does not enable charging control. Ad-hoc builds are rejected before authorization. Current packages declare a macOS 11 minimum; real legacy-system authorization, installation, reinstallation and migration remain unverified.
 
 Apple API references: [SMJobBless](https://developer.apple.com/documentation/servicemanagement/smjobbless(_:_:_:_:)) and [SMJobRemove](https://developer.apple.com/documentation/servicemanagement/smjobremove(_:_:_:_:_:)).
 
