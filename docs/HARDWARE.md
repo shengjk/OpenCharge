@@ -143,3 +143,12 @@ On the same MacBookPro17,1 with the reviewed 0.3.54 helper, the published 0.3.57
 This establishes observed above-target inhibition through the actual GUI/model/service path on one host. Preparation exceeded the original start-percentage window, so the accepted result is the cutoff subset only. The intended three-stage application charging/stop/resume cycle and natural crossing of a fixed target remain unverified. Temperature protection was temporarily 40°C with explicit authorization; this was not a test of thermal cutoff at the normal 35°C setting.
 
 The independent recovery guard stopped the identified test application, received a restore acknowledgement, and restored the original configuration byte-for-byte. Arming, GUI waiting, observation and recovery took about 164 seconds. The original 80% limit, 35°C temperature protection and disabled hardware opt-in were restored, both applications were reopened, and read-only checks found the service recovery-ready and Low Power Mode unchanged. This test did not update the helper or exercise discharge, calibration, sleep, LED or power-mode actions. Persistent daily takeover requires a separate user choice.
+
+
+## Separately authorized basic daily pilot
+
+Following the bounded test, the user explicitly selected persistent ordinary-control trial use. The app saved hardware opt-in with the original 80% daily limit, 5% Sailing width and enabled 35°C heat protection. Automatic discharge, calibration schedules, extra sleep/lock control, LED control and scheduled system power-mode changes stayed off. The competing controller exited.
+
+Five read-only observations over about 122 seconds found the opt-in enabled, only one app instance, the service recovery-ready and charging current at zero. The identical published 0.3.57 app bundle was then copied to `~/Applications/OpenCharge.app`, with exact file/link manifests and strict signatures checked. Normal quit and reopening from that path retained hardware opt-in and policy, and the installed app again received Pause Charging confirmation. A later read-only check found the service ready, the other controller absent and current at zero. No helper update or login-startup change was made.
+
+This is a basic daily pilot on the current host. The observed battery was already above the daily target. Natural target crossing, application charging resumption, calibration, sleep/boot recovery and other model/OS behavior remain unverified. The app stops charging above the limit; this pilot does not actively discharge the battery to the target.
