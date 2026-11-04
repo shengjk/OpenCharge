@@ -40,3 +40,10 @@ Removal validates that its registration route exists before the app changes loca
 The app now additionally packages a dedicated macOS 11 helper under Contents/Library/LaunchServices with embedded Info/launchd sections and reciprocal signing requirements. The ordinary SMAppService/development helper remains a different file. The requirements use the actual verified signing team; local ad-hoc packages use `never` for both sides. Per-slice metadata, identifier, version and signature checks run during native and universal builds. See [older helper packaging](LEGACY-HELPER.md).
 
 This supplies installation prerequisites, not the older authorization/ownership/removal backend. Pre-13 in-app service registration remains unavailable, the public deployment floor remains macOS 13, and no helper was installed or restarted by this packaging work. The installation evidence above is historical; it is not evidence that the new route has been exercised.
+
+
+### Persistent legacy removal retry — 0.3.61
+
+Explicit full removal saves a small versioned `legacy-helper-removal.json` record in the application data directory before asking the helper to delete files. It contains only a stage, not authorization data. A reconstructed backend retains the legacy retry route even if installed files are already absent. Startup reads the record only; the user must request removal again. Fresh system authorization is required before unfinished job removal. An attempted deletion with a lost reply may skip repeated deletion only after both fixed paths are confirmed absent. Existing file identity checks remain authoritative for deletion.
+
+Failed record persistence prevents file deletion; failed acknowledgement persistence or final record clearance stays retryable. Corrupt, unsupported, oversized and symlink records block automatic route changes and are not overwritten. This records application progress across process reconstruction; it is not proof of native signed administrator interaction, power-loss durability, concurrent-client arbitration or physical hardware recovery. Portable configuration backups do not include this separate local record.

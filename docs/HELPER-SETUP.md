@@ -69,7 +69,7 @@ Normal application termination is refused while a service operation is pending. 
 
 文件删除前先恢复本服务拥有的充电、固件、灯光和睡眠状态，再确认四种恢复记录均不存在；损坏文件、符号链接、目录等同样视为待恢复。只删除已核验的 `/Library/LaunchDaemons/org.opencharge.charged.plist` 与 `/Library/PrivilegedHelperTools/org.opencharge.charged`，不删除用户设置、历史或恢复目录。删除期间拒绝新的硬件操作，保留检查和恢复请求。文件确认移除后，应用才注销系统任务并确认安装文件与任务均已不存在。
 
-部分删除或任务注销失败会在当前进程中保留重试状态。此状态尚未实现跨应用/服务崩溃的持久事务恢复：如重开后无法重试、出现缺失或来源不明的文件，请按手动卸载与兼容服务恢复说明处理，不要删除恢复记录。macOS 13+ 完成旧安装移除后会切换至 SMAppService 注册入口，仍需用户显式注册；不会自动安装新服务或开启控制。
+完整移除会先把进度原子保存到应用数据目录的 `legacy-helper-removal.json`，然后才请求删除服务文件。删除回复丢失、任务注销失败或应用中途退出后，重开仍保留明确的重试入口；启动不会自动授权或执行删除。重试会重新检查固定文件是否已不存在，未完成的系统任务注销仍需新的系统授权。记录损坏、版本不支持或无法保存时停止操作；如无法重试、出现来源不明的文件，请按手动卸载与兼容服务恢复说明处理，不要删除恢复记录。此记录不是权限或文件归属证明，也不是跨用户、并发多进程或断电恢复协议。macOS 13+ 完成旧安装移除后会切换至 SMAppService 注册入口，仍需用户显式注册；不会自动安装新服务或开启控制。
 
 The full legacy-removal action requires a compatible signed, running helper and administrator authorization. The helper validates the peer's kernel audit token and app signing requirement, verifies the granted right without root-side interaction, restores owned state and refuses deletion while any recovery path exists. Only the two fixed installation files are unlinked; the caller then unregisters the job and checks final absence. Process-local retry state handles partial deletion and failed job removal, but crash/relaunch recovery is not a durable transaction. Successful removal on macOS 13+ exposes the modern registration route without automatically registering it. Real signed authorization, removal, migration and macOS 11/12 execution remain unverified.
 

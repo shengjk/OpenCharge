@@ -6,6 +6,43 @@ import ChargeCore
 import Darwin
 
 enum LegacyHelperOperation { case install, remove, uninstall }
+enum LegacyHelperRemovalPhase: String, Codable { case none, attempted, acknowledged }
+struct LegacyHelperRemovalStore {
+ var load: () throws -> LegacyHelperRemovalPhase
+ var save: (LegacyHelperRemovalPhase) throws -> Void
+ var pending: Bool { do { return try load() != .none } catch { return true } }
+ static func memory() -> Self {
+  var phase = LegacyHelperRemovalPhase.none
+  return Self(load:{phase},save:{phase = $0})
+ }
+ static var system: Self { file(at:Configuration.directory.appendingPathComponent("legacy-helper-removal.json")) }
+ static func file(at url: URL) -> Self {
+  struct Record: Codable { let schema: Int; let phase: LegacyHelperRemovalPhase }
+  func read() throws -> LegacyHelperRemovalPhase {
+   var info = stat()
+   guard lstat(url.path,&info) == 0 else {
+    if errno == ENOENT { return .none }
+    throw CocoaError(.fileReadUnknown)
+   }
+   guard info.st_mode & S_IFMT == S_IFREG, info.st_size <= 4096 else { throw CocoaError(.fileReadCorruptFile) }
+   let record = try JSONDecoder().decode(Record.self,from:Data(contentsOf:url))
+   guard record.schema == 1, record.phase != .none else { throw CocoaError(.fileReadCorruptFile) }
+   return record.phase
+  }
+  return Self(load:read,save:{ phase in
+   // Validate an existing record before replacing or removing it. A journal
+   // is a retry hint, never authorization or proof of installed-file ownership.
+   _ = try read()
+   if phase == .none {
+    if FileManager.default.fileExists(atPath:url.path) { try FileManager.default.removeItem(at:url) }
+   } else {
+    try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
+    try JSONEncoder().encode(Record(schema:1,phase:phase)).write(to:url,options:.atomic)
+    try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:url.path)
+   }
+  })
+ }
+}
 struct LegacyHelperOperations {
  var status: () -> HelperRegistrationStatus
  var authorize: (LegacyHelperOperation) throws -> AuthorizationRef
@@ -62,34 +99,49 @@ struct LegacyHelperOperations {
 @MainActor final class LegacyHelperRegistration: HelperRegistrationBackend {
  let route = HelperRegistrationRoute.blessedHelper
  private let operations: LegacyHelperOperations
- private enum RemovalPhase { case none, attempted, acknowledged }
- private var removalPhase = RemovalPhase.none
+ private let store: LegacyHelperRemovalStore
+ private typealias RemovalPhase = LegacyHelperRemovalPhase
+ private var removalPhase: RemovalPhase
  var removalPending: Bool { removalPhase != .none }
- init(operations: LegacyHelperOperations = .system) { self.operations = operations }
+ convenience init() { self.init(operations:.system,store:.system) }
+ init(operations: LegacyHelperOperations, store: LegacyHelperRemovalStore = .memory()) {
+  self.operations = operations; self.store = store
+  removalPhase = (try? store.load()) ?? .attempted
+ }
  var status: HelperRegistrationStatus { operations.status() }
  func register() async throws { try await perform(.install) }
  func unregister() async throws { try await perform(.remove) }
  func uninstall() async throws {
-  if removalPhase == .acknowledged,operations.filesAbsent(),status == .notRegistered || status == .notFound { removalPhase = .none; return }
+  removalPhase = try store.load()
+  if removalPhase != .none,operations.filesAbsent(),status == .notRegistered || status == .notFound {
+   try store.save(.none); removalPhase = .none; return
+  }
   try await perform(.uninstall)
  }
  func openApprovalSettings() { }
  private struct Failure: Error { let error: Error; let phase: RemovalPhase }
  private func perform(_ operation: LegacyHelperOperation) async throws {
-  let operations = operations, initialPhase = removalPhase
+  let operations = operations, store = store
+  let initialPhase = try store.load()
+  guard operation == .uninstall || initialPhase == .none else { throw HelperServiceError.ineligible(NSLocalizedString("请先重试完整文件移除",comment:"")) }
   do {
    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
     DispatchQueue.global(qos:.userInitiated).async {
      var phase = initialPhase
      do {
-      let needsFiles = operation == .uninstall && !(phase == .acknowledged && operations.filesAbsent())
+      let needsFiles = operation == .uninstall && !(phase != .none && operations.filesAbsent())
       if needsFiles, try !operations.removalSupport() { throw HelperServiceError.ineligible(NSLocalizedString("当前服务不支持完整文件移除，请先更新服务或使用卸载说明",comment:"")) }
       let reference = try operations.authorize(operation)
       defer { operations.release(reference) }
       if operation == .install { try operations.install(reference) }
       else {
-       if needsFiles { phase = .attempted; try operations.deleteFiles(reference); phase = .acknowledged }
+       if needsFiles {
+        phase = .attempted; try store.save(phase)
+        try operations.deleteFiles(reference)
+        phase = .acknowledged; try store.save(phase)
+       }
        try operations.remove(reference)
+       if operation == .uninstall { try store.save(.none); phase = .none }
       }
       continuation.resume()
      } catch { continuation.resume(throwing:Failure(error:error,phase:phase)) }

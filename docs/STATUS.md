@@ -1,4 +1,4 @@
-# Status — 0.3.60 and development source
+# Status — 0.3.61 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -17,7 +17,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking, CPU display and user-initiated normal Quit in both lists | More OS versions; private API may be unavailable; wider UI/session validation remains open |
-| Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless; owned legacy file removal/job unregistration and explicit modern-route handoff; serialized operations | Actual signed administrator interaction, legacy runtime, interrupted-process recovery, real manual-uninstaller behavior and production signing/notarization |
+| Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless; owned legacy file removal/job unregistration and explicit modern-route handoff; serialized operations and persisted application retry stages | Actual signed administrator interaction, legacy runtime, real process termination during privileged work, real manual-uninstaller behavior and production signing/notarization |
 | Hardware helper | Fixed authenticated IPC, protocol checks, readback, same-boot recovery journals; basic ordinary gating observed with reviewed 0.3.54 helper on one M1 host | Natural target crossing and application resumption, physical discharge/LED/crash recovery, user switching, other binaries/models and reboot behavior |
 | Sleep control | Helper-owned sleep admission and app suspension handling; public idle assertion; required calibration/clamshell protection; optional until-limit system/lid SPI; schema-2 global recovery and same-boot lid cleanup; opt-in foreground lid-lock request | Physical lid/display transitions, private-interface compatibility, powerd interference, actual sleep/boot recovery |
 | MagSafe / power modes | Fixed colors, automatic policy, blink/sleep suppression, per-source Low Power Mode | Physical effects, MagSafe generations and real sleep/wake |
@@ -100,12 +100,16 @@ Native 0.3.57 read-only acceptance now covers battery-level, temperature and lim
 
 A subsequent actual 0.3.57 GUI test observed charging at 1364 mA before activation and a fresh not-charging/0 mA driver snapshot after enabling an 85% policy while the battery was already at 89%. The temporary heat threshold was 40°C with explicit approval. Recovery acknowledged and restored the original 80%/35°C/monitoring configuration. This covers above-target inhibition only; the full application stop/resume cycle and natural target crossing remain unverified. See [Hardware evidence](HARDWARE.md#actual-application-above-target-inhibition--0357).
 
-A separately approved basic daily pilot now uses 80% / Sailing width 5% / enabled 35°C heat protection, with hardware opt-in saved and the competing controller exited. Five read-only samples over about 122 seconds found the opt-in continuously enabled, the service ready and charging current at zero. The same verified 0.3.57 bundle was installed into the personal Applications directory; reopening retained the enabled choice and the original policy. Login-startup settings were unchanged. The application recharge cycle, advanced functions, sleep/boot and wider hardware validation remain open.
+A separately approved basic daily pilot used 80% / Sailing width 5% / enabled 35°C heat protection, with hardware opt-in saved and the competing controller exited. Five read-only samples over about 122 seconds found the opt-in continuously enabled, the service ready and charging current at zero. The same verified 0.3.57 bundle was installed into the personal Applications directory; reopening retained the enabled choice and the original policy. Login-startup settings were unchanged. The application recharge cycle, advanced functions, sleep/boot and wider hardware validation remain open.
 
 
-Version 0.3.58 packages the negotiated ordinary prepared-exit protocol. Preparation retains the normal watchdog; explicit confirmation permits graceful service termination to keep inhibition and its original-value journal. Cancellation after a lost ordinary confirmation remains recoverable; the next same-boot service startup restores captured originals. The installed daily pilot has not updated to this helper, and physical service-exit, shutdown and boot behavior remain unverified. See [Quit and discharge recovery](QUIT.md).
+Version 0.3.58 packages the negotiated ordinary prepared-exit protocol. Preparation retains the normal watchdog; explicit confirmation permits graceful service termination to keep inhibition and its original-value journal. Cancellation after a lost ordinary confirmation remains recoverable; the next same-boot service startup restores captured originals. The reviewed installed service has not been updated to this helper, and physical service-exit, shutdown and boot behavior remain unverified. See [Quit and discharge recovery](QUIT.md).
 
 
 Version 0.3.59 adds a dedicated target-discharge card with staged percentage selection, shared daily-limit semantics, explicit start/stop and fresh-sample admission. The production-model fixture verifies policy requests, reaching the target, stopping and failures with isolated configuration and injected refresh. It does not physically discharge the validation host.
 
 Version 0.3.60 fixes departure-plan conflicts across explicit discharge entry points. Isolated production-model and policy checks cover target selection and completion; physical discharge remains unverified.
+
+Version 0.3.61 persists legacy native-helper removal progress before destructive work and retains explicit retries across backend reconstruction. Injected authorization/IPC/job actions with isolated real record files cover failure stages. Real signed administrator interaction and process termination during privileged removal remain unverified.
+
+The basic pilot above is historical evidence. A read-only observation on 2026-11-04 found OpenCharge absent and another controller running; the saved hardware opt-in was still enabled. Saved configuration does not prove active control, and source updates/releases do not switch controllers.

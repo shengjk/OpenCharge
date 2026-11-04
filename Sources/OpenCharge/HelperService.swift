@@ -64,7 +64,7 @@ extension HelperRegistrationBackend {
  convenience init(bundle: Bundle = .main) {
   let inspector = HelperInstallationInspector(app:bundle)
   let factory: (HelperInstallation) -> HelperRegistrationBackend? = { installation in
-   if installation == .olderNative(ownedByApp:true) { return LegacyHelperRegistration() }
+   if LegacyHelperRemovalStore.system.pending || installation == .olderNative(ownedByApp:true) { return LegacyHelperRegistration() }
    if #available(macOS 13.0, *) { return NativeHelperRegistration() }
    return LegacyHelperRegistration()
   }

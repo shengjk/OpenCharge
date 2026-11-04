@@ -668,3 +668,8 @@ A regression first reproduced the departure-target override (six failed assertio
 
 
 The post-0.3.60 scheduler fixture also executes discharge through the actual production refresh loop. A due 40% task cancels a due 100% departure plan, persists its target, consumes a one-shot task once, completes at 40 and retains Sailing hold after model reconstruction. A daily repeating task advances and does not rerun on the next refresh; hardware-percentage selection controls completion even while the OS value remains 90%. An ordered discharge-then-Pause batch uses the fresh current percentage. All settings are isolated and hardware/system actions remain disabled; model reconstruction does not restart the installed app, and sample transitions do not prove physical discharge.
+
+
+## Persisted native removal retry — 0.3.61
+
+The helper-preflight fixture first reproduced loss of the partial-removal stage after backend reconstruction. It now uses an isolated real journal and injected authorization, helper deletion and job removal. Cases cover reconstruction after acknowledged deletion, a lost deletion reply leaving the attempted stage, fresh authorization before finishing job removal, write failure before destructive work, failed final clearance after files/job are gone, mode 0600, read-only construction, and corrupt/symlink records. The system factory retains the legacy backend while a local record is pending, including after installed-file absence. Construction never starts authorization or removal. These tests do not install/unregister a real service, obtain administrator credentials, terminate a real privileged operation or establish power-loss/concurrent-user recovery.

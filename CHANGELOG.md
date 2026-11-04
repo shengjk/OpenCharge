@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.61
+
+- Persist the native legacy-helper removal stage before file deletion. Reopening the app retains the explicit retry route after interrupted deletion or job removal; startup never authorizes or performs removal automatically.
+- Require a fresh authorization for unfinished job removal. Recheck fixed file absence after a lost deletion reply; retain corrupt/unsupported records and failed final clearance for explicit recovery.
+- Cover record storage failures, reconstruction, lost replies, corruption, symlinks and completed-job retries with isolated files and injected privileged operations. Actual signed service removal remains unverified.
+
 ## 0.3.60
 
 - Keep the daily discharge target authoritative when starting from the menu-bar popup, mode picker, CLI, Shortcuts or a scheduled discharge: disable the existing departure charging plan instead of silently using its higher target. Show the plan cancellation in popup help before starting.
