@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.62
+
+- Keep an acknowledged input-cut session active when the raw external-connected bit becomes false. That bit can drop because of the app's own discharge action, so it must not alone complete manual discharge or release required sleep protection.
+- Use the same connection projection for policy, sleep planning and MagSafe state. Document that the raw field is not independent proof of cable presence; explicit Stop, target/reserve completion and recovery remain available.
+- Add regressions from a bounded 0.3.60 real-device attempt that returned to Automatic at 80% instead of reaching its 79% target. The attempt was stopped and original settings restored. The new fix has isolated coverage; physical target completion and unplug/replug behavior remain unverified.
+
 ## 0.3.61
 
 - Persist the native legacy-helper removal stage before file deletion. Reopening the app retains the explicit retry route after interrupted deletion or job removal; startup never authorizes or performs removal automatically.

@@ -102,7 +102,7 @@ final class CompatibilityTests: XCTestCase {
   var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge
   let ownCut = ChargeSample(date: epoch, percent: 90, temperature: 30, connected: false, ownAdapterInhibited: true)
   XCTAssertEqual(engine.decide(ownCut, policy: p).action, .forceDischarge)
-  let unplugged = ChargeSample(date: epoch, percent: 90, temperature: 30, connected: false, physicalAdapterConnected: false, ownAdapterInhibited: true)
+  let unplugged = ChargeSample(date: epoch, percent: 90, temperature: 30, connected: false, physicalAdapterConnected: false, ownAdapterInhibited: false)
   XCTAssertEqual(engine.decide(unplugged, policy: p).action, .restore)
  }
 

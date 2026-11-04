@@ -186,10 +186,20 @@ final class PolicyTests: XCTestCase {
   XCTAssertEqual(decision.action, .inhibitCharge); XCTAssertEqual(engine.completedMode, .discharge)
   XCTAssertEqual(decision.thermalHold, false)
  }
- func testConfirmedUnplugEndsManualDischarge() {
+ func testOwnedInputCutRetainsTargetDespiteRawAbsence() {
+  var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge; p.limit = 79
+  XCTAssertEqual(engine.decide(ChargeSample(percent:80,temperature:27,connected:true,physicalAdapterConnected:true),policy:p).action,.forceDischarge)
+  let cut = ChargeSample(percent:80,temperature:27,connected:false,physicalAdapterConnected:false,ownAdapterInhibited:true)
+  XCTAssertEqual(engine.decide(cut,policy:p).action,.forceDischarge)
+  XCTAssertNil(engine.completedMode)
+  let target = ChargeSample(percent:79,temperature:27,connected:false,physicalAdapterConnected:false,ownAdapterInhibited:true)
+  XCTAssertEqual(engine.decide(target,policy:p).action,.inhibitCharge)
+  XCTAssertEqual(engine.completedMode,.discharge)
+ }
+ func testAbsentAdapterWithoutOwnedCutEndsManualDischarge() {
   var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge
   _ = engine.decide(sample(90), policy: p)
-  let unplugged = ChargeSample(percent: 90, temperature: nil, connected: false, physicalAdapterConnected: false, ownAdapterInhibited: true)
+  let unplugged = ChargeSample(percent: 90, temperature: nil, connected: false, physicalAdapterConnected: false, ownAdapterInhibited: false)
   XCTAssertEqual(engine.decide(unplugged, policy: p).action, .restore)
   XCTAssertEqual(engine.completedMode, .discharge)
   p.mode = .automatic

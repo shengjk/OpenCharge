@@ -105,3 +105,12 @@ Monthly tasks run on the selected day of the month. A task set for the 31st skip
 ### 重复任务的日期
 
 每月任务保留选定的日号：31日的任务会跳过没有31日的月份，不会提前到月底。每年任务保留月和日，2月29日会跳过非闰年。工作日任务按当前日历跳过周末。这些规则用于计算下次时间；应用未运行时的补执行仍由“唤醒后补执行错过的任务”设置决定。
+
+
+### Adapter status during discharge
+
+An acknowledged input cut can make the raw external-connected flag report false even with the cable attached. While that owned cut is active, this signal alone no longer cancels the discharge request. It cannot independently confirm physical unplugging; use **Stop Discharging** when you want to cancel. Target and reserve checks still apply. Physical target completion and unplug/replug behavior with this change remain unverified.
+
+### 放电中的接电状态
+
+应用主动切断电源输入后，即使线缆仍连接，底层接电位也可能变为“未接电”。在已确认自身切断输入的状态下，此信号不再单独取消放电；它也不能独立证明真实拔线。需要取消时请点击“停止放电”，目标电量和保底检查仍然有效。此修复的真实目标完成及拔线/重接行为仍需实机验证。

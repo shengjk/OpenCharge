@@ -43,6 +43,8 @@ import ChargeHardware
  let saved = try Configuration.load()
  precondition(saved.hardwareEnabled && saved.policy.limit == 40 && saved.policy.mode == .discharge && saved.policy.pauseAtCurrent == nil && saved.calibrationCheckpoint == nil && saved.policy.departure == nil && !saved.policy.automaticDischarge && refreshes == 1)
  model.evaluatePolicy(ChargeSample(percent:70,temperature:30,connected:true));precondition(model.decision.action == .forceDischarge && model.decision.effectiveLimit == 40)
+ model.evaluatePolicy(ChargeSample(percent:70,temperature:30,connected:false,physicalAdapterConnected:false,ownAdapterInhibited:true))
+ precondition(model.decision.action == .forceDischarge && model.config.policy.mode == .discharge,"acknowledged own input cutoff must not invent unplug completion")
  model.evaluatePolicy(ChargeSample(percent:40,temperature:30,connected:true));precondition(model.decision.action == .inhibitCharge && model.config.policy.mode == .automatic)
  // Completion returns to ordinary Sailing: hold within the band, resume only
  // at its lower boundary, then inhibit at the shared upper target again.

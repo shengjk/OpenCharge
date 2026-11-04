@@ -159,3 +159,14 @@ This was a basic daily pilot on one host. The observed battery was already above
 The ordinary prepared-exit extension preserves the fixed-key recovery journal across an explicitly confirmed graceful service exit. Preparation retains the normal watchdog, final confirmation selects retention, and pending recovery overrides retention. The next same-boot helper startup still restores captured original values; it does not treat the retained target as a new unrestricted default. Existing compare-and-restore protection against external changes is unchanged. See [Quit and discharge recovery](QUIT.md) for request, cancellation, compatibility and evidence limits. The reviewed installed helper has not been updated to or exercised this new behavior.
 
 A read-only observation on 2026-11-04 found OpenCharge not running and another controller active. The saved OpenCharge hardware opt-in remained enabled, but that does not show ongoing takeover. The pilot observations above are historical; no controller was switched by publishing the later releases.
+
+
+## Bounded target-discharge attempt — 0.3.60
+
+On 2026-11-04, an explicitly authorized one-host test used the published 0.3.60/build72 app, the same reviewed 0.3.54 helper and a 79% target from an 80% OS reading. The competing controller was normally exited and a single-display/open-lid preflight passed. A separate process guard was armed before activation, with a 360-second maximum and a 40°C monitoring stop threshold; the app retained 35°C charging protection.
+
+About five seconds after activation, a sampled raw external-connected flag was false while the cable remained attached. The saved mode had returned to Automatic by the next sample. A transient -975 mA reading used a driver timestamp about five seconds after activation, below the test's stricter freshness threshold of activation plus fifteen seconds. Later snapshots showed 0 mA and 80%; the 79% target sequence was not achieved. This is a failed target-discharge acceptance, not proof of a completed discharge cycle.
+
+The attempt ended early after approximately 223.5 seconds. The guard terminated only the bound app process, received a restore acknowledgement and restored the original configuration byte-for-byte. The competing controller was reopened; read-only checks found the helper recovery-ready, the app absent and the installed helper digest unchanged. No helper update, calibration or sleep test occurred.
+
+Version 0.3.62 changes the corresponding decision: an acknowledged own input cut takes precedence over the ambiguous raw negative flag. Policy, sleep and LED connection projection agree. Unowned absence still restores control. The raw flag alone cannot confirm physical unplugging during an owned cut; broader unplug/replug and successful target completion with this fix require separate real-device validation.

@@ -1,4 +1,4 @@
-# Status — 0.3.61 and development source
+# Status — 0.3.62 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -113,3 +113,5 @@ Version 0.3.60 fixes departure-plan conflicts across explicit discharge entry po
 Version 0.3.61 persists legacy native-helper removal progress before destructive work and retains explicit retries across backend reconstruction. Injected authorization/IPC/job actions with isolated real record files cover failure stages. Real signed administrator interaction and process termination during privileged removal remain unverified.
 
 The basic pilot above is historical evidence. A read-only observation on 2026-11-04 found OpenCharge absent and another controller running; the saved hardware opt-in was still enabled. Saved configuration does not prove active control, and source updates/releases do not switch controllers.
+
+Version 0.3.62 addresses early discharge completion when an acknowledged own input cut makes the raw external-connected flag false. A bounded 0.3.60 real-device attempt exposed the conflicting state; it failed the target criterion and was recovered with exact configuration restoration. The fix has isolated policy/model/protection coverage, but successful physical target completion and unplug/replug behavior remain unverified.

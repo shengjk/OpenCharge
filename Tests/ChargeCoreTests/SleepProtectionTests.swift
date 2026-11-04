@@ -36,13 +36,13 @@ final class SleepProtectionTests: XCTestCase {
   XCTAssertFalse(p.preventIdleSleep)
   XCTAssertFalse(p.preventSystemAndLidSleep)
  }
- func testOwnedInputCutKeepsProtectionUnlessExplicitlyUnplugged() {
+ func testOwnedInputCutKeepsProtectionDespiteRawAbsence() {
   for physical in [true, false, nil] as [Bool?] {
    let p = SleepProtectionPlan.evaluate(controlEnabled: true, connected: false, physicalAdapterConnected: physical,
     action: .forceDischarge, percent: 90, target: 80, calibrating: false,
     idleUntilTarget: false, systemUntilTarget: false, allowDisplaySleep: true, lidClosed: true, ownAdapterInhibited: true)
    XCTAssertFalse(p.preventIdleSleep)
-   XCTAssertEqual(p.preventSystemAndLidSleep, physical != false)
+   XCTAssertTrue(p.preventSystemAndLidSleep)
   }
  }
  func testCompletionPauseAndInvalidValuesRelease() {
@@ -106,4 +106,13 @@ final class SleepProtectionTests: XCTestCase {
   let restored = try? ConfigurationBackup.restored(from: ConfigurationBackup(configuration: c).encoded())
   XCTAssertEqual(restored?.policy.keepAwakeWithLidClosed, false); XCTAssertEqual(restored?.policy.allowDisplaySleep, true); XCTAssertEqual(restored?.hardwareEnabled, false); XCTAssertEqual(restored?.policy.lockScreenWhenClosed, false)
  }
+ func testRawAbsenceDoesNotDropRequiredProtectionDuringOwnedCut() {
+  let active = SleepProtectionPlan.evaluate(controlEnabled:true,connected:false,physicalAdapterConnected:false,action:.forceDischarge,percent:80,target:79,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:true,ownAdapterInhibited:true)
+  XCTAssertTrue(active.preventSystemAndLidSleep)
+  let stopped = SleepProtectionPlan.evaluate(controlEnabled:true,connected:false,physicalAdapterConnected:false,action:.restore,percent:80,target:79,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:true,ownAdapterInhibited:true)
+  XCTAssertFalse(stopped.preventSystemAndLidSleep)
+  let unowned = SleepProtectionPlan.evaluate(controlEnabled:true,connected:false,physicalAdapterConnected:false,action:.forceDischarge,percent:80,target:79,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:true,ownAdapterInhibited:false)
+  XCTAssertFalse(unowned.preventSystemAndLidSleep)
+ }
+
 }

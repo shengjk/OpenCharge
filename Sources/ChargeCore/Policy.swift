@@ -138,8 +138,9 @@ public struct ChargeEngine: Sendable {
   }
   guard sample.percent.isFinite, (0...100).contains(sample.percent) else { return result(.restore, NSLocalizedString("无效电池读数，恢复系统控制", comment: "")) }
   // Cutting adapter input can make the OS report battery power. An acknowledged own cut
-  // must not be mistaken for unplugging and immediately undone. Prefer raw presence when available.
-  let adapterPresent = sample.physicalAdapterConnected ?? (sample.connected || sample.ownAdapterInhibited)
+  // must not be mistaken for unplugging and immediately undone. The raw flag also
+  // goes low during an owned cutoff, so it is not independent unplug confirmation.
+  let adapterPresent = AdapterConnection.available(connected:sample.connected,rawConnected:sample.physicalAdapterConnected,ownInputInhibited:sample.ownAdapterInhibited)
   guard adapterPresent else {
    if p.mode == .topUp || p.mode == .discharge { completedMode = p.mode; reportedPhase = p.sailing ? .sailing : .pause }
    return result(.restore, NSLocalizedString("未连接电源，恢复系统控制", comment: ""))

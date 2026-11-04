@@ -9,7 +9,7 @@ public struct SleepProtectionPlan: Equatable, Sendable {
   return fields.contains("sleepOverride:interfacesDetected") && fields.contains("sleepRecovery:phasesV1")
  }
  public static func evaluate(controlEnabled: Bool, connected: Bool, physicalAdapterConnected: Bool?, action: ChargeAction, percent: Double, target: Double, calibrating: Bool, idleUntilTarget: Bool, systemUntilTarget: Bool, allowDisplaySleep: Bool, lidClosed: Bool? = false, ownAdapterInhibited: Bool = false, thermalHold: Bool = false, fullChargeHold: Bool = false) -> Self {
-  let adapterPresent = physicalAdapterConnected ?? (connected || ownAdapterInhibited)
+  let adapterPresent = AdapterConnection.available(connected:connected,rawConnected:physicalAdapterConnected,ownInputInhibited:ownAdapterInhibited)
   guard controlEnabled, action != .restore, adapterPresent else { return Self(preventIdleSleep: false, preventSystemAndLidSleep: false, preventDisplaySleep: false) }
   let moving = action == .forceDischarge || (action == .allowCharge && !fullChargeHold && percent.isFinite && target.isFinite && percent < target)
   let waitingForTemperature = thermalHold && action == .inhibitCharge && percent.isFinite && target.isFinite && percent < target

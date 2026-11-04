@@ -29,6 +29,8 @@ public struct BatteryReading: Codable, Sendable {
     public var healthPercent: Double?
     public var connected: Bool
     public var charging: Bool
+    /// Raw AppleRawExternalConnected; may be false during an owned input cutoff.
+    /// This is not independent confirmation that the cable was unplugged.
     public var physicalAdapterConnected: Bool?
     public var hardwarePercent: Double?
     public var designCapacityMAH: Double?

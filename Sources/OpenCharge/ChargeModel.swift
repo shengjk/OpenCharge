@@ -381,7 +381,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
    let command: String
    if let color = magSafeSelection { command = color.command }
-   else { command = MagSafePolicy.command(mode: mode, connected: reading?.physicalAdapterConnected ?? (reading?.connected == true || lastHardwareAction == .forceDischarge), charging: reading?.charging ?? false, action: decision.action, controlEnabled: config.hardwareEnabled, blinkDischarge: config.magSafeBlinkDischarge ?? true, percent: config.policy.useHardwarePercent == true ? (reading?.hardwarePercent ?? .nan) : (reading?.percent ?? .nan), target: decision.effectiveLimit, sailingHold: decision.sailingHold ?? false, calibrating: calibration != .idle && calibration != .complete, fullChargeHold: decision.fullChargeHold == true) }
+   else { command = MagSafePolicy.command(mode: mode, connected: AdapterConnection.available(connected:reading?.connected == true,rawConnected:reading?.physicalAdapterConnected,ownInputInhibited:lastHardwareAction == .forceDischarge), charging: reading?.charging ?? false, action: decision.action, controlEnabled: config.hardwareEnabled, blinkDischarge: config.magSafeBlinkDischarge ?? true, percent: config.policy.useHardwarePercent == true ? (reading?.hardwarePercent ?? .nan) : (reading?.percent ?? .nan), target: decision.effectiveLimit, sailingHold: decision.sailingHold ?? false, calibrating: calibration != .idle && calibration != .complete, fullChargeHold: decision.fullChargeHold == true) }
    try MagSafePolicy.validateNativeEncoding(command: command, capabilities: { try request("capabilities") })
    _ = try request(config.magSafeOffDuringSleep == true ? "magSafeSleepOn" : "magSafeSleepOff")
    magSafeSessionActive = true

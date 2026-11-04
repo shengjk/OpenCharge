@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 301 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 303 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -678,3 +678,8 @@ The helper-preflight fixture first reproduced loss of the partial-removal stage 
 ## Recurrence scope and evidence boundary
 
 Monthly tasks preserve the selected calendar day: a task anchored to the 31st skips months without that date. Annual tasks preserve month/day, including skipping non-leap years for February 29. The core fixture covers these cases and weekday/weekend handling. The production-scheduler fixture separately covers task consumption, recurrence advancement and ordered policy application. Simulated dates and injected samples do not establish actual calendar/session delivery, wake-from-sleep execution or native scheduling UI behavior on every supported system.
+
+
+## Owned input cut versus raw absence — 0.3.62
+
+The observed sequence from the bounded target test is replayed as policy samples: 80%/connected, then 80%/raw absence with an acknowledged own input cut, then 79% under the same cut. Before the change, the added case produced three failed assertions by restoring/completing at the second sample. After the change it requests discharge until the target, then inhibits and completes. Unowned absence still ends the request. Required clamshell protection survives the ambiguous raw flag while the cut is owned and releases on restore. The production-model target fixture also checks that raw absence during an acknowledged cut does not persist Automatic early. These are injected state transitions; no additional physical discharge is performed by the checks.
