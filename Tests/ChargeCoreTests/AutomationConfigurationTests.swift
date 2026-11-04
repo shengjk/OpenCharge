@@ -22,4 +22,28 @@ final class AutomationConfigurationTests: XCTestCase {
    }
   }
  }
+ func testExplicitDischargeKeepsItsTargetWhenDepartureIsDue() {
+  let now = Date(timeIntervalSince1970:1_700_000_000)
+  for scheduled in [false,true] {
+   var config = Configuration(); config.policy.limit = 40
+   config.policy.departure = now.addingTimeInterval(60); config.policy.departureTarget = 100
+   if scheduled {
+    var schedule = ChargeSchedule(); schedule.action = .discharge; schedule.value = 40
+    _ = schedule.apply(policy:&config.policy)
+   } else { config.setAutomationMode(.discharge) }
+   XCTAssertNil(config.policy.departure)
+   XCTAssertFalse(config.hardwareEnabled)
+   var engine = ChargeEngine()
+   let decision = engine.decide(ChargeSample(date:now,percent:80,temperature:25,connected:true),policy:config.policy)
+   XCTAssertEqual(decision.action,.forceDischarge)
+   XCTAssertEqual(decision.effectiveLimit,40)
+   XCTAssertEqual(engine.decide(ChargeSample(date:now,percent:40,temperature:25,connected:true),policy:config.policy).action,.inhibitCharge)
+  }
+  for mode in [ChargeMode.automatic,.paused,.topUp,.calibration] {
+   var config = Configuration(); config.policy.departure = now
+   config.setAutomationMode(mode)
+   XCTAssertEqual(config.policy.departure,now)
+  }
+ }
+
 }

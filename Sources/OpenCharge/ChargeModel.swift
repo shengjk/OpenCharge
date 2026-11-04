@@ -260,10 +260,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   return true
  }
  func toggleTopUp() { changeMode(automationPhase == .topUp ? .paused : .topUp) }
- func toggleDischarge() { changeMode(automationPhase == .discharging ? .paused : .discharge) }
- func toggleDischargeFromPopover() {
+ func toggleDischarge(refresh: (() -> Void)? = nil) { changeMode(automationPhase == .discharging ? .paused : .discharge, refresh:refresh) }
+ func toggleDischargeFromPopover(refresh: (() -> Void)? = nil) {
   guard !config.policy.automaticDischarge else { return }
-  toggleDischarge()
+  toggleDischarge(refresh:refresh)
  }
  @discardableResult func startTargetDischargeFromGUI(_ target: Double,
    persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil) -> Bool {
@@ -281,7 +281,6 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    guard Int(Float(target)) < Int(Float(percent)) else { throw HelperError.rejected(NSLocalizedString("放电目标必须低于当前电量",comment:"")) }
    var next = config
    next.setChargeLimit(target); next.setAutomationMode(.discharge)
-   next.policy.departure = nil
    try persist(next)
    config = next; calibrationPending = false; engine.modeChanged(to:.discharge); calibration = engine.calibration
    error = nil; (refresh ?? { self.refresh() })(); return true
@@ -336,7 +335,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  var controlModeSelection: Binding<ChargeMode> {
   Binding(get: { self.config.policy.mode }, set: { self.changeMode($0) })
  }
- func changeMode(_ mode: ChargeMode) {
+ func changeMode(_ mode: ChargeMode, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
   if mode == .calibration && calibrationPending { error = NSLocalizedString("校准已中断，请先选择继续或取消", comment: ""); return }
   if (mode == .topUp || mode == .calibration) && reading?.connected != true { error = NSLocalizedString("请连接电源后开始此操作", comment: ""); return }
@@ -344,7 +343,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   calibrationPending = false
   if mode != .calibration { config.calibrationCheckpoint = nil }
   engine.modeChanged(to: mode); calibration = engine.calibration
-  config.policy.mode = mode; config.policy.pauseAtCurrent = nil; save(); refresh()
+  if mode == .discharge { config.setAutomationMode(mode) }
+  else { config.policy.mode = mode; config.policy.pauseAtCurrent = nil }
+  save(); (refresh ?? { self.refresh() })()
  }
  func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint, sailingCheckpoint: config.sailingCheckpoint); calibrationPending = false; refresh() }
  func setLowPower(_ enabled: Bool, source: String? = nil) {

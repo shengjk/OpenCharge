@@ -37,5 +37,28 @@ import ChargeHardware
  precondition(model.calibration == .idle && !model.calibrationPending && model.config.policy.pauseAtCurrent == nil)
  model.evaluatePolicy(ChargeSample(percent:50,temperature:25,connected:true))
  precondition(model.calibration == .filling && !model.config.hardwareEnabled)
+ // All actual automation/UI entry points must use the displayed daily target,
+ // even when a departure plan would otherwise begin charging to 100% now.
+ for entry in 0..<4 {
+  var planned = Configuration(); planned.historyEnabled=false;planned.notifications=false;planned.systemActionsEnabled=false
+  planned.policy.limit=40;planned.policy.departure=Date().addingTimeInterval(60);planned.policy.departureTarget=100
+  try planned.save()
+  let dischargeModel=ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:80,connected:true,charging:false)})
+  switch entry {
+  case 0:
+   var request=SetChargeModeIntent();request.mode = .discharge;_ = try await request.perform();dischargeModel.reloadExternalConfiguration()
+  case 1:
+   _ = try await StartDischargeIntent().perform();dischargeModel.reloadExternalConfiguration()
+  case 2: dischargeModel.toggleDischargeFromPopover(refresh:{})
+  default: dischargeModel.changeMode(.discharge,refresh:{})
+  }
+  let persisted=try Configuration.load()
+  precondition(persisted.policy.departure==nil && persisted.policy.limit==40 && persisted.policy.mode == .discharge && !persisted.hardwareEnabled)
+  dischargeModel.evaluatePolicy(ChargeSample(percent:80,temperature:25,connected:true))
+  precondition(dischargeModel.decision.action == .forceDischarge && dischargeModel.decision.effectiveLimit==40)
+  dischargeModel.evaluatePolicy(ChargeSample(percent:40,temperature:25,connected:true))
+  precondition(dischargeModel.decision.action == .inhibitCharge && dischargeModel.config.policy.mode == .automatic)
+ }
+ print("PASS departure conflict: generic/dedicated Shortcuts, popup and mode picker retain target 40 and complete at 40 with isolated files, fake telemetry and injected refresh")
  print("PASS explicit automation mode: actual intent clears old calibration/pause state for all modes; interrupted production model starts a new filling phase after reload; fake telemetry, no helper or global configuration")
 }

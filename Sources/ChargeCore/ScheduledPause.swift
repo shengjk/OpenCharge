@@ -58,7 +58,7 @@ public extension ChargeSchedule {
   switch action {
   case .limit: policy.limit = value; policy.mode = .automatic
   case .topUp: policy.mode = .topUp
-  case .discharge: policy.limit = value; policy.mode = .discharge
+  case .discharge: policy.limit = value; policy.mode = .discharge; policy.departure = nil
   case .calibrate: policy.mode = .calibration
   case .automatic: policy.mode = .automatic
   case .lowPowerOn: policy.lowPowerMode = true

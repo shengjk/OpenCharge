@@ -1,4 +1,4 @@
-# Status — 0.3.59 and development source
+# Status — 0.3.60 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -107,3 +107,5 @@ Version 0.3.58 packages the negotiated ordinary prepared-exit protocol. Preparat
 
 
 Version 0.3.59 adds a dedicated target-discharge card with staged percentage selection, shared daily-limit semantics, explicit start/stop and fresh-sample admission. The production-model fixture verifies policy requests, reaching the target, stopping and failures with isolated configuration and injected refresh. It does not physically discharge the validation host.
+
+Version 0.3.60 fixes departure-plan conflicts across explicit discharge entry points. Isolated production-model and policy checks cover target selection and completion; physical discharge remains unverified.

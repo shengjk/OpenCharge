@@ -69,6 +69,15 @@ for arguments in (['mode','bad'],['profile','bad']):
  result=subprocess.run([executable]+arguments,capture_output=True,text=True)
  assert result.returncode!=0 and (root/'configuration.json').read_bytes()==before_invalid
 
+# A requested manual target must not be replaced by a departure plan.
+c=json.loads((root/'configuration.json').read_text())
+c['hardwareEnabled']=False;c['policy']['limit']=40;c['policy']['departure']=2000000000;c['policy']['departureTarget']=100
+(root/'configuration.json').write_text(json.dumps(c))
+subprocess.run([executable,'mode','discharge'],check=True,capture_output=True,text=True)
+changed=json.loads((root/'configuration.json').read_text())
+assert changed['policy'].get('departure') is None and changed['policy']['limit']==40
+assert changed['policy']['mode']=='discharge' and changed['hardwareEnabled'] is False
+
 # Read-only inspection and rejected direct mutations must preserve recovery intent.
 c=json.loads((root/'configuration.json').read_text())
 c['pendingOrdinaryQuitRecovery']=True; c['hardwareEnabled']=True

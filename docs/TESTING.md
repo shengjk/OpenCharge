@@ -8,7 +8,7 @@ bash Scripts/build-app.sh
 bash Scripts/test-helper-preflight.sh
 ```
 
-`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 294 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
+`check.sh` runs core policy assertions, injected hardware/telemetry tests, isolated CLI/App Intents tests and the production dashboard fixture. The core adapter executes 301 canonical XCTest methods without the XCTest framework; use `swift test` with a full usable Xcode toolchain for framework execution. The adapter is not a substitute for an XCTest CI result.
 
 Hardware planners use fake transports; Low Power Mode and sleep tests use injected runners/ownership state. The dashboard fixture uses isolated configuration and preferences with hardware/system actions disabled. App Intents setters only persist into their fixture. These tests never install a root service or change physical charging, LEDs or power modes.
 
@@ -660,3 +660,8 @@ The dashboard fixture calls the actual target-discharge admission and stop metho
 
 
 The post-0.3.59 target-discharge fixture also follows the automatic handoff beyond its initial completion: with target 40 and Sailing width 5, samples at 39.5 and 35.1 remain inhibited, 35 resumes ordinary charging, and 40 inhibits again. A new production model, constructed with hardware opt-in disabled in the isolated fixture, reloads the saved hold checkpoint and stays in Sailing at 39.5 without starting another discharge. These are injected sample/state transitions, not a physical discharge/recharge or application restart of the installed program.
+
+
+## Discharge versus departure plans — 0.3.60
+
+A regression first reproduced the departure-target override (six failed assertions). The shared mode setter and scheduled-discharge action now clear departure plans. Core tests verify force-discharge to 40 from 80 despite a due 100% plan, completion at 40, and preservation of plans for unrelated modes. The dashboard suite exercises the actual generic/dedicated discharge intents, popup handler and mode handler with isolated settings, hardware opt-in disabled, fake telemetry and injected refresh; every path persists the 40% target and completes at 40. The isolated CLI suite verifies the persisted mode, target, removed plan and unchanged hardware opt-in. No actual discharge or installed-controller switch is performed.

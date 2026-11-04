@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.60
+
+- Keep the daily discharge target authoritative when starting from the menu-bar popup, mode picker, CLI, Shortcuts or a scheduled discharge: disable the existing departure charging plan instead of silently using its higher target. Show the plan cancellation in popup help before starting.
+- Add regressions for the conflicting departure plan through production policy, GUI model, both discharge intents and the CLI. Tests use isolated settings, fake telemetry and injected refresh; no physical discharge is performed.
+
 ## 0.3.59
 
 - Add a dedicated Discharge to a Target card in Charge Control, with a staged 20–100% target, explicit start/stop buttons and the automatic-discharge setting in the same area. The popup button now shows its target percentage.
