@@ -96,3 +96,12 @@ At the target, the policy stops active discharge and returns to automatic contro
 在 **充电控制 → 放电至指定电量** 中选好整数百分比，再点击 **放电至 X%**。目标范围为 20–100%，必须低于当前电量，且不能低于“主动放电保底”。需要接通电源并事先开启硬件控制；自动放电开启时请先关闭，校准期间请先结束或取消校准。
 
 调整数值本身不会启动放电。点击后会一起保存日常充电上限和手动放电模式，两者共用目标。已有出行充电计划会被关闭，避免改写本次目标；菜单栏弹窗、模式选择、命令行、快捷指令及定时放电入口也遵循此规则。其他定时任务仍可能在执行时改变策略。达到目标后停止主动放电并恢复自动模式，日常上限保留为该值；点击“停止放电”则进入暂停充电状态。放电速度取决于电脑耗电。
+
+
+### Calendar dates for repeating tasks
+
+Monthly tasks run on the selected day of the month. A task set for the 31st skips months that do not have a 31st; it is not moved to the last day. Yearly tasks retain the selected month and day, so February 29 skips non-leap years. Weekday tasks skip weekends according to the current calendar. These rules determine the next occurrence; the existing missed-task setting controls catch-up when the app is not running.
+
+### 重复任务的日期
+
+每月任务保留选定的日号：31日的任务会跳过没有31日的月份，不会提前到月底。每年任务保留月和日，2月29日会跳过非闰年。工作日任务按当前日历跳过周末。这些规则用于计算下次时间；应用未运行时的补执行仍由“唤醒后补执行错过的任务”设置决定。

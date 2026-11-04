@@ -673,3 +673,8 @@ The post-0.3.60 scheduler fixture also executes discharge through the actual pro
 ## Persisted native removal retry — 0.3.61
 
 The helper-preflight fixture first reproduced loss of the partial-removal stage after backend reconstruction. It now uses an isolated real journal and injected authorization, helper deletion and job removal. Cases cover reconstruction after acknowledged deletion, a lost deletion reply leaving the attempted stage, fresh authorization before finishing job removal, write failure before destructive work, failed final clearance after files/job are gone, mode 0600, read-only construction, and corrupt/symlink records. The system factory retains the legacy backend while a local record is pending, including after installed-file absence. Construction never starts authorization or removal. These tests do not install/unregister a real service, obtain administrator credentials, terminate a real privileged operation or establish power-loss/concurrent-user recovery.
+
+
+## Recurrence scope and evidence boundary
+
+Monthly tasks preserve the selected calendar day: a task anchored to the 31st skips months without that date. Annual tasks preserve month/day, including skipping non-leap years for February 29. The core fixture covers these cases and weekday/weekend handling. The production-scheduler fixture separately covers task consumption, recurrence advancement and ordered policy application. Simulated dates and injected samples do not establish actual calendar/session delivery, wake-from-sleep execution or native scheduling UI behavior on every supported system.
