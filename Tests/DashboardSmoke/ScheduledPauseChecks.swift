@@ -12,9 +12,9 @@ import ChargeHardware
   task.date = Date().addingTimeInterval(-60); task.repeatRule = repeating ? .daily : .once
   return task
  }
- func fixture(mode: ChargeMode = .automatic, limit: Double = 80, hardwarePercent: Bool = false, checkpoint: CalibrationCheckpoint? = nil, tasks: [ChargeSchedule] = []) throws -> ChargeModel {
+ func fixture(mode: ChargeMode = .automatic, limit: Double = 80, hardwarePercent: Bool = false, checkpoint: CalibrationCheckpoint? = nil, departure: Date? = nil, tasks: [ChargeSchedule] = []) throws -> ChargeModel {
   var config = Configuration(); config.policy.mode = mode; config.policy.limit = limit
-  config.policy.useHardwarePercent = hardwarePercent; config.calibrationCheckpoint = checkpoint
+  config.policy.useHardwarePercent = hardwarePercent; config.calibrationCheckpoint = checkpoint; config.policy.departure = departure
   config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false
   config.schedules = tasks; try config.save()
   return ChargeModel(dashboardDefaults: defaults, observeLid: false,
@@ -88,5 +88,41 @@ import ChargeHardware
  }
  let saved = try Configuration.load(); precondition(saved.policy.mode == .paused && saved.policy.limit == 78)
  precondition(saved.policy.pauseAtCurrent == true && saved.calibrationCheckpoint == nil)
+ // Exercise the production scheduler, including persistence and completion,
+ // rather than only applying an isolated ChargeSchedule to a policy value.
+ sample = BatteryReading(percent:80,temperature:25,connected:true,charging:false)
+ let dueDeparture = Date().addingTimeInterval(60)
+ let scheduledDischarge = try fixture(departure:dueDeparture,tasks:[task(.discharge,value:40)])
+ precondition(scheduledDischarge.config.policy.departure == nil && scheduledDischarge.config.policy.limit == 40)
+ precondition(scheduledDischarge.config.policy.mode == .discharge && scheduledDischarge.decision.action == .forceDischarge && scheduledDischarge.decision.effectiveLimit == 40)
+ precondition(!scheduledDischarge.config.schedules[0].enabled && scheduledDischarge.config.scheduleHistory?.count == 1)
+ let acceptedDischarge = try Configuration.load()
+ precondition(acceptedDischarge.policy.mode == .discharge && acceptedDischarge.policy.limit == 40 && acceptedDischarge.policy.departure == nil && !acceptedDischarge.hardwareEnabled)
+ sample.percent = 40;scheduledDischarge.refresh()
+ precondition(scheduledDischarge.config.policy.mode == .automatic && scheduledDischarge.decision.action == .inhibitCharge)
+ sample.percent = 39.5;scheduledDischarge.refresh()
+ precondition(scheduledDischarge.decision.action == .inhibitCharge && scheduledDischarge.automationPhase == .sailing)
+ precondition(scheduledDischarge.config.scheduleHistory?.count == 1,"completed one-shot discharge must not run again")
+ // A restarted model must retain the completed task and Sailing hold.
+ let afterRestart = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
+ precondition(afterRestart.config.policy.mode == .automatic && afterRestart.decision.action == .inhibitCharge && afterRestart.automationPhase == .sailing)
+ precondition(afterRestart.config.scheduleHistory?.count == 1 && !afterRestart.config.schedules[0].enabled)
+ // The selected raw control percentage, not the displayed OS value, ends discharge.
+ sample = BatteryReading(percent:90,temperature:25,connected:true,charging:false,hardwarePercent:70)
+ let rawDischarge = try fixture(hardwarePercent:true,departure:dueDeparture,tasks:[task(.discharge,value:40,repeating:true)])
+ precondition(rawDischarge.decision.action == .forceDischarge && rawDischarge.config.policy.mode == .discharge)
+ sample.hardwarePercent = 40;rawDischarge.refresh()
+ precondition(rawDischarge.decision.action == .inhibitCharge && rawDischarge.config.policy.mode == .automatic)
+ precondition(rawDischarge.config.schedules[0].date > Date() && rawDischarge.config.scheduleHistory?.count == 1)
+ rawDischarge.refresh();precondition(rawDischarge.config.scheduleHistory?.count == 1 && rawDischarge.config.policy.mode == .automatic)
+ // Same-round tasks still run in order: a following Pause uses the live level.
+ sample = BatteryReading(percent:80,temperature:25,connected:true,charging:false)
+ let dischargeThenPause = try fixture(departure:dueDeparture,tasks:[task(.discharge,value:40),task(.pause)])
+ precondition(dischargeThenPause.config.policy.mode == .paused && dischargeThenPause.config.policy.limit == 80 && dischargeThenPause.config.policy.departure == nil)
+ precondition(dischargeThenPause.config.scheduleHistory?.count == 2 && dischargeThenPause.decision.action == .inhibitCharge)
+ for model in [scheduledDischarge,afterRestart,rawDischarge,dischargeThenPause] {
+  precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
+ }
+ print("PASS production scheduled discharge: due departure removal, shared target, one-shot persistence, completion/Sailing/restart, raw percentage, repeating-task advance and same-batch Pause; isolated fake telemetry, no hardware actions")
  print("Scheduled Pause uses live selected control percent and ordered projected policy states, consumes skipped tasks once and preserves interrupted calibration; isolated telemetry only, no actuators")
 }
