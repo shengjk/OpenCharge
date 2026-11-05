@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.64
+
+- Use whole percentages at the two calibration discharge boundaries. Start refilling as soon as the reading reaches the 10% band, and finish when the reading reaches the daily target band. The refilling decision reports a 100% target from its first sample.
+
 ## 0.3.63
 
 - Keep the selected target throughout manual discharge if a departure charging plan is enabled mid-session. The plan can apply after discharge completes and automatic mode resumes.

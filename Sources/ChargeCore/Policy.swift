@@ -211,10 +211,9 @@ public struct ChargeEngine: Sendable {
   if sailingPaused && p.sailing && p.mode == .automatic && wholePercent < wholeTarget && Float(sample.percent) > sailingFloor {
    return result(.inhibitCharge, NSLocalizedString("航行模式：电量处于保持区间", comment: ""), target, sailingHold: true, phase: .sailing)
   }
-  let dischargeFloor = p.mode == .calibration ? 10.0 : p.reserve
   let ordinaryDischargeRequested = p.mode != .calibration && (p.mode == .discharge || (p.automaticDischarge && wholePercent > wholeTarget))
   if ordinaryDischargeRequested {
-   if sample.percent <= dischargeFloor {
+   if sample.percent <= p.reserve {
     if p.mode == .discharge { completedMode = .discharge }
    } else {
     // Charging-temperature windows must not block an explicit discharge or
@@ -249,11 +248,10 @@ public struct ChargeEngine: Sendable {
    }
    if heatPaused { return result(.inhibitCharge, thermal == .degreeHysteresis ? NSLocalizedString("热保护：等待降温至阈值以下 2°C", comment: "") : NSLocalizedString("热保护：五分钟暂停窗口", comment: ""), target, thermalHold: true, phase: p.mode == .calibration ? .calibration : .heatProtect) }
   } else { heatPaused = false; nextThermalCheck = nil }
-  if sample.percent <= dischargeFloor && ((p.mode == .calibration && calibration == .draining) || ordinaryDischargeRequested) {
-   if p.mode == .calibration { calibration = .refilling }
+  if ordinaryDischargeRequested && sample.percent <= p.reserve {
    if p.mode == .discharge { completedMode = .discharge }
-   let charge = wholePercent < wholeTarget || p.mode == .calibration
-   return result(charge ? .allowCharge : .inhibitCharge, charge ? NSLocalizedString("低电量保底：停止放电并充电", comment: "") : NSLocalizedString("低电量保底：停止主动放电", comment: ""), target, phase: p.mode == .calibration ? .calibration : charge ? .charging : p.sailing ? .sailing : .pause)
+   let charge = wholePercent < wholeTarget
+   return result(charge ? .allowCharge : .inhibitCharge, charge ? NSLocalizedString("低电量保底：停止放电并充电", comment: "") : NSLocalizedString("低电量保底：停止主动放电", comment: ""), target, phase: charge ? .charging : p.sailing ? .sailing : .pause)
   }
   if p.mode == .calibration {
    if calibration == .idle { calibration = .filling }
@@ -265,12 +263,16 @@ public struct ChargeEngine: Sendable {
     if sample.date.timeIntervalSince(holdingSince ?? sample.date) >= 3600 { calibration = .returning }
     return result(.allowCharge, NSLocalizedString("校准：满电保持一小时", comment: ""), 100)
    case .draining:
+    if wholePercent <= 10 {
+     calibration = .refilling
+     return result(.allowCharge, NSLocalizedString("校准：重新充满电", comment: ""), 100)
+    }
     return result(.forceDischarge, NSLocalizedString("校准：放电至 10%", comment: ""), 10)
    case .refilling:
     if sample.percent >= 100 { calibration = .holding; holdingSince = sample.date }
     return result(.allowCharge, NSLocalizedString("校准：重新充满电", comment: ""), 100)
    case .returning:
-    if sample.percent <= limit { calibration = .complete; return result(.inhibitCharge, NSLocalizedString("校准完成", comment: ""), phase: p.sailing ? .sailing : .pause) }
+    if wholePercent <= Int(Float(limit)) { calibration = .complete; return result(.inhibitCharge, NSLocalizedString("校准完成", comment: ""), phase: p.sailing ? .sailing : .pause) }
     return result(.forceDischarge, NSLocalizedString("校准：恢复日常上限", comment: ""))
    case .complete:
     return result(sample.percent < limit ? .allowCharge : .inhibitCharge, NSLocalizedString("校准完成，日常上限控制", comment: ""), phase: sample.percent < limit ? .charging : p.sailing ? .sailing : .pause)

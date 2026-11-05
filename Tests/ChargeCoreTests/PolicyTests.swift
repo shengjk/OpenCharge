@@ -161,7 +161,7 @@ final class PolicyTests: XCTestCase {
   XCTAssertEqual(engine.decide(sample(79.9), policy: p).action, .allowCharge)
   XCTAssertEqual(engine.decide(sample(80.2), policy: p).action, .inhibitCharge)
  }
- func testReserveAndCalibrationDoNotInheritOrdinaryIntegerThresholds() {
+ func testOrdinaryDischargeReserveAndCalibrationFullChargeRetainPrecision() {
   var p = ChargePolicy(); p.mode = .discharge; p.limit = 20; p.reserve = 40
   var engine = ChargeEngine()
   XCTAssertEqual(engine.decide(sample(40.1), policy: p).action, .forceDischarge)
@@ -169,6 +169,23 @@ final class PolicyTests: XCTestCase {
   p = ChargePolicy(); p.mode = .calibration
   _ = engine.decide(sample(99.999999), policy: p)
   XCTAssertEqual(engine.calibration, .filling)
+ }
+ func testCalibrationDischargeStagesStopAtWholePercentageBoundaries() {
+  var policy = ChargePolicy(); policy.mode = .calibration
+  var draining = ChargeEngine(checkpoint: CalibrationCheckpoint(stage: .draining))
+  XCTAssertEqual(draining.decide(sample(11), policy: policy).action, .forceDischarge)
+  let refill = draining.decide(sample(10.9), policy: policy)
+  XCTAssertEqual(refill.action, .allowCharge)
+  XCTAssertEqual(refill.effectiveLimit, 100)
+  XCTAssertEqual(draining.calibration, .refilling)
+
+  policy.limit = 80.5
+  var returning = ChargeEngine(checkpoint: CalibrationCheckpoint(stage: .returning))
+  XCTAssertEqual(returning.decide(sample(81), policy: policy).action, .forceDischarge)
+  let finish = returning.decide(sample(80.9), policy: policy)
+  XCTAssertEqual(finish.action, .inhibitCharge)
+  XCTAssertEqual(finish.effectiveLimit, 80.5)
+  XCTAssertEqual(returning.calibration, .complete)
  }
  func testOrdinaryDischargeDoesNotWaitForChargingTemperature() {
   let temperatures: [Double?] = [40, nil, .infinity]

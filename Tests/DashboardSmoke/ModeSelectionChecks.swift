@@ -60,6 +60,14 @@ import ChargeHardware
  active.controlModeSelection.wrappedValue = .calibration
  precondition(active.calibration == .filling, "selecting an active mode is idempotent")
 
+ // Resuming with a fractional reading in the target band completes the run.
+ sample.percent = 50.9
+ let returning = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .returning))
+ returning.resumeCalibration()
+ let finished = try Configuration.load()
+ precondition(returning.decision.action == .inhibitCharge && returning.calibration == .complete)
+ precondition(finished.policy.mode == .automatic && finished.calibrationCheckpoint == nil && finished.lastCalibration != nil)
+
  let profile = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .holding, holdingSince: Date()))
  profile.profile(70, 5, 35)
  precondition(profile.config.policy.mode == .automatic && !profile.calibrationPending && profile.calibration == .idle && profile.config.calibrationCheckpoint == nil)
