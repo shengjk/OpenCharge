@@ -1,5 +1,6 @@
 import Foundation
 import ChargeCore
+import ChargeHardware
 
 @MainActor func lidDischargeChecks(defaults: UserDefaults) throws {
  let original = try Configuration.load()
@@ -63,5 +64,31 @@ import ChargeCore
  active.updateSleepOverride(complete, request: { events.append($0); return "fixture release" })
  precondition(events == ["sleepPolicyOff", "inhibitCharge", "idle:false", "sleepOverrideRestore"])
  active.config.hardwareEnabled = false
+
+ for target in [10.0, 80.0] {
+  let calibrating = model()
+  let now = ProcessInfo.processInfo.systemUptime
+  calibrating.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
+  calibrating.config.policy.mode = .calibration
+  calibrating.config.hardwareEnabled = true
+  calibrating.decision = Decision(.forceDischarge, "fixture", limit: target)
+  let closed = SleepProtectionPlan.evaluate(controlEnabled: true, connected: true, physicalAdapterConnected: true,
+   action: .forceDischarge, percent: 95, target: target, calibrating: true,
+   idleUntilTarget: false, systemUntilTarget: false, allowDisplaySleep: true, lidClosed: true)
+  func round(_ time: TimeInterval, lid: Bool = true) -> [String] {
+   var sent: [String] = []
+   calibrating.applyHardwareDecision(closed, request: { sent.append($0); return "fixture" },
+    setIdleSleep: { sent.append("idle:\($0)") }, lidClosed: lid, uptime: now + time)
+   return sent
+  }
+  precondition(round(1).isEmpty, "closed-lid calibration must defer fresh discharge at startup")
+  calibrating.observeCalibrationAdapter(BatteryReading(percent: 95, connected: false, charging: false), uptime: now + 45)
+  calibrating.observeCalibrationAdapter(BatteryReading(percent: 95, connected: true, charging: false), uptime: now + 50)
+  precondition(round(64).isEmpty, "closed-lid calibration must defer new discharge after reconnect")
+  precondition(round(65) == ["inhibitCharge", "idle:true", "sleepOverrideDisplayOn", "sleepPolicyOff", "forceDischarge"])
+  calibrating.observeCalibrationAdapter(BatteryReading(percent: 94, connected: false, charging: false), uptime: now + 66)
+  precondition(round(67) == ["idle:true", "sleepOverrideDisplayOn", "sleepPolicyOff", "forceDischarge"])
+  calibrating.config.hardwareEnabled = false
+ }
  print("Discharge lid-edge refresh, selected idle failure, open/closed protection and completion ordering passed; all actuators injected")
 }

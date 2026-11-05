@@ -144,6 +144,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var appliedChargeLimitChangeID: UUID?
  private let sleepController = SleepController()
  private var lastHardwareAction: ChargeAction = .restore
+ private var calibrationDischargeGate = CalibrationDischargeGate(startedAt: ProcessInfo.processInfo.systemUptime)
+ private var calibrationDischargeDeferred = false
  private var firmwareControl: FirmwareAppSession?
  private var ordinaryExitControl: OrdinaryExitAppSession?
  var usesNumericFirmware: Bool { firmwareControl != nil }
@@ -408,6 +410,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if engine.completedMode != nil { config.policy.mode = .automatic; config.policy.pauseAtCurrent = nil; changed = true }
   if changed { save() }
  }
+ func observeCalibrationAdapter(_ reading: BatteryReading, uptime: TimeInterval) {
+  calibrationDischargeGate.observe(connected: reading.connected, rawConnected: reading.physicalAdapterConnected,
+   ownInputInhibited: lastHardwareAction == .forceDischarge, now: uptime)
+ }
  func refresh() {
   guard !quitting else { return }
   reloadSettingsLock()
@@ -417,6 +423,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   }
   do {
    let r = try readBattery(); reading = r
+   let uptime = ProcessInfo.processInfo.systemUptime
+   observeCalibrationAdapter(r, uptime: uptime)
    let lid = LidStateObserver.currentState()
    if let lid { observedLidState = lid }
    let controlPercent = config.policy.useHardwarePercent == true ? r.hardwarePercent : r.percent
@@ -476,8 +484,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     evaluatePolicy(ChargeSample(percent: reference, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge, systemPercent: r.percent))
    }
    let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true, fullChargeHold: decision.fullChargeHold == true)
-   applyHardwareDecision(plan)
-   updateMagSafe()
+   applyHardwareDecision(plan, lidClosed: lid, uptime: uptime)
+   if !calibrationDischargeDeferred { updateMagSafe() }
    if !plan.preventSystemAndLidSleep { updateSleepOverride(plan) }
    handleLidState(lid)
    if config.historyEnabled && (history.last.map { Date().timeIntervalSince($0.date) >= 60 } ?? true) {
@@ -492,11 +500,19 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
   } catch { self.error = error.localizedDescription; if config.hardwareEnabled { try? restoreChargeControl() }; try? sleepController.setPreventIdleSleep(false) }
  }
- func applyHardwareDecision(_ plan: SleepProtectionPlan, request: @escaping (String) throws -> String = HelperClient.request, setIdleSleep: ((Bool) throws -> Void)? = nil, screenCount: () -> Int = { NSScreen.screens.count }) {
+ func applyHardwareDecision(_ plan: SleepProtectionPlan, request: @escaping (String) throws -> String = HelperClient.request, setIdleSleep: ((Bool) throws -> Void)? = nil, screenCount: () -> Int = { NSScreen.screens.count }, lidClosed: Bool? = nil, uptime: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+  calibrationDischargeDeferred = false
   let idle = setIdleSleep ?? { try self.sleepController.setPreventIdleSleep($0) }
   guard config.hardwareEnabled else {
    do { try idle(false) } catch { self.error = error.localizedDescription }
    helperStatus = NSLocalizedString("监测模式 · 未改变充电状态", comment: ""); return
+  }
+  if config.policy.mode == .calibration, decision.action == .forceDischarge,
+     lastHardwareAction != .forceDischarge, calibrationDischargeGate.shouldDefer(lidClosed: lidClosed, now: uptime) {
+   calibrationDischargeDeferred = true
+   decision.reason = NSLocalizedString("校准：等待合盖放电的电源稳定期", comment: "")
+   helperStatus = decision.reason
+   return
   }
   var attempted = false
   let previousDischargeExitPending = dischargeExitPending

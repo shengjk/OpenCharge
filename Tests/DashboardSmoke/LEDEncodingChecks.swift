@@ -1,5 +1,6 @@
 import Foundation
 import ChargeCore
+import ChargeHardware
 
 @MainActor func ledEncodingChecks(defaults: UserDefaults) throws {
  let original = try Configuration.load()
@@ -12,7 +13,8 @@ import ChargeCore
   for capability in ["magSafe:legacy", "magSafeEncoding:aclcNativeV2", "magSafe:unavailable"] {
    let modern = capability == "magSafeEncoding:aclcNativeV2"
    let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
-    screenLockRequest: { preconditionFailure("no locks in LED encoding fixture") })
+    screenLockRequest: { preconditionFailure("no locks in LED encoding fixture") },
+    readBattery: { BatteryReading(percent: 80, connected: true, charging: false, physicalAdapterConnected: true) })
    model.config.magSafeMode = mode
    var events: [String] = []
    model.updateMagSafe(request: { command in

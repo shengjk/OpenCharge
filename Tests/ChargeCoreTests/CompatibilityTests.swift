@@ -98,6 +98,25 @@ final class CompatibilityTests: XCTestCase {
   XCTAssertEqual(restored.calibration, .returning)
  }
 
+ func testClosedLidCalibrationUsesStartupAndConfirmedReconnectWindows() {
+  var gate = CalibrationDischargeGate(startedAt: 100)
+  gate.observe(connected: true, rawConnected: true, ownInputInhibited: false, now: 120)
+  XCTAssertTrue(gate.shouldDefer(lidClosed: true, now: 129.9))
+  XCTAssertFalse(gate.shouldDefer(lidClosed: true, now: 130))
+  XCTAssertFalse(gate.shouldDefer(lidClosed: false, now: 120))
+  XCTAssertFalse(gate.shouldDefer(lidClosed: nil, now: 120))
+
+  gate.observe(connected: false, rawConnected: false, ownInputInhibited: true, now: 140)
+  gate.observe(connected: true, rawConnected: true, ownInputInhibited: false, now: 141)
+  XCTAssertFalse(gate.shouldDefer(lidClosed: true, now: 142))
+
+  gate.observe(connected: true, rawConnected: false, ownInputInhibited: false, now: 150)
+  gate.observe(connected: true, rawConnected: nil, ownInputInhibited: false, now: 151)
+  gate.observe(connected: true, rawConnected: true, ownInputInhibited: false, now: 160)
+  XCTAssertTrue(gate.shouldDefer(lidClosed: true, now: 165.9))
+  XCTAssertFalse(gate.shouldDefer(lidClosed: true, now: 166))
+ }
+
  func testOwnAdapterInhibitionIsNotMistakenForUnplugging() {
   var engine = ChargeEngine(); var p = ChargePolicy(); p.mode = .discharge
   let ownCut = ChargeSample(date: epoch, percent: 90, temperature: 30, connected: false, ownAdapterInhibited: true)

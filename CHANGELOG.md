@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.66
+
+- Delay new closed-lid calibration discharge during the first 30 seconds after startup and for 15 seconds after an observed adapter reconnection. An acknowledged input cutoff does not start a new reconnect window.
+
 ## 0.3.65
 
 - Show the remaining time in Charge Control during the calibration full-charge hold and follow the whole-second hold boundary. If a saved hold has a missing or future start time, re-establish a timed hold after a full reading.

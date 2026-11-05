@@ -314,6 +314,7 @@
 "校准：充至满电" = "Calibration: charging fully";
 "校准：恢复日常上限" = "Calibration: restoring the daily limit";
 "校准：放电至 10%" = "Calibration: discharging to 10%";
+"校准：等待合盖放电的电源稳定期" = "Calibration: waiting for power to settle before closed-lid discharge";
 "校准：满电保持一小时" = "Calibration: holding full charge for one hour";
 "校准：重新充满电" = "Calibration: charging fully again";
 "校验文件格式无效或存在重复条目" = "The checksum file is invalid or contains duplicate entries";
