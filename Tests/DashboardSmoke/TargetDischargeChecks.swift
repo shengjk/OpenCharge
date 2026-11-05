@@ -45,7 +45,13 @@ import ChargeHardware
  model.evaluatePolicy(ChargeSample(percent:70,temperature:30,connected:true));precondition(model.decision.action == .forceDischarge && model.decision.effectiveLimit == 40)
  model.evaluatePolicy(ChargeSample(percent:70,temperature:30,connected:false,physicalAdapterConnected:false,ownAdapterInhibited:true))
  precondition(model.decision.action == .forceDischarge && model.config.policy.mode == .discharge,"acknowledged own input cutoff must not invent unplug completion")
- model.evaluatePolicy(ChargeSample(percent:40,temperature:30,connected:true));precondition(model.decision.action == .inhibitCharge && model.config.policy.mode == .automatic)
+ model.config.policy.departure = Date().addingTimeInterval(60)
+ model.config.policy.departureTarget = 20
+ model.evaluatePolicy(ChargeSample(percent:40,temperature:30,connected:false,physicalAdapterConnected:false,ownAdapterInhibited:true))
+ precondition(model.decision.action == .inhibitCharge && model.decision.effectiveLimit == 40 && model.config.policy.mode == .automatic)
+ let completion = try Configuration.load()
+ precondition(completion.policy.mode == .automatic && completion.policy.departure == model.config.policy.departure)
+ model.config.policy.departure = nil
  // Completion returns to ordinary Sailing: hold within the band, resume only
  // at its lower boundary, then inhibit at the shared upper target again.
  for percent in [39.5,35.1] {

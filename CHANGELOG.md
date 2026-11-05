@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.63
+
+- Keep the selected target throughout manual discharge if a departure charging plan is enabled mid-session. The plan can apply after discharge completes and automatic mode resumes.
+
 ## 0.3.62
 
 - Keep an acknowledged input-cut session active when the raw external-connected bit becomes false. That bit can drop because of the app's own discharge action, so it must not alone complete manual discharge or release required sleep protection.

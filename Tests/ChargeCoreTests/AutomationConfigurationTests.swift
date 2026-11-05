@@ -46,4 +46,36 @@ final class AutomationConfigurationTests: XCTestCase {
   }
  }
 
+ func testDepartureAddedDuringDischargeWaitsUntilManualTargetCompletes() {
+  let now = Date(timeIntervalSince1970: 1_700_000_000)
+  var policy = ChargePolicy()
+  policy.limit = 79
+  policy.mode = .discharge
+  var engine = ChargeEngine()
+  func sample(_ percent: Double) -> ChargeSample {
+   ChargeSample(date: now, percent: percent, temperature: 30, connected: false,
+    physicalAdapterConnected: false, ownAdapterInhibited: true)
+  }
+  XCTAssertEqual(engine.decide(sample(80), policy: policy).action, .forceDischarge)
+
+  policy.departure = now.addingTimeInterval(60)
+  policy.departureTarget = 100
+  let active = engine.decide(sample(80), policy: policy)
+  XCTAssertEqual(active.effectiveLimit, 79)
+  XCTAssertEqual(active.action, .forceDischarge)
+  XCTAssertNil(engine.completedMode)
+
+  policy.departureTarget = 60
+  let complete = engine.decide(sample(79), policy: policy)
+  XCTAssertEqual(complete.effectiveLimit, 79)
+  XCTAssertEqual(complete.action, .inhibitCharge)
+  XCTAssertEqual(engine.completedMode, .discharge)
+
+  policy.mode = .automatic
+  policy.departureTarget = 100
+  let departure = engine.decide(sample(79), policy: policy)
+  XCTAssertEqual(departure.effectiveLimit, 100)
+  XCTAssertEqual(departure.action, .allowCharge)
+ }
+
 }

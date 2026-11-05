@@ -151,7 +151,8 @@ public struct ChargeEngine: Sendable {
    p.mode = .automatic; p.pauseAtCurrent = nil; previousMode = .automatic; completedMode = .paused
   }
   var target = p.mode == .topUp ? 100.0 : limit
-  if let departure = p.departure, departure > sample.date {
+  // A departure plan enabled during manual discharge takes effect after it ends.
+  if p.mode != .discharge, let departure = p.departure, departure > sample.date {
    let hours = max(0, p.departureTarget - sample.percent) / p.estimatedPercentPerHour + 0.5
    if departure.timeIntervalSince(sample.date) <= hours * 3600 { target = p.departureTarget }
   }
