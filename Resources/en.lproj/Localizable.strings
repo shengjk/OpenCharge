@@ -309,6 +309,7 @@
 "校准期间也启用温控（可选增强）" = "Apply temperature protection during calibration (optional enhancement)";
 "校准电池" = "Calibrate Battery";
 "校准阶段：%@" = "Calibration stage: %@";
+"满电保持剩余 %lld 分钟" = "Minutes remaining at full charge: %lld";
 "校准顺序：充满 → 放电至 10% → 充满 → 保持一小时 → 恢复日常目标；默认校准期间暂停应用温控，可启用增强保护；可随时切回自动模式。" = "Calibration: charge fully → discharge to 10% → charge fully → hold for one hour → restore the daily target. App temperature protection is off during calibration by default; optional enhanced protection can be enabled. You can switch to Automatic at any time.";
 "校准：充至满电" = "Calibration: charging fully";
 "校准：恢复日常上限" = "Calibration: restoring the daily limit";

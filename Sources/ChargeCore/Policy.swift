@@ -45,7 +45,8 @@ public struct ChargeSample: Codable, Sendable {
  public var date: Date; public var percent: Double; public var temperature: Double?; public var connected: Bool; public var lidClosed: Bool
  public var physicalAdapterConnected: Bool?
  public var ownAdapterInhibited: Bool
- public init(date: Date = Date(), percent: Double, temperature: Double? = nil, connected: Bool = true, lidClosed: Bool = false, physicalAdapterConnected: Bool? = nil, ownAdapterInhibited: Bool = false) { self.physicalAdapterConnected = physicalAdapterConnected; self.ownAdapterInhibited = ownAdapterInhibited; self.date = date; self.percent = percent; self.temperature = temperature; self.connected = connected; self.lidClosed = lidClosed }
+ public var systemPercent: Double?
+ public init(date: Date = Date(), percent: Double, temperature: Double? = nil, connected: Bool = true, lidClosed: Bool = false, physicalAdapterConnected: Bool? = nil, ownAdapterInhibited: Bool = false, systemPercent: Double? = nil) { self.physicalAdapterConnected = physicalAdapterConnected; self.ownAdapterInhibited = ownAdapterInhibited; self.systemPercent = systemPercent; self.date = date; self.percent = percent; self.temperature = temperature; self.connected = connected; self.lidClosed = lidClosed }
 }
 public struct Decision: Codable, Sendable {
  public var sailingHold: Bool? = nil
@@ -56,9 +57,17 @@ public struct Decision: Codable, Sendable {
  public init(_ action: ChargeAction, _ reason: String, limit: Double) { self.action = action; self.reason = reason; effectiveLimit = limit }
 }
 public struct CalibrationCheckpoint: Codable, Equatable, Sendable {
+ // Return after the elapsed count exceeds 3600 whole seconds.
+ fileprivate static let holdDuration: TimeInterval = 3601
  public var stage: CalibrationStage
  public var holdingSince: Date?
  public init(stage: CalibrationStage, holdingSince: Date? = nil) { self.stage = stage; self.holdingSince = holdingSince }
+ public func remainingHoldMinutes(at date: Date) -> Int? {
+  guard stage == .holding, let holdingSince else { return nil }
+  let elapsed = date.timeIntervalSince(holdingSince)
+  guard (0..<Self.holdDuration).contains(elapsed) else { return nil }
+  return Int(ceil((Self.holdDuration - elapsed) / 60))
+ }
 }
 public struct ChargeEngine: Sendable {
  public private(set) var calibration: CalibrationStage = .idle
@@ -255,12 +264,23 @@ public struct ChargeEngine: Sendable {
   }
   if p.mode == .calibration {
    if calibration == .idle { calibration = .filling }
+   // The two full-charge phases use the system reading even when the discharge
+   // phases use a separately selected hardware percentage.
+   let systemPercent = sample.systemPercent ?? sample.percent
+   let atFullCharge = (0...100).contains(systemPercent) && Float(systemPercent) >= 100
    switch calibration {
    case .filling:
-    if sample.percent >= 100 { calibration = .draining }
+    if atFullCharge { calibration = .draining }
     return result(.allowCharge, NSLocalizedString("校准：充至满电", comment: ""), 100)
    case .holding:
-    if sample.date.timeIntervalSince(holdingSince ?? sample.date) >= 3600 { calibration = .returning }
+    if let holdingSince, holdingSince <= sample.date {
+     if sample.date.timeIntervalSince(holdingSince) >= CalibrationCheckpoint.holdDuration { calibration = .returning }
+    } else if atFullCharge {
+     holdingSince = sample.date
+    } else {
+     calibration = .refilling; holdingSince = nil
+     return result(.allowCharge, NSLocalizedString("校准：重新充满电", comment: ""), 100)
+    }
     return result(.allowCharge, NSLocalizedString("校准：满电保持一小时", comment: ""), 100)
    case .draining:
     if wholePercent <= 10 {
@@ -269,7 +289,7 @@ public struct ChargeEngine: Sendable {
     }
     return result(.forceDischarge, NSLocalizedString("校准：放电至 10%", comment: ""), 10)
    case .refilling:
-    if sample.percent >= 100 { calibration = .holding; holdingSince = sample.date }
+    if atFullCharge { calibration = .holding; holdingSince = sample.date }
     return result(.allowCharge, NSLocalizedString("校准：重新充满电", comment: ""), 100)
    case .returning:
     if wholePercent <= Int(Float(limit)) { calibration = .complete; return result(.inhibitCharge, NSLocalizedString("校准完成", comment: ""), phase: p.sailing ? .sailing : .pause) }

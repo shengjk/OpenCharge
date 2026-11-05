@@ -92,9 +92,9 @@ final class CompatibilityTests: XCTestCase {
   let checkpoint = encoded.flatMap { try? JSONDecoder().decode(CalibrationCheckpoint.self, from: $0) }
   XCTAssertEqual(checkpoint?.stage, .holding)
   var restored = ChargeEngine(checkpoint: checkpoint)
-  _ = restored.decide(sample(100, seconds: 3619), policy: p)
-  XCTAssertEqual(restored.calibration, .holding)
   _ = restored.decide(sample(100, seconds: 3620), policy: p)
+  XCTAssertEqual(restored.calibration, .holding)
+  _ = restored.decide(sample(100, seconds: 3621), policy: p)
   XCTAssertEqual(restored.calibration, .returning)
  }
 

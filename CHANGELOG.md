@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.65
+
+- Show the remaining time in Charge Control during the calibration full-charge hold and follow the whole-second hold boundary. If a saved hold has a missing or future start time, re-establish a timed hold after a full reading.
+- Use the macOS battery percentage to recognize full charge during calibration, including when hardware percentage is selected for the discharge boundaries.
+
 ## 0.3.64
 
 - Use whole percentages at the two calibration discharge boundaries. Start refilling as soon as the reading reaches the 10% band, and finish when the reading reaches the daily target band. The refilling decision reports a 100% target from its first sample.

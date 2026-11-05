@@ -420,7 +420,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    let lid = LidStateObserver.currentState()
    if let lid { observedLidState = lid }
    let controlPercent = config.policy.useHardwarePercent == true ? r.hardwarePercent : r.percent
-   let scheduleSample = controlPercent.map { ChargeSample(percent: $0, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge) }
+   let scheduleSample = controlPercent.map { ChargeSample(percent: $0, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge, systemPercent: r.percent) }
    // Project on a copy: eligibility must reflect this sample and earlier tasks,
    // without advancing production calibration/thermal state an extra time.
    var scheduleEngine = engine
@@ -473,7 +473,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    else {
     let reference: Double
     if config.policy.useHardwarePercent == true { guard let raw = r.hardwarePercent else { throw HardwareError.unavailable(NSLocalizedString("硬件电量不可读，已停止策略执行", comment: "")) }; reference = raw } else { reference = r.percent }
-    evaluatePolicy(ChargeSample(percent: reference, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge))
+    evaluatePolicy(ChargeSample(percent: reference, temperature: r.temperature, connected: r.connected, lidClosed: lid ?? false, physicalAdapterConnected: r.physicalAdapterConnected, ownAdapterInhibited: lastHardwareAction == .forceDischarge, systemPercent: r.percent))
    }
    let plan = SleepProtectionPlan.evaluate(controlEnabled: config.hardwareEnabled, connected: r.connected, physicalAdapterConnected: r.physicalAdapterConnected, action: decision.action, percent: config.policy.useHardwarePercent == true ? (r.hardwarePercent ?? .nan) : r.percent, target: decision.effectiveLimit, calibrating: config.policy.mode == .calibration && !calibrationPending, idleUntilTarget: config.policy.keepAwakeUntilLimit == true, systemUntilTarget: config.policy.keepAwakeWithLidClosed == true, allowDisplaySleep: config.policy.allowDisplaySleep ?? true, lidClosed: lid, ownAdapterInhibited: lastHardwareAction == .forceDischarge, thermalHold: decision.thermalHold == true, fullChargeHold: decision.fullChargeHold == true)
    applyHardwareDecision(plan)

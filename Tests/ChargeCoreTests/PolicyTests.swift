@@ -161,14 +161,28 @@ final class PolicyTests: XCTestCase {
   XCTAssertEqual(engine.decide(sample(79.9), policy: p).action, .allowCharge)
   XCTAssertEqual(engine.decide(sample(80.2), policy: p).action, .inhibitCharge)
  }
- func testOrdinaryDischargeReserveAndCalibrationFullChargeRetainPrecision() {
+ func testOrdinaryDischargeReserveAndCalibrationFullChargeBoundaries() {
   var p = ChargePolicy(); p.mode = .discharge; p.limit = 20; p.reserve = 40
   var engine = ChargeEngine()
   XCTAssertEqual(engine.decide(sample(40.1), policy: p).action, .forceDischarge)
   XCTAssertEqual(engine.decide(sample(40), policy: p).action, .inhibitCharge)
   p = ChargePolicy(); p.mode = .calibration
-  _ = engine.decide(sample(99.999999), policy: p)
+  _ = engine.decide(sample(99.9), policy: p)
   XCTAssertEqual(engine.calibration, .filling)
+ }
+ func testCalibrationUsesSystemPercentageToRecognizeFullCharge() {
+  var policy = ChargePolicy(); policy.mode = .calibration; policy.useHardwarePercent = true
+  for stage in [CalibrationStage.filling, .refilling] {
+   var engine = ChargeEngine(checkpoint: CalibrationCheckpoint(stage: stage))
+   var reading = sample(100)
+   reading.systemPercent = 99
+   XCTAssertEqual(engine.decide(reading, policy: policy).action, .allowCharge)
+   XCTAssertEqual(engine.calibration, stage)
+   reading.percent = 97
+   reading.systemPercent = 100
+   XCTAssertEqual(engine.decide(reading, policy: policy).action, .allowCharge)
+   XCTAssertEqual(engine.calibration, stage == .filling ? .draining : .holding)
+  }
  }
  func testCalibrationDischargeStagesStopAtWholePercentageBoundaries() {
   var policy = ChargePolicy(); policy.mode = .calibration
@@ -315,14 +329,47 @@ final class PolicyTests: XCTestCase {
   XCTAssertEqual(engine.calibration, .holding)
   XCTAssertEqual(engine.decide(sample(100, seconds: 12599), policy: p).action, .allowCharge)
   XCTAssertEqual(engine.calibration, .holding)
-  _ = engine.decide(sample(100, seconds: 12600), policy: p)
-  XCTAssertNotEqual(engine.calibration, .holding)
-  XCTAssertEqual(engine.decide(sample(90, seconds: 12601), policy: p).action, .forceDischarge)
+  _ = engine.decide(sample(100, seconds: 12600.9), policy: p)
+  XCTAssertEqual(engine.calibration, .holding)
+  _ = engine.decide(sample(100, seconds: 12601), policy: p)
+  XCTAssertEqual(engine.calibration, .returning)
+  XCTAssertEqual(engine.decide(sample(90, seconds: 12602), policy: p).action, .forceDischarge)
   _ = engine.decide(sample(80, seconds: 14000), policy: p)
   XCTAssertEqual(engine.calibration, .complete)
   XCTAssertEqual(engine.decide(sample(60, seconds: 15000), policy: p).action, .allowCharge)
   p.mode = .automatic; _ = engine.decide(sample(70), policy: p)
   XCTAssertEqual(engine.calibration, .idle); XCTAssertNil(engine.holdingSince)
+ }
+ func testCalibrationRecoversMissingOrFutureHoldStart() {
+  guard let legacy = try? JSONDecoder().decode(CalibrationCheckpoint.self, from: Data(#"{"stage":"holding"}"#.utf8)) else {
+   XCTFail("Legacy hold checkpoint failed to decode"); return
+  }
+  let future = CalibrationCheckpoint(stage: .holding, holdingSince: sample(100, seconds: 200).date)
+  var policy = ChargePolicy(); policy.mode = .calibration
+  for checkpoint in [legacy, future] {
+   var engine = ChargeEngine(checkpoint: checkpoint)
+   XCTAssertEqual(engine.decide(sample(98), policy: policy).action, .allowCharge)
+   XCTAssertEqual(engine.calibration, .refilling)
+   XCTAssertNil(engine.holdingSince)
+   let full = sample(100, seconds: 300)
+   _ = engine.decide(full, policy: policy)
+   XCTAssertEqual(engine.holdingSince, full.date)
+
+   var resumed = ChargeEngine(checkpoint: engine.checkpoint)
+   XCTAssertEqual(resumed.checkpoint.remainingHoldMinutes(at: sample(100, seconds: 360).date), 60)
+   XCTAssertEqual(resumed.checkpoint.remainingHoldMinutes(at: sample(100, seconds: 3900).date), 1)
+   XCTAssertNil(resumed.checkpoint.remainingHoldMinutes(at: sample(100, seconds: 3901).date))
+   _ = resumed.decide(sample(100, seconds: 3900), policy: policy)
+   XCTAssertEqual(resumed.calibration, .holding)
+   _ = resumed.decide(sample(100, seconds: 3901), policy: policy)
+   XCTAssertEqual(resumed.calibration, .returning)
+
+   var alreadyFull = ChargeEngine(checkpoint: checkpoint)
+   let first = sample(100)
+   _ = alreadyFull.decide(first, policy: policy)
+   XCTAssertEqual(alreadyFull.calibration, .holding)
+   XCTAssertEqual(alreadyFull.holdingSince, first.date)
+  }
  }
  func testSailingStartsPausedInsideBand() {
   var engine = ChargeEngine(); var p = ChargePolicy(); p.sailingWidth = 10
@@ -449,8 +496,8 @@ final class PolicyTests: XCTestCase {
   _ = engine.decide(sample(100), policy: p)
   _ = engine.decide(sample(10, seconds: 1), policy: p)
   _ = engine.decide(sample(100, seconds: 2), policy: p)
-  _ = engine.decide(sample(100, seconds: 3602), policy: p)
-  _ = engine.decide(sample(80, seconds: 3603), policy: p)
+  _ = engine.decide(sample(100, seconds: 3603), policy: p)
+  _ = engine.decide(sample(80, seconds: 3604), policy: p)
   XCTAssertEqual(engine.calibration, .complete)
   p.automaticDischarge = true
   XCTAssertEqual(engine.decide(sample(10, seconds: 4000), policy: p).action, .allowCharge)

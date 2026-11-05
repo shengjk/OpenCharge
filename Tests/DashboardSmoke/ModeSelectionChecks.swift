@@ -68,12 +68,23 @@ import ChargeHardware
  precondition(returning.decision.action == .inhibitCharge && returning.calibration == .complete)
  precondition(finished.policy.mode == .automatic && finished.calibrationCheckpoint == nil && finished.lastCalibration != nil)
 
+ sample.percent = 100
+ sample.hardwarePercent = 97
+ let holding = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .holding))
+ holding.config.policy.useHardwarePercent = true
+ holding.resumeCalibration()
+ let savedHold = try Configuration.load().calibrationCheckpoint
+ precondition(holding.calibration == .holding && savedHold?.stage == .holding && savedHold?.holdingSince != nil)
+ if let savedHold, let start = savedHold.holdingSince {
+  precondition(savedHold.remainingHoldMinutes(at: start.addingTimeInterval(61)) == 59)
+ }
+
  let profile = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .holding, holdingSince: Date()))
  profile.profile(70, 5, 35)
  precondition(profile.config.policy.mode == .automatic && !profile.calibrationPending && profile.calibration == .idle && profile.config.calibrationCheckpoint == nil)
  precondition(profile.config.policy.limit == 70 && profile.config.policy.pauseAtCurrent == nil)
  let profileSaved = try Configuration.load()
  precondition(profileSaved.policy.mode == .automatic && profileSaved.calibrationCheckpoint == nil)
- for model in [pause, pending, active, profile] { precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true) }
+ for model in [pause, pending, active, returning, holding, profile] { precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true) }
  print("Explicit mode picker clears current-limit Pause state, enforces connection/interruption guards, cancels calibration across failed telemetry and shares profile cleanup; isolated telemetry, no hardware")
 }
