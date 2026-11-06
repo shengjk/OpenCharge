@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.69
+
+- Add a dashboard calibration card with start, stop and recovery controls, phase progress, hold countdown and last completion. Show a compact card automatically in the popover while calibration is active or awaiting recovery, and identify when calibration is waiting for power.
+
 ## 0.3.68
 
 - Apply scheduled mode changes in order and clear obsolete calibration checkpoints when leaving calibration. Duplicate scheduled calibrations preserve active or interrupted runs, and offline occurrences report that they are waiting for power.

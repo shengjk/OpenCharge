@@ -21,7 +21,8 @@ struct PopoverContents: View {
  private var height: CGFloat {
   if editing { return 460 }
   let energyRows = preferences.layout.widgets.contains(.energyApps) ? min(m.energyMonitor.rows.count, 5) : 0
-  return min(640, 210 + CGFloat(preferences.layout.widgets.count * 155 + energyRows * 30))
+  let calibrationHeight = m.calibrationSummary().showsInPopover ? 125 : 0
+  return min(640, 210 + CGFloat(preferences.layout.widgets.count * 155 + energyRows * 30 + calibrationHeight))
  }
  var body: some View {
   ScrollView {
@@ -40,6 +41,13 @@ struct PopoverContents: View {
      }
      Button(NSLocalizedString("完成编辑", comment: "")) { setEditing(false) }
     } else {
+     let calibration = m.calibrationSummary()
+     if calibration.showsInPopover {
+      VStack(alignment: .leading, spacing: 10) {
+       Text(DashboardWidget.calibration.title).font(.subheadline.bold())
+       CalibrationSummaryView(model: m, summary: calibration, compact: true)
+      }.frame(maxWidth: .infinity, alignment: .leading).padding(12).presentationPrimaryBackground(opacity: 0.04, radius: 12)
+     }
      ForEach(preferences.layout.widgets) { widget in
       VStack(alignment: .leading, spacing: 10) { Text(widget.title).font(.subheadline.bold()); content(widget) }
        .frame(maxWidth: .infinity, alignment: .leading).padding(12).presentationPrimaryBackground(opacity: 0.04, radius: 12)

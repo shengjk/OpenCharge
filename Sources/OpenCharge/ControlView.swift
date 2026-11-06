@@ -77,8 +77,9 @@ struct ControlView: View {
    }.disabled(m.settingsLocked)
    if let last = m.config.lastCalibration { Text(String.localizedStringWithFormat(NSLocalizedString("上次完成：%@", comment: ""), DateDisplay.string(last))).font(.caption).presentationSecondary() }
    Text(NSLocalizedString("日常上限为 100% 或临时充满时，通常由系统管理补电；手动暂停与热保护结束后的目标暂停仍会停充。临时充满在拔线后结束。", comment: "")).font(.caption).presentationSecondary()
-   Text(String.localizedStringWithFormat(NSLocalizedString("校准阶段：%@", comment: ""), m.calibration.displayName)).font(.caption).presentationSecondary()
-   if !m.calibrationPending, let minutes = m.config.calibrationCheckpoint?.remainingHoldMinutes(at: Date()) {
+   let calibration = m.calibrationSummary()
+   Text(String.localizedStringWithFormat(NSLocalizedString("校准阶段：%@", comment: ""), calibration.status)).font(.caption).presentationSecondary()
+   if let minutes = calibration.remainingHoldMinutes {
     Text(String.localizedStringWithFormat(NSLocalizedString("满电保持剩余 %lld 分钟", comment: ""), Int64(minutes))).font(.caption).presentationSecondary()
    }
    Text(NSLocalizedString("校准顺序：充满 → 放电至 10% → 充满 → 保持一小时 → 恢复日常目标；默认校准期间暂停应用温控，可启用增强保护；可随时切回自动模式。", comment: "")).font(.caption).presentationSecondary()

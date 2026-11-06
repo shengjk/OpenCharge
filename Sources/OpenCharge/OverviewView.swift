@@ -56,6 +56,11 @@ struct OverviewView: View {
    SignificantEnergyView(monitor: m.energyMonitor)
   case .trend:
    Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: Array(d.history.suffix(120))).frame(height: 150) }
+  case .calibration:
+   Card(item.title) {
+    CalibrationSummaryView(model: m, summary: d.calibration)
+    Text(d.helperStatus).font(.caption).presentationSecondary()
+   }
   }
  }
  func profile(_ title: String, subtitle: String, limit: Double, width: Double, heat: Double) -> some View { Button { m.profileFromGUI(limit, width, heat) } label: { VStack(alignment: .leading, spacing: 7) { Text(title).font(.headline); Text(subtitle).font(.caption).presentationSecondary() }.frame(maxWidth: .infinity, alignment: .leading).padding(12) }.buttonStyle(.bordered).disabled(m.settingsLocked) }

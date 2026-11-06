@@ -344,6 +344,15 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  var controlModeSelection: Binding<ChargeMode> {
   Binding(get: { self.config.policy.mode }, set: { self.changeMode($0) })
  }
+ func calibrationSummary(at date: Date = Date()) -> CalibrationSummary {
+  let active = config.policy.mode == .calibration
+  let adapterAvailable = AdapterConnection.available(connected: reading?.connected == true,
+   rawConnected: reading?.physicalAdapterConnected, ownInputInhibited: lastHardwareAction == .forceDischarge)
+  return CalibrationSummary(stage: calibration, active: active, interrupted: calibrationPending,
+   adapterAvailable: adapterAvailable, canStart: reading?.connected == true && !quitting && !settingsResetPending,
+   remainingHoldMinutes: active && !calibrationPending && adapterAvailable
+    ? config.calibrationCheckpoint?.remainingHoldMinutes(at: date) : nil, lastCompleted: config.lastCalibration)
+ }
  func changeMode(_ mode: ChargeMode, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
   if mode == .calibration && calibrationPending { error = NSLocalizedString("校准已中断，请先选择继续或取消", comment: ""); return }

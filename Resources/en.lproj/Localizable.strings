@@ -674,3 +674,7 @@
 "已跳过校准：已有校准任务" = "Calibration skipped: a calibration is already active";
 "已跳过校准：校准已中断，需明确继续或取消" = "Calibration skipped: resume or cancel the interrupted run first";
 "计划校准已登记，等待接电" = "Scheduled calibration queued until power is connected";
+"电池校准" = "Battery Calibration";
+"校准：等待接电" = "Calibration: waiting for power";
+"开始校准" = "Start Calibration";
+"停止校准" = "Stop Calibration";

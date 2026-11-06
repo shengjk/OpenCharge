@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 import ChargeCore
 import ChargeHardware
 
@@ -161,4 +162,38 @@ import ChargeHardware
   refresh: { preconditionFailure("revoked opt-in must remain pending") })
  precondition(revoked.calibrationPending && !revoked.config.hardwareEnabled)
  print("Calibration recovery prompt, remembered choices, charger and helper preflight, and save failure passed; all inputs and requests injected")
+}
+
+@MainActor func calibrationSummaryChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load(), provider = PolicyStateRuntime.provider
+ defer { try? original.save(); PolicyStateRuntime.provider = provider }
+ var config = Configuration()
+ config.historyEnabled = false; config.policy.mode = .calibration
+ config.calibrationCheckpoint = CalibrationCheckpoint(stage: .holding, holdingSince: Date().addingTimeInterval(-600))
+ config.lastCalibration = Date(timeIntervalSince1970: 1000)
+ try config.save()
+ var sample = BatteryReading(percent: 100, connected: false, charging: false)
+ let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, readBattery: { sample })
+ precondition(model.calibrationSummary().interrupted && model.calibrationSummary().showsInPopover)
+ precondition(model.calibrationSummary().remainingHoldMinutes == nil)
+ model.resumeCalibration()
+ precondition(model.calibrationSummary().status == NSLocalizedString("校准：等待接电", comment: ""))
+ sample.connected = true
+ model.setDashboardFocused(true)
+ model.refresh()
+ let active = model.dashboard.calibration
+ precondition(active.active && !active.interrupted && active.stage == .holding && active.remainingHoldMinutes != nil)
+ precondition(active.lastCompleted == config.lastCalibration)
+ for compact in [false, true] {
+  let view = NSHostingView(rootView: CalibrationSummaryView(model: model, summary: active, compact: compact))
+  precondition(view.fittingSize.height > 0)
+ }
+ model.setDashboardFocused(false)
+ sample.connected = false
+ model.refresh()
+ precondition(model.calibrationSummary().remainingHoldMinutes == nil)
+ precondition(model.dashboard.calibration == active, "the dashboard card must respect snapshot freezing")
+ model.changeMode(.automatic)
+ precondition(!model.calibrationSummary().showsInPopover && !model.config.hardwareEnabled)
+ print("Calibration summary waiting/recovery/hold states and both native layouts passed; isolated telemetry")
 }

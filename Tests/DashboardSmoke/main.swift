@@ -81,6 +81,7 @@ import ChargeHardware
   try temporaryActionChecks(defaults: defaults)
   try modeSelectionChecks(defaults: defaults)
   try calibrationRecoveryChecks(defaults: defaults)
+  try calibrationSummaryChecks(defaults: defaults)
   try await settingsLockChecks(defaults: defaults)
   try await settingsResetChecks()
   try setupWizardChecks()
