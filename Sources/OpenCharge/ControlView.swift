@@ -55,6 +55,14 @@ struct ControlView: View {
    Toggle(NSLocalizedString("充到目标前阻止空闲睡眠", comment: ""), isOn: Binding(get: { m.config.policy.keepAwakeUntilLimit ?? false }, set: { value in m.editChargeSettings { m.config.policy.keepAwakeUntilLimit = value } })).disabled(m.settingsLocked)
    Toggle(NSLocalizedString("日常充到上限前阻止系统与合盖睡眠（可选）", comment: ""), isOn: Binding(get: { m.config.policy.keepAwakeWithLidClosed ?? false }, set: { value in m.editChargeSettings { m.config.policy.keepAwakeWithLidClosed = value; if value { m.config.policy.stopInSleep = false } } })).disabled(m.settingsLocked)
    Toggle(NSLocalizedString("阻止系统睡眠时允许显示器休眠", comment: ""), isOn: Binding(get: { m.config.policy.allowDisplaySleep ?? true }, set: { value in m.editChargeSettings { m.config.policy.allowDisplaySleep = value } })).disabled(m.settingsLocked)
+   Stepper(String.localizedStringWithFormat(NSLocalizedString("临时保活电量下限：%lld%%", comment: ""), Int64(m.config.policy.manualAwakeBatteryFloor ?? 20)),
+    value: Binding(get: { m.config.policy.manualAwakeBatteryFloor ?? 20 }, set: { value in
+     m.editChargeSettings { m.config.policy.manualAwakeBatteryFloor = value }
+    }), in: 5...95).disabled(m.settingsLocked)
+   Toggle(NSLocalizedString("使用电池供电时结束临时保活", comment: ""),
+    isOn: Binding(get: { m.config.policy.manualAwakeEndsOnBattery ?? false }, set: { value in
+     m.editChargeSettings { m.config.policy.manualAwakeEndsOnBattery = value }
+    })).disabled(m.settingsLocked)
    Toggle(NSLocalizedString("阻止系统睡眠期间合盖锁屏", comment: ""), isOn: Binding(get: { m.config.policy.lockScreenWhenClosed ?? false }, set: { value in m.editChargeSettings { m.config.policy.lockScreenWhenClosed = value } })).disabled(m.settingsLocked)
    Text(m.lidLockStatus).font(.caption).presentationSecondary()
    Button(NSLocalizedString("检测锁屏接口（只读）", comment: "")) { m.inspectLidLock() }

@@ -24,6 +24,8 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var keepAwakeUntilLimit: Bool? = nil
  public var keepAwakeWithLidClosed: Bool? = nil
  public var allowDisplaySleep: Bool? = nil
+ public var manualAwakeBatteryFloor: Int? = nil
+ public var manualAwakeEndsOnBattery: Bool? = nil
  public var lockScreenWhenClosed: Bool? = nil
  public var stopInSleep = false
  public var stopOnQuit = false
@@ -32,6 +34,7 @@ public struct ChargePolicy: Codable, Equatable, Sendable {
  public var estimatedPercentPerHour = 30.0
  public init() {}
  public mutating func normalize() {
+  if let floor = manualAwakeBatteryFloor { manualAwakeBatteryFloor = min(95, max(5, floor)) }
   if keepAwakeWithLidClosed == true { stopInSleep = false }
   limit = min(100, max(20, limit.isFinite ? limit : 80))
   sailingWidth = min(20, max(1, sailingWidth.isFinite ? sailingWidth : 5))

@@ -72,6 +72,7 @@ import ChargeHardware
   try await automationReloadChecks(defaults: defaults)
   try await policyStateChecks(defaults: defaults)
   try sleepOrderingChecks(defaults: defaults)
+  manualAwakeChecks()
   try ordinaryProtectionBootstrapChecks(defaults: defaults)
   try ordinarySleepNotificationChecks(defaults: defaults)
   try lidDischargeChecks(defaults: defaults)

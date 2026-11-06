@@ -82,6 +82,8 @@ struct PopoverContents: View {
    PowerFlowView(snapshot: PowerFlowSnapshot(adapterWatts: m.reading?.adapterPowerW, batteryWatts: m.watts, systemWatts: m.reading?.systemPowerW), animationEnabled: m.popoverVisible, compact: true, adapterConnected: m.reading?.physicalAdapterConnected ?? (m.reading?.connected ?? false))
   case .energyApps:
    PopoverEnergyView(monitor: m.energyMonitor)
+  case .manualAwake:
+   ManualAwakeView(model: m, session: m.manualAwake)
   }
  }
 }

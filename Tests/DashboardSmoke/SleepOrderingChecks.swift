@@ -154,3 +154,43 @@ import ChargeHardware
  }
  print("Ordinary sleep opt-out releases protection without charge mutation, preserves policy and retries release failures; legacy notification stop opt-in still inhibits; all IPC injected")
 }
+
+@MainActor func manualAwakeChecks() {
+ var now: TimeInterval = 0
+ var modes: [Bool] = []
+ var released: [UInt32] = []
+ var rejectRelease = false
+ let session = ManualAwakeSession(makeController: { display in
+  modes.append(display)
+  return SleepController(create: { 42 }, release: { id in
+   if rejectRelease { throw CocoaError(.fileWriteUnknown) }
+   released.append(id)
+  })
+ }, clock: { now })
+ func start(_ duration: Int?, _ percent: Double = 60, _ connected: Bool = true, _ acOnly: Bool = false, _ display: Bool = false) {
+  session.start(minutes: duration, percent: percent, connected: connected, floor: 20,
+   endsOnBattery: acOnly, keepDisplayAwake: display)
+ }
+ func observe(_ percent: Double = 60, _ connected: Bool = true, _ acOnly: Bool = false) {
+  session.observe(percent: percent, connected: connected, floor: 20, endsOnBattery: acOnly)
+ }
+ start(0); start(1441); start(30, 20); start(30, .nan); start(nil, 60, false, true)
+ precondition(!session.active && modes.isEmpty)
+ start(3); precondition(session.active && session.remainingMinutes == 3 && modes == [false])
+ now = 65; observe(); precondition(session.remainingMinutes == 2)
+ start(2); precondition(modes == [false])
+ now = 185; observe(); precondition(!session.active && released == [42])
+ start(nil, 60, true, true, true)
+ precondition(session.active && session.remainingMinutes == nil && modes == [false, true])
+ observe(60, false, true); precondition(!session.active && released.count == 2)
+ start(nil, 60, false); observe(20, false); precondition(!session.active && released.count == 3)
+ start(nil); session.reportReadFailure(CocoaError(.fileReadUnknown))
+ precondition(!session.active && released.count == 4 && session.error != nil)
+ start(nil); rejectRelease = true; session.stop()
+ precondition(session.active && session.error != nil)
+ start(30); precondition(session.remainingMinutes == nil)
+ rejectRelease = false; observe()
+ precondition(!session.active && session.error == nil && released.count == 5)
+ precondition(DashboardLayout().widgets.contains(.manualAwake) && !PopoverLayout().widgets.contains(.manualAwake))
+ print("PASS Keep Awake countdown, floor, AC-only stop, telemetry failure, display mode, and assertion-release retry")
+}

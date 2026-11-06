@@ -27,6 +27,8 @@ For isolated development, set `OPENCHARGE_DATA_DIR` to an absolute temporary dir
 
 Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command-3 toggles the actual menu-bar popover, Command-4 opens the real popup directly in edit mode, and Command-comma opens settings. Closing windows keeps monitoring active; use Quit to stop the application.
 
+Use **Keep Awake** on the dashboard or add it through the menu-bar popover editor. Choose 30 minutes, one hour, three hours, a custom duration from 1 to 1440 minutes, or Until Stopped. Stop it from either view. Charge Control sets the battery floor (20% by default), optional AC-only operation, and whether the display may sleep when the next session starts. This feature blocks idle sleep and works without the helper. Closing the lid or manually sleeping the Mac still uses normal macOS behavior.
+
 ## Menu-bar appearance
 
 Settings → Appearance offers dynamic status, monochrome battery, colored battery and OpenCharge icon styles. Icon-only hides the percentage without changing style; numeric-only modes omit the icon. Optional yellow icon tint reads the system's actual Low Power Mode and never changes it. This option defaults off. Battery fill uses observed OS percentage, while unknown values remain unknown.

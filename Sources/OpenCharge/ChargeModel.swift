@@ -146,6 +146,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var engine = ChargeEngine()
  private var appliedChargeLimitChangeID: UUID?
  private let sleepController = SleepController()
+ let manualAwake = ManualAwakeSession()
  private var lastHardwareAction: ChargeAction = .restore
  private var calibrationDischargeGate = CalibrationDischargeGate(startedAt: ProcessInfo.processInfo.systemUptime)
  private var calibrationDischargeDeferred = false
@@ -500,6 +501,15 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   calibrationDischargeGate.observe(connected: reading.connected, rawConnected: reading.physicalAdapterConnected,
    ownInputInhibited: lastHardwareAction == .forceDischarge, now: uptime)
  }
+ func startManualAwake(minutes: Int?) {
+  guard !quitting, !settingsResetPending else { return }
+  do {
+   let reading = try readBattery()
+   manualAwake.start(minutes: minutes, percent: reading.percent, connected: reading.physicalAdapterConnected ?? reading.connected,
+    floor: config.policy.manualAwakeBatteryFloor ?? 20, endsOnBattery: config.policy.manualAwakeEndsOnBattery ?? false,
+    keepDisplayAwake: !(config.policy.allowDisplaySleep ?? true))
+  } catch { manualAwake.reportReadFailure(error) }
+ }
  func refresh() {
   guard !quitting else { return }
   reloadSettingsLock()
@@ -508,7 +518,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    decision = Decision(.restore,NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: ""),limit:config.policy.limit); return
   }
   do {
-   let r = try readBattery(); reading = r
+   let r: BatteryReading
+   do { r = try readBattery() }
+   catch { if manualAwake.active { manualAwake.reportReadFailure(error) }; throw error }
+   reading = r
+   manualAwake.observe(percent: r.percent, connected: r.physicalAdapterConnected ?? r.connected,
+    floor: config.policy.manualAwakeBatteryFloor ?? 20, endsOnBattery: config.policy.manualAwakeEndsOnBattery ?? false)
    let uptime = ProcessInfo.processInfo.systemUptime
    observeCalibrationAdapter(r, uptime: uptime)
    let lid = LidStateObserver.currentState()
@@ -884,7 +899,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if let persistenceFailure { error! += "\n"+persistenceFailure }
   (refresh ?? { self.refresh() })()
  }
- func cleanupOnQuit() { if needsQuitPreparation && !quitCleanupPrepared && !numericExitCommitStarted { try? restoreChargeControl() } }
+ func cleanupOnQuit() {
+  manualAwake.stop()
+  if needsQuitPreparation && !quitCleanupPrepared && !numericExitCommitStarted { try? restoreChargeControl() }
+ }
  func quit() { NSApp.terminate(nil) }
 
  func handleURL(_ url: URL, refresh: (() -> Void)? = nil) {
@@ -925,8 +943,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   // Stop this live model even when storage fails, so its next timer cannot rearm control.
   config = stopped
   if config.policy.mode == .calibration { calibrationPending = true }
-  try persist(stopped)
+  do { try persist(stopped) } catch { manualAwake.stop(); throw error }
   var failures: [String] = []
+  do { try manualAwake.release() } catch { failures.append(error.localizedDescription) }
   if restoreCharge {
    do { try restoreChargeControl(request:request); lastHardwareAction = .restore; dischargeExitPending = false }
    catch { failures.append(error.localizedDescription) }
@@ -982,6 +1001,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    magSafeSelection = nil; magSafePolicyFailed = false
    if quitChargeRecoveryPending || config.hardwareEnabled || firmwareControl?.mayOwnSession == true { try restoreChargeControl() }
    try sleepController.setPreventIdleSleep(false)
+   try manualAwake.release()
    try restored.save(); config = restored; engine = ChargeEngine(sailingCheckpoint: restored.sailingCheckpoint); appliedChargeLimitChangeID = restored.chargeLimitChangeID; calibrationPending = false
    lastHardwareAction = .restore; refresh()
   } catch { self.error = error.localizedDescription }

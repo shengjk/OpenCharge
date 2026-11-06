@@ -54,6 +54,8 @@ struct OverviewView: View {
   }
   case .energyApps:
    SignificantEnergyView(monitor: m.energyMonitor)
+  case .manualAwake:
+   Card(item.title) { ManualAwakeView(model: m, session: m.manualAwake) }
   case .trend:
    Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: Array(d.history.suffix(120))).frame(height: 150) }
   case .calibration:

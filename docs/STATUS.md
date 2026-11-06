@@ -1,4 +1,4 @@
-# Status — 0.3.69 and development source
+# Status — 0.3.70 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 
@@ -15,6 +15,7 @@ This is a development release. Implemented policy, OS integration and physical h
 | Automation | Recurrence and DST anchors, templates, history, CLI, URL scheme, twelve intents | Full policy-state transition and hardware validation; broader system UI execution of setters and calendar/session environments |
 | Menu-bar appearance | Four icon styles, observed battery fill, opt-in Low Power Mode tint, configurable right-click and accessible state | Broader native appearance, multi-display and accessibility environments |
 | Dashboard / popup | Native status popover, independent components, focus/background snapshots, preview | Multi-display placement, status-item overflow/autohide and broader session restoration remain unverified |
+| Keep Awake | Shared dashboard and optional popover timer, independent idle assertion, optional AC-only use and battery floor | Physical idle and display sleep transitions across supported macOS releases |
 | Telemetry / flow | OS/raw percentage, capacity, temperature, measured power and weighted averages | Cross-model sensor accuracy and physical transitions |
 | Energy applications | Optional system metric reader, bounded ranking, CPU display and user-initiated normal Quit in both lists | More OS versions; private API may be unavailable; wider UI/session validation remains open |
 | Helper registration | SMAppService on macOS 13+; signed Authorization Services/SMJobBless; owned legacy file removal/job unregistration and explicit modern-route handoff; serialized operations and persisted application retry stages | Actual signed administrator interaction, legacy runtime, real process termination during privileged work, real manual-uninstaller behavior and production signing/notarization |

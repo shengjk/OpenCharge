@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.70
+
+- Add Keep Awake with presets, a custom timer, and an untimed option. Configure the battery floor, whether to stop on battery power, and whether the display can sleep.
+
 ## 0.3.69
 
 - Add a dashboard calibration card with start, stop and recovery controls, phase progress, hold countdown and last completion. Show a compact card automatically in the popover while calibration is active or awaiting recovery, and identify when calibration is waiting for power.
