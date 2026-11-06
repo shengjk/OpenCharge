@@ -69,7 +69,12 @@ struct ControlView: View {
   }
   Card(NSLocalizedString("操作与校准", comment: "")) {
    Picker(NSLocalizedString("当前模式", comment: ""), selection: m.controlModeSelection) { ForEach(ChargeMode.allCases, id: \.self) { Text(modeName($0)).tag($0) } }.pickerStyle(.segmented)
-   if m.calibrationPending { HStack { Text(NSLocalizedString("上次校准中断", comment: "")); Button(NSLocalizedString("继续", comment: "")) { m.resumeCalibration() }; Button(NSLocalizedString("取消", comment: "")) { m.changeMode(.automatic) } } }
+   if m.calibrationPending { HStack { Text(NSLocalizedString("上次校准中断", comment: "")); Button(NSLocalizedString("继续", comment: "")) { m.resumeCalibration() }; Button(NSLocalizedString("取消校准", comment: "")) { m.resolveInterruptedCalibration(resume: false) } } }
+   Picker(NSLocalizedString("启动时发现未完成的校准", comment: ""), selection: m.calibrationRecoveryPreference) {
+    Text(NSLocalizedString("每次询问", comment: "")).tag(CalibrationRecoveryChoice.ask)
+    Text(NSLocalizedString("自动继续校准", comment: "")).tag(CalibrationRecoveryChoice.resume)
+    Text(NSLocalizedString("取消校准", comment: "")).tag(CalibrationRecoveryChoice.cancel)
+   }.disabled(m.settingsLocked)
    if let last = m.config.lastCalibration { Text(String.localizedStringWithFormat(NSLocalizedString("上次完成：%@", comment: ""), DateDisplay.string(last))).font(.caption).presentationSecondary() }
    Text(NSLocalizedString("日常上限为 100% 或临时充满时，通常由系统管理补电；手动暂停与热保护结束后的目标暂停仍会停充。临时充满在拔线后结束。", comment: "")).font(.caption).presentationSecondary()
    Text(String.localizedStringWithFormat(NSLocalizedString("校准阶段：%@", comment: ""), m.calibration.displayName)).font(.caption).presentationSecondary()

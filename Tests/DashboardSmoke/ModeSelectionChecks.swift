@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import ChargeCore
 import ChargeHardware
 
@@ -87,4 +88,77 @@ import ChargeHardware
  precondition(profileSaved.policy.mode == .automatic && profileSaved.calibrationCheckpoint == nil)
  for model in [pause, pending, active, returning, holding, profile] { precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true) }
  print("Explicit mode picker clears current-limit Pause state, enforces connection/interruption guards, cancels calibration across failed telemetry and shares profile cleanup; isolated telemetry, no hardware")
+}
+
+@MainActor func calibrationRecoveryChecks(defaults: UserDefaults) throws {
+ let original = try Configuration.load(), provider = PolicyStateRuntime.provider
+ defer { try? original.save(); PolicyStateRuntime.provider = provider }
+ let checkpoint = CalibrationCheckpoint(stage: .draining)
+ var connected = true
+ func fixture(_ choice: CalibrationRecoveryChoice?, hardware: Bool = false) throws -> ChargeModel {
+  var config = Configuration()
+  config.historyEnabled = false; config.hardwareEnabled = hardware
+  config.policy.mode = .calibration
+  config.calibrationCheckpoint = checkpoint; config.calibrationRecoveryChoice = choice
+  try config.save()
+  return ChargeModel(dashboardDefaults: defaults, observeLid: false, readBattery: {
+   BatteryReading(percent: 80, connected: connected, charging: false)
+  })
+ }
+ let alert = CalibrationRecoveryAlert.makeAlert()
+ precondition(alert.buttons.count == 2 && (alert.accessoryView as? NSButton)?.state == .off)
+ precondition((CalibrationRecoveryAlert.makeAlert(allowRemember: false).accessoryView as? NSButton)?.isEnabled == false)
+ let asking = try fixture(nil)
+ var prompts = 0, refreshes = 0
+ asking.handleInterruptedCalibrationOnLaunch(present: { prompts += 1; return nil },
+  request: { _ in preconditionFailure("no helper request") }, refresh: { refreshes += 1 })
+ precondition(prompts == 1 && refreshes == 0 && asking.calibrationPending)
+ asking.handleInterruptedCalibrationOnLaunch(present: { (resume: false, remember: true) },
+  request: { _ in preconditionFailure("no helper request") }, refresh: { refreshes += 1 })
+ let remembered = try Configuration.load()
+ precondition(remembered.calibrationRecoveryChoice == .cancel && remembered.calibrationCheckpoint == nil)
+ precondition(remembered.policy.mode == .automatic && refreshes == 1)
+
+ let cancelling = try fixture(.cancel)
+ cancelling.handleInterruptedCalibrationOnLaunch(present: { preconditionFailure("remembered choice must not prompt") },
+  request: { _ in preconditionFailure("no helper request") }, refresh: { refreshes += 1 })
+ precondition(cancelling.config.policy.mode == .automatic && !cancelling.calibrationPending && refreshes == 2)
+
+ let monitor = try fixture(.resume)
+ monitor.handleInterruptedCalibrationOnLaunch(present: { preconditionFailure("remembered choice must not prompt") },
+  request: { _ in preconditionFailure("monitoring must not opt in") }, refresh: { refreshes += 1 })
+ precondition(monitor.calibrationPending && !monitor.config.hardwareEnabled && refreshes == 2)
+
+ let resuming = try fixture(.resume, hardware: true)
+ var commands: [String] = []
+ let supported: (String) throws -> String = { command in
+  commands.append(command); return "chargeControl:fixture, sleepOverride:interfacesDetected, sleepRecovery:phasesV1"
+ }
+ connected = false
+ resuming.handleInterruptedCalibrationOnLaunch(request: supported, refresh: { refreshes += 1 })
+ precondition(resuming.calibrationPending && commands.isEmpty)
+ connected = true
+ resuming.handleInterruptedCalibrationOnLaunch(request: { _ in "chargeControl:fixture" }, refresh: { refreshes += 1 })
+ precondition(resuming.calibrationPending && !resuming.config.hardwareEnabled && refreshes == 2)
+ resuming.resolveInterruptedCalibration(resume: true, request: supported,
+  persist: { _ in throw CocoaError(.fileWriteNoPermission) }, refresh: { refreshes += 1 })
+ precondition(resuming.calibrationPending && !resuming.config.hardwareEnabled && refreshes == 2)
+ resuming.handleInterruptedCalibrationOnLaunch(request: supported, refresh: { refreshes += 1 })
+ precondition(!resuming.calibrationPending && resuming.config.hardwareEnabled && refreshes == 3)
+ precondition(resuming.calibration == .draining && commands == ["capabilities", "capabilities"])
+ resuming.config.hardwareEnabled = false
+
+ let daily = try fixture(.cancel, hardware: true)
+ daily.handleInterruptedCalibrationOnLaunch(request: { _ in "chargeControl:fixture" }, refresh: { refreshes += 1 })
+ precondition(daily.config.policy.mode == .automatic && daily.config.hardwareEnabled && refreshes == 4)
+ daily.config.hardwareEnabled = false
+ let offline = try fixture(.cancel, hardware: true)
+ offline.handleInterruptedCalibrationOnLaunch(request: { _ in throw HelperError.unavailable }, refresh: { refreshes += 1 })
+ precondition(offline.config.policy.mode == .automatic && !offline.config.hardwareEnabled && !offline.calibrationPending && refreshes == 5)
+ let revoked = try fixture(.resume, hardware: true)
+ revoked.enableHardware(false, request: { command in precondition(command == "restore"); return "fixture" }, refresh: {})
+ revoked.handleInterruptedCalibrationOnLaunch(request: { _ in preconditionFailure("revoked opt-in must not be reused") },
+  refresh: { preconditionFailure("revoked opt-in must remain pending") })
+ precondition(revoked.calibrationPending && !revoked.config.hardwareEnabled)
+ print("Calibration recovery prompt, remembered choices, charger and helper preflight, and save failure passed; all inputs and requests injected")
 }

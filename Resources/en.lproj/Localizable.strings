@@ -664,3 +664,10 @@
 "放电目标不能低于主动放电保底，请先调整保底设置" = "The discharge target cannot be below the discharge reserve. Adjust the reserve first.";
 "电量不可读，无法开始放电" = "The battery level is unavailable. Discharge could not start.";
 "放电目标必须低于当前电量" = "The discharge target must be below the current battery level.";
+"继续上次校准，还是返回日常充电策略？" = "Resume the previous calibration or return to the daily charging policy?";
+"取消校准" = "Cancel Calibration";
+"记住我的选择" = "Remember my choice";
+"启动时发现未完成的校准" = "Interrupted calibration at startup";
+"每次询问" = "Ask every time";
+"自动继续校准" = "Resume calibration automatically";
+"请先完成待处理的服务恢复" = "Complete the pending service recovery first.";

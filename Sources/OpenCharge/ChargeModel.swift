@@ -122,7 +122,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published private(set) var firmwareStatus = NSLocalizedString("尚未检测数值固件通道", comment: "")
  @Published var history: [HistoryPoint] = []
  @Published var calibration = CalibrationStage.idle
- @Published var calibrationPending = false
+ @Published var calibrationPending = false {
+  didSet { if !calibrationPending { interruptedCalibrationWasEnabled = false } }
+ }
+ private var interruptedCalibrationWasEnabled = false
  @Published var magSafeStatus = NSLocalizedString("尚未读取灯光能力", comment: "")
  private var magSafeSelection: MagSafeColor?
  private var sleepOverrideSessionActive = false
@@ -178,7 +181,11 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   engine = ChargeEngine(sailingCheckpoint: config.sailingCheckpoint)
   appliedChargeLimitChangeID = config.chargeLimitChangeID
   // An explicit opt-in persists; an interrupted calibration prevents resumption.
-  if config.policy.mode == .calibration, let checkpoint = config.calibrationCheckpoint, checkpoint.stage != .idle && checkpoint.stage != .complete { calibrationPending = true; calibration = checkpoint.stage; config.hardwareEnabled = false }
+  if config.policy.mode == .calibration, let checkpoint = config.calibrationCheckpoint, checkpoint.stage != .idle && checkpoint.stage != .complete {
+   calibrationPending = true; calibration = checkpoint.stage
+   interruptedCalibrationWasEnabled = config.hardwareEnabled
+   config.hardwareEnabled = false
+  }
   if let data = try? Data(contentsOf: historyURL), let points = try? JSONDecoder().decode([HistoryPoint].self, from: data) { history = Array(points.suffix(10080)) }
   DistributedNotificationCenter.default().addObserver(forName: Notification.Name("org.opencharge.configurationChanged"), object: nil, queue: .main) { [weak self] _ in Task { @MainActor in
    self?.reloadExternalConfiguration()
@@ -349,7 +356,77 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   else { config.policy.mode = mode; config.policy.pauseAtCurrent = nil }
   save(); (refresh ?? { self.refresh() })()
  }
- func resumeCalibration() { engine = ChargeEngine(checkpoint: config.calibrationCheckpoint, sailingCheckpoint: config.sailingCheckpoint); calibrationPending = false; refresh() }
+ var calibrationRecoveryPreference: Binding<CalibrationRecoveryChoice> {
+  Binding(get: { self.config.calibrationRecoveryChoice ?? .ask }, set: {
+   guard self.allowChargeSettingsEdit(), !self.settingsResetPending else { return }
+   self.config.calibrationRecoveryChoice = $0 == .ask ? nil : $0
+   self.save()
+  })
+ }
+ func handleInterruptedCalibrationOnLaunch(
+  present: (@MainActor () -> (resume: Bool, remember: Bool)?)? = nil,
+  request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil
+ ) {
+  guard calibrationPending else { return }
+  switch config.calibrationRecoveryChoice ?? .ask {
+  case .ask:
+   let prompt = present ?? { CalibrationRecoveryAlert.present(allowRemember: !self.settingsLocked) }
+   if let choice = prompt() {
+    resolveInterruptedCalibration(resume: choice.resume, remember: choice.remember, request: request, refresh: refresh)
+   }
+  case .resume:
+   guard interruptedCalibrationWasEnabled else { return }
+   resolveInterruptedCalibration(resume: true, request: request, refresh: refresh)
+  case .cancel:
+   resolveInterruptedCalibration(resume: false, request: request, refresh: refresh)
+  }
+ }
+ func resumeCalibration() { resolveInterruptedCalibration(resume: true) }
+ func resolveInterruptedCalibration(resume: Bool, remember: Bool = false,
+  request: (String) throws -> String = HelperClient.request,
+  persist: (Configuration) throws -> Void = { try $0.save() }, refresh: (() -> Void)? = nil
+ ) {
+  guard calibrationPending, !quitting, !settingsResetPending, config.policy.mode == .calibration,
+        config.calibrationCheckpoint != nil else { return }
+  var next = config
+  var controlError: Error?
+  do {
+   if interruptedCalibrationWasEnabled {
+    do {
+     guard !quitChargeRecoveryPending, !helperService.removalPending, !helperService.busy else {
+      throw HelperError.rejected(NSLocalizedString("请先完成待处理的服务恢复", comment: ""))
+     }
+     if resume {
+      let battery = try readBattery()
+      guard battery.physicalAdapterConnected ?? battery.connected else {
+       throw HelperError.rejected(NSLocalizedString("请连接电源后开始此操作", comment: ""))
+      }
+      _ = try battery.controlPercentage(useHardware: next.policy.useHardwarePercent == true)
+     }
+     let capabilities = try request("capabilities")
+     let sleepSupported = SleepProtectionPlan.supportsHelper(capabilities)
+     if resume && !sleepSupported {
+      throw HelperError.rejected(NSLocalizedString("所需睡眠控制接口或恢复协议不可用", comment: ""))
+     }
+     try configureHardwareChannel(capabilities: capabilities, numericRequired: requiresNumericFirmware())
+     sleepOverrideCapability = sleepSupported; sleepOverrideFailed = false
+     next.hardwareEnabled = true
+    } catch {
+     if resume { throw error }
+     controlError = error
+    }
+   }
+   if !resume { next.setAutomationMode(.automatic) }
+   reloadSettingsLock()
+   if remember && !settingsLocked { next.calibrationRecoveryChoice = resume ? .resume : .cancel }
+   try persist(next)
+   config = next
+   engine = ChargeEngine(checkpoint: next.calibrationCheckpoint, sailingCheckpoint: next.sailingCheckpoint)
+   calibration = engine.calibration; calibrationPending = false
+   error = controlError?.localizedDescription
+   (refresh ?? { self.refresh() })()
+  } catch { self.error = error.localizedDescription }
+ }
  func setLowPower(_ enabled: Bool, source: String? = nil) {
   guard !quitting, !settingsResetPending else { return }
   let command = source == "battery" ? (enabled ? "lowPowerBatteryOn" : "lowPowerBatteryOff") : source == "ac" ? (enabled ? "lowPowerACOn" : "lowPowerACOff") : (enabled ? "lowPowerOn" : "lowPowerOff")
@@ -686,6 +763,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  }
  func enableHardware(_ enabled: Bool, request: (String) throws -> String = HelperClient.request, refresh: (() -> Void)? = nil) {
   guard !quitting else { return }
+  if !enabled { interruptedCalibrationWasEnabled = false }
   if enabled && helperService.removalPending { error = NSLocalizedString("请先重试完整文件移除",comment:""); return }
   if enabled && settingsResetPending { error = NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: ""); return }
   if enabled { do {

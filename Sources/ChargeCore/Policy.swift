@@ -407,9 +407,14 @@ public struct ScheduleExecution: Codable, Identifiable {
  public var result: String
  public init(scheduleID: UUID, action: ScheduleAction, scheduledAt: Date, executedAt: Date = Date(), result: String, scheduleName: String? = nil) { self.scheduleName = scheduleName; self.scheduleID = scheduleID; self.action = action; self.scheduledAt = scheduledAt; self.executedAt = executedAt; self.result = result }
 }
+public enum CalibrationRecoveryChoice: String, Codable, CaseIterable {
+ case ask, resume, cancel
+}
+
 public struct Configuration: Codable {
  public var policy = ChargePolicy(); public var schedules: [ChargeSchedule] = []; public var notifications = false; public var hardwareEnabled = false; public var historyEnabled = true
  public var calibrationCheckpoint: CalibrationCheckpoint? = nil
+ public var calibrationRecoveryChoice: CalibrationRecoveryChoice? = nil
  public var sailingCheckpoint: Bool? = nil
  public var chargeLimitChangeID: UUID? = nil
  public var lastCalibration: Date? = nil

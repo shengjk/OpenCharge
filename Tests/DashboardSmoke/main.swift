@@ -80,6 +80,7 @@ import ChargeHardware
   try sailingCheckpointChecks(defaults: defaults)
   try temporaryActionChecks(defaults: defaults)
   try modeSelectionChecks(defaults: defaults)
+  try calibrationRecoveryChecks(defaults: defaults)
   try await settingsLockChecks(defaults: defaults)
   try await settingsResetChecks()
   try setupWizardChecks()

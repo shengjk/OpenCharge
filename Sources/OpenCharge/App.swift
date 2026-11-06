@@ -18,8 +18,10 @@ final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
   NSApp.setActivationPolicy(showDock ? .regular : .accessory)
   menuBar = MenuBarController(model: model)
   model.updates.maintenanceBusy = { [weak model] in model?.helperService.busy ?? true }
+  model.handleInterruptedCalibrationOnLaunch()
   model.updates.start()
   if model.setupOnLaunch { model.openSetupWizard() }
+  else if model.calibrationPending { model.dashboardPage = .control; model.openDashboardWindow() }
   else if model.dashboardPreferences.showOnStartup { model.openDashboardWindow() }
  }
  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
