@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.68
+
+- Apply scheduled mode changes in order and clear obsolete calibration checkpoints when leaving calibration. Duplicate scheduled calibrations preserve active or interrupted runs, and offline occurrences report that they are waiting for power.
+
 ## 0.3.67
 
 - Offer to resume or cancel an interrupted calibration at startup, with an option to remember the decision. Change the default in Charge Control. Restoring hardware control on resume requires the existing opt-in, available adapter and compatible helper.

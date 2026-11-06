@@ -530,15 +530,29 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
      }
      let previousPolicy = scheduledPolicy
      let outcome = task.apply(policy: &scheduledPolicy, pauseContext: ScheduledPauseContext(phase: scheduledPhase, percent: controlPercent, calibrationInterrupted: calibrationPending))
-     if case .pausedAtCurrent = outcome {
-      engine.modeChanged(to: .paused)
-      config.calibrationCheckpoint = nil; calibrationPending = false
+     if scheduledPolicy.mode != previousPolicy.mode {
+      // Commit each mode transition in order, including a departure from
+      // calibration followed by a fresh start in the same refresh.
+      if scheduledPolicy.mode == .calibration {
+       engine.modeChanged(to: previousPolicy.mode)
+       scheduleEngine.modeChanged(to: previousPolicy.mode)
+      }
+      engine.modeChanged(to: scheduledPolicy.mode)
+      scheduleEngine.modeChanged(to: scheduledPolicy.mode)
+      if previousPolicy.mode == .calibration || scheduledPolicy.mode == .calibration {
+       config.calibrationCheckpoint = nil; calibrationPending = false; calibration = engine.calibration
+      }
      }
      if scheduledPolicy != previousPolicy {
       needsScheduleProjection = true
       if scheduledPolicy.limit != previousPolicy.limit { scheduledLimitChanged = true; scheduleEngine.chargeLimitChanged() }
      }
      var result = outcome.historyMessage
+     if task.action == .calibrate && outcome == .updated,
+        !AdapterConnection.available(connected: r.connected, rawConnected: r.physicalAdapterConnected,
+         ownInputInhibited: lastHardwareAction == .forceDischarge) {
+      result = NSLocalizedString("计划校准已登记，等待接电", comment: "")
+     }
      if task.action == .lowPowerOn || task.action == .lowPowerOff {
       if config.systemActionsEnabled == true {
        do { lowPowerStatus = try HelperClient.request(task.action == .lowPowerOn ? "lowPowerOn" : "lowPowerOff"); result = NSLocalizedString("系统模式已读回：", comment: "") + lowPowerStatus }

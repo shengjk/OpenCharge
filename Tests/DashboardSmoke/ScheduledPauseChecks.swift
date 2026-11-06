@@ -45,6 +45,26 @@ import ChargeHardware
  let pending = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .draining), tasks: [task(.pause)])
  precondition(pending.calibrationPending && pending.config.policy.mode == .calibration && pending.config.calibrationCheckpoint?.stage == .draining)
  precondition(pending.config.scheduleHistory?.last?.result.contains("校准已中断") == true)
+ let pendingDuplicate = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .draining),
+  tasks: [task(.calibrate, repeating: true)])
+ precondition(pendingDuplicate.calibrationPending && pendingDuplicate.config.calibrationCheckpoint?.stage == .draining)
+ precondition(pendingDuplicate.config.scheduleHistory?.last?.result.contains("校准已中断") == true)
+ precondition(pendingDuplicate.config.schedules[0].date > Date())
+ let pendingExit = try fixture(mode: .calibration, checkpoint: CalibrationCheckpoint(stage: .draining),
+  tasks: [task(.automatic)])
+ precondition(!pendingExit.calibrationPending && pendingExit.config.policy.mode == .automatic)
+ precondition(pendingExit.config.calibrationCheckpoint == nil && pendingExit.calibration == .idle)
+
+ sample = BatteryReading(percent: 90, temperature: 30, connected: false, charging: false)
+ let offline = try fixture(tasks: [task(.calibrate)])
+ precondition(offline.config.policy.mode == .calibration && offline.decision.action == .restore)
+ precondition(offline.config.scheduleHistory?.last?.result.contains("等待接电") == true)
+ let waitingAfterRestart = ChargeModel(dashboardDefaults: defaults, observeLid: false, readBattery: { sample })
+ precondition(waitingAfterRestart.config.policy.mode == .calibration && waitingAfterRestart.decision.action == .restore)
+ precondition(!waitingAfterRestart.config.schedules[0].enabled && waitingAfterRestart.config.scheduleHistory?.count == 1)
+ sample.connected = true
+ waitingAfterRestart.refresh()
+ precondition(waitingAfterRestart.calibration == .filling && waitingAfterRestart.config.scheduleHistory?.count == 1)
 
  sample = BatteryReading(percent: 50, temperature: 40, connected: true, charging: false)
  let ordinaryHeat = try fixture(tasks: [task(.pause)])
@@ -80,6 +100,16 @@ import ChargeHardware
  restarted.config.schedules = [task(.pause), task(.calibrate)]; restarted.save(); restarted.refresh()
  precondition(restarted.calibration == .filling && restarted.config.calibrationCheckpoint?.stage == .filling, "accepted Pause must cancel the old run before a same-batch calibration starts")
  precondition(restarted.config.policy.pauseAtCurrent == nil, "new explicit mode must not inherit current-limit Pause")
+ sample.percent = 100
+ restarted.refresh(); precondition(restarted.calibration == .draining)
+ sample.percent = 90
+ restarted.config.schedules = [task(.calibrate)]
+ restarted.refresh()
+ precondition(restarted.calibration == .draining && restarted.config.scheduleHistory?.last?.result.contains("已有校准任务") == true)
+ restarted.config.schedules = [task(.automatic), task(.calibrate)]
+ restarted.refresh()
+ precondition(restarted.calibration == .filling && restarted.config.calibrationCheckpoint?.stage == .filling,
+  "Automatic must discard the old checkpoint before the same-round calibration starts")
  sample = BatteryReading(percent: 78, temperature: 30, connected: true, charging: false)
  let targetThenPause = try fixture(tasks: [task(.limit, value: 100), task(.pause)])
  precondition(targetThenPause.config.policy.mode == .paused && targetThenPause.config.policy.limit == 78)

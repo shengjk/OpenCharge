@@ -671,3 +671,6 @@
 "每次询问" = "Ask every time";
 "自动继续校准" = "Resume calibration automatically";
 "请先完成待处理的服务恢复" = "Complete the pending service recovery first.";
+"已跳过校准：已有校准任务" = "Calibration skipped: a calibration is already active";
+"已跳过校准：校准已中断，需明确继续或取消" = "Calibration skipped: resume or cancel the interrupted run first";
+"计划校准已登记，等待接电" = "Scheduled calibration queued until power is connected";

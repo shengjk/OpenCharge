@@ -10,11 +10,14 @@ public struct ScheduledPauseContext: Sendable {
 }
 public enum ScheduleApplicationResult: Equatable, Sendable {
  case updated, pausedAtCurrent(Double), skippedPause(ScheduledPauseSkip)
+ case calibrationAlreadyActive, calibrationAwaitingRecovery
  public var historyMessage: String {
   switch self {
   case .updated: return NSLocalizedString("策略已更新", comment: "")
   case .pausedAtCurrent(let percent): return String(format: NSLocalizedString("已接受按当前电量暂停策略：上限 %.2f%%（未确认硬件停充）", comment: ""), percent)
   case .skippedPause(let reason): return NSLocalizedString("已跳过暂停：", comment: "") + reason.historyMessage
+  case .calibrationAlreadyActive: return NSLocalizedString("已跳过校准：已有校准任务", comment: "")
+  case .calibrationAwaitingRecovery: return NSLocalizedString("已跳过校准：校准已中断，需明确继续或取消", comment: "")
   }
  }
 }
@@ -59,7 +62,11 @@ public extension ChargeSchedule {
   case .limit: policy.limit = value; policy.mode = .automatic
   case .topUp: policy.mode = .topUp
   case .discharge: policy.limit = value; policy.mode = .discharge; policy.departure = nil
-  case .calibrate: policy.mode = .calibration
+  case .calibrate:
+   guard policy.mode != .calibration else {
+    return pauseContext?.calibrationInterrupted == true ? .calibrationAwaitingRecovery : .calibrationAlreadyActive
+   }
+   policy.mode = .calibration
   case .automatic: policy.mode = .automatic
   case .lowPowerOn: policy.lowPowerMode = true
   case .lowPowerOff: policy.lowPowerMode = false
