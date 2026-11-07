@@ -1,12 +1,15 @@
 import Foundation
 
 public enum DashboardWidget: String, Codable, CaseIterable, Identifiable {
- case battery, metrics, profiles, powerFlow, specifications, adapter, energyApps, trend, calibration, manualAwake, powerConsumption
+ case battery, metrics, profiles, powerFlow, specifications, adapter, energyApps, trend, calibration, manualAwake, powerConsumption, temperatureTrend, capacityTrend, cycleTrend
  public var id: Self { self }
  public var title: String { switch self {
  case .battery: return NSLocalizedString("当前电量", comment: ""); case .metrics: return NSLocalizedString("温度、功率与循环", comment: ""); case .profiles: return NSLocalizedString("快速配置", comment: "")
  case .powerFlow: return NSLocalizedString("能量流向", comment: ""); case .specifications: return NSLocalizedString("电池规格", comment: ""); case .adapter: return NSLocalizedString("适配器与功耗", comment: "")
  case .energyApps: return NSLocalizedString("高耗能应用", comment: ""); case .trend: return NSLocalizedString("最近趋势", comment: "")
+ case .temperatureTrend: return NSLocalizedString("电池温度趋势", comment: "")
+ case .capacityTrend: return NSLocalizedString("容量健康趋势", comment: "")
+ case .cycleTrend: return NSLocalizedString("循环次数趋势", comment: "")
  case .powerConsumption: return NSLocalizedString("功耗与续航", comment: "")
  case .manualAwake: return NSLocalizedString("临时保活", comment: "")
  case .calibration: return NSLocalizedString("电池校准", comment: "")

@@ -705,3 +705,14 @@
 "系统负载曲线" = "System Load Graph";
 "记录范围 %@ 至 %@" = "Recorded range %@ to %@";
 "超过 24 小时" = "Over 24 hours";
+"电池温度趋势" = "Battery Temperature History";
+"容量健康趋势" = "Capacity Health History";
+"循环次数趋势" = "Cycle Count History";
+"电池统计" = "Battery Statistics";
+"统计指标" = "Statistic";
+"统计时间窗口" = "Statistics Window";
+"24 小时" = "24 Hours";
+"7 天" = "7 Days";
+"此时间段尚无该指标的记录" = "No readings for this statistic in this period";
+"最新 %@" = "Latest %@";
+"范围 %@ 至 %@" = "Range %@ to %@";

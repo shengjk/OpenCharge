@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.72
+
+- Add dashboard temperature, capacity health and cycle-count graphs. Battery History also offers measured full-charge capacity, with one-hour, 24-hour and seven-day windows and gaps for unavailable readings.
+
 ## 0.3.71
 
 - Add a dashboard power consumption graph with 5-, 15- and 30-minute windows, data coverage, and battery runtime estimates for current and average system load.

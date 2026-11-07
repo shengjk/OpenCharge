@@ -50,7 +50,7 @@ import ChargeHardware
  }
  func capture(_ model: ChargeModel) {
   reading = model.reading; decision = model.decision; helperStatus = model.helperStatus
-  limit = model.config.policy.limit; history = Array(model.history.suffix(120))
+  limit = model.config.policy.limit; history = model.history
   calibration = model.calibrationSummary()
  }
  func value(_ specification: DashboardSpecification) -> String { BatterySpecificationFormatter.value(specification, reading: reading) }

@@ -58,6 +58,12 @@ struct OverviewView: View {
    Card(item.title) { ManualAwakeView(model: m, session: m.manualAwake) }
   case .powerConsumption:
    Card(item.title) { PowerConsumptionView(reading: d.reading, history: d.history) }
+  case .temperatureTrend:
+   Card(item.title) { BatteryStatisticChart(metric: .temperature, points: d.history) }
+  case .capacityTrend:
+   Card(item.title) { BatteryStatisticChart(metric: .health, points: d.history) }
+  case .cycleTrend:
+   Card(item.title) { BatteryStatisticChart(metric: .cycles, points: d.history) }
   case .trend:
    Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: Array(d.history.suffix(120))).frame(height: 150) }
   case .calibration:
