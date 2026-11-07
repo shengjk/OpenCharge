@@ -695,3 +695,13 @@
 "结束保活" = "Stop Keep Awake";
 "开始保活" = "Start Keep Awake";
 "保活时长（分钟）" = "Duration (minutes)";
+"功耗与续航" = "Power Consumption and Runtime";
+"功耗时间窗口" = "Power Consumption Window";
+"记录系统负载后，功耗曲线将在这里显示。" = "The power graph will appear when system load has been recorded.";
+"当前系统负载" = "Current System Load";
+"按当前负载估算续航" = "Estimated Runtime at Current Load";
+"按平均负载估算续航" = "Estimated Runtime at Average Load";
+"续航根据剩余容量、电池电压和系统负载估算。缺少设计电压时使用当前电池电压。" = "Runtime is estimated from remaining capacity, battery voltage, and system load. If design voltage is unavailable, the estimate uses the current battery voltage.";
+"系统负载曲线" = "System Load Graph";
+"记录范围 %@ 至 %@" = "Recorded range %@ to %@";
+"超过 24 小时" = "Over 24 hours";

@@ -56,6 +56,10 @@ public struct BatteryReading: Codable, Sendable {
     public var nominalCapacityMAH: Double?
     /// Separate service recommendation; not the macOS battery health assessment.
     public var healthCondition: String?
+    /// Measured remaining capacity paired with a full-capacity field in mAh.
+    public var remainingCapacityMAH: Double?
+    /// Design pack voltage, when the registry exposes it explicitly.
+    public var designVoltageMV: Double?
 
     public init(date: Date = Date(), percent: Double, temperature: Double? = nil,
                 currentMA: Double? = nil, voltageMV: Double? = nil, cycleCount: Int? = nil,
@@ -68,7 +72,8 @@ public struct BatteryReading: Codable, Sendable {
                 adapterCurrentMA: Double? = nil, systemPowerW: Double? = nil,
                 adapterPowerW: Double? = nil, temperatureSource: BatteryTemperatureSource? = nil,
                 registryTemperature: Double? = nil, virtualTemperature: Double? = nil,
-                nominalCapacityMAH: Double? = nil, healthCondition: String? = nil) {
+                nominalCapacityMAH: Double? = nil, healthCondition: String? = nil,
+                remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -83,6 +88,7 @@ public struct BatteryReading: Codable, Sendable {
         self.temperatureSource = temperatureSource; self.registryTemperature = registryTemperature
         self.virtualTemperature = virtualTemperature; self.nominalCapacityMAH = nominalCapacityMAH
         self.healthCondition = healthCondition
+        self.remainingCapacityMAH = remainingCapacityMAH; self.designVoltageMV = designVoltageMV
     }
 }
 
@@ -183,6 +189,10 @@ public enum BatteryReader {
             // IOPS documents -1 as calculating; Smart Battery uses 65535 as unavailable.
             valid((source?[key] as? NSNumber)?.doubleValue, 0...65534)
         }
+        let rawFull = valid(number("AppleRawMaxCapacity"), 1...100000)
+        let rawRemaining = rawFull.flatMap { valid(number("AppleRawCurrentCapacity"), 0...$0) }
+        let legacyFull = valid(number("MaxCapacity"), 101...100000)
+        let remaining = rawRemaining ?? legacyFull.flatMap { valid(number("CurrentCapacity"), 0...$0) }
         let rawPercent: Double? = if let raw = number("AppleRawCurrentCapacity"),
             let maxRaw = number("AppleRawMaxCapacity"), maxRaw > 0 {
             valid(raw / maxRaw * 100, 0...100)
@@ -209,7 +219,8 @@ public enum BatteryReader {
             registryTemperature: temperature,
             virtualTemperature: TelemetryMath.batteryTemperatureCelsius(raw: number("VirtualTemperature")),
             nominalCapacityMAH: nominal,
-            healthCondition: (source?[kIOPSBatteryHealthConditionKey] as? String).flatMap { $0.isEmpty ? nil : $0 })
+            healthCondition: (source?[kIOPSBatteryHealthConditionKey] as? String).flatMap { $0.isEmpty ? nil : $0 },
+            remainingCapacityMAH: remaining, designVoltageMV: valid(number("DesignVoltage"), 1...65535))
     }
 }
 

@@ -34,12 +34,14 @@ public enum TelemetryMath {
         let value = raw / 100
         return (-40...100).contains(value) ? value : nil
     }
+    public static let powerSampleMaxAgeSeconds: Double = 120
+
     /// Time integral of sample-and-hold values divided by covered duration.
     /// A reading represents [its timestamp, next timestamp), capped by maxSampleAgeSeconds.
     /// Unknown readings break coverage; no interpolation across sleep/stale gaps or future data.
     /// Equal timestamps use the final input reading. Partial windows report actual coverage.
     public static func weightedAverage(samples: [PowerSample], endingAt end: Date,
-        windowMinutes: Double, maxSampleAgeSeconds: Double = 120) -> WeightedPowerAverage? {
+        windowMinutes: Double, maxSampleAgeSeconds: Double = powerSampleMaxAgeSeconds) -> WeightedPowerAverage? {
         guard end.timeIntervalSince1970.isFinite, windowMinutes.isFinite, windowMinutes > 0,
               maxSampleAgeSeconds.isFinite, maxSampleAgeSeconds > 0 else { return nil }
         let window = windowMinutes * 60
@@ -72,7 +74,14 @@ public enum TelemetryMath {
         guard let capacity = fullCapacityMAH, let percent, let voltage = nominalVoltageMV,
               capacity.isFinite, capacity > 0, voltage.isFinite, voltage > 0,
               percent.isFinite, (0...100).contains(percent) else { return nil }
-        let energy = capacity * voltage / 1_000_000 * percent / 100
+        return remainingEnergyWH(remainingCapacityMAH: capacity * (percent / 100), voltageMV: voltage)
+    }
+
+    /// Convert measured charge to energy using the caller's explicitly chosen voltage.
+    public static func remainingEnergyWH(remainingCapacityMAH: Double?, voltageMV: Double?) -> Double? {
+        guard let capacity = remainingCapacityMAH, let voltage = voltageMV,
+              capacity.isFinite, capacity >= 0, voltage.isFinite, voltage > 0 else { return nil }
+        let energy = capacity * voltage / 1_000_000
         return energy.isFinite ? energy : nil
     }
     /// Positive battery discharge magnitude from signed battery current, never adapter input power.

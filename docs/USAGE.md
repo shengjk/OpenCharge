@@ -29,6 +29,8 @@ Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command
 
 Use **Keep Awake** on the dashboard or add it through the menu-bar popover editor. Choose 30 minutes, one hour, three hours, a custom duration from 1 to 1440 minutes, or Until Stopped. Stop it from either view. Charge Control sets the battery floor (20% by default), optional AC-only operation, and whether the display may sleep when the next session starts. This feature blocks idle sleep and works without the helper. Closing the lid or manually sleeping the Mac still uses normal macOS behavior.
 
+Use **Power Consumption and Runtime** on the dashboard to compare current system load with its recent 5-, 15- or 30-minute average. The graph leaves stale or missing intervals blank. Estimates use measured remaining capacity and battery voltage to project battery runtime at that load, even while connected to power. The macOS estimate is shown separately when available.
+
 ## Menu-bar appearance
 
 Settings → Appearance offers dynamic status, monochrome battery, colored battery and OpenCharge icon styles. Icon-only hides the percentage without changing style; numeric-only modes omit the icon. Optional yellow icon tint reads the system's actual Low Power Mode and never changes it. This option defaults off. Battery fill uses observed OS percentage, while unknown values remain unknown.

@@ -19,6 +19,13 @@ import ChargeHardware
   check(base.fullCapacityMAH == 4200 && base.nominalCapacityMAH == 4400 && base.healthPercent == 84, "raw and nominal capacities must remain distinct")
   check(base.condition == "Normal" && base.healthCondition == "CheckBattery", "health assessment must not be replaced by a service hint")
   check(base.temperature == 30 && base.registryTemperature == 30 && base.virtualTemperature == 35 && base.temperatureSource == .registry, "registry and virtual sensors must remain distinct")
+  let measured = try decode(properties.merging(["AppleRawCurrentCapacity": 2100, "DesignVoltage": 11000]) { _, new in new })
+  check(measured.remainingCapacityMAH == 2100 && measured.hardwarePercent == 50 && measured.designVoltageMV == 11000, "paired raw capacity and design voltage")
+  let invalid = try decode(properties.merging(["AppleRawCurrentCapacity": 4201, "DesignVoltage": 0]) { _, new in new })
+  check(invalid.remainingCapacityMAH == nil && invalid.designVoltageMV == nil, "invalid capacity or design voltage cannot produce an estimate")
+  let legacyMeasured = try decode(["CurrentCapacity": 2400, "MaxCapacity": 4200])
+  check(legacyMeasured.remainingCapacityMAH == 2400 && legacyMeasured.hardwarePercent == nil, "legacy capacities use paired mAh without changing hardware percentage semantics")
+  check(base.remainingCapacityMAH == nil, "an operating system percentage is not a measured charge capacity")
   let preferred = try BatteryTelemetryReader.read(base: { base }, smcTemperature: { 33.5 })
   check(preferred.temperature == 33.5 && preferred.temperatureSource == .smc && preferred.registryTemperature == 30 && preferred.virtualTemperature == 35, "SMC source selection must preserve alternate sensor values")
   for invalid: Double? in [nil, .nan, .infinity, -41, 101] {

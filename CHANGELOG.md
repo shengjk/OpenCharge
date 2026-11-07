@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.71
+
+- Add a dashboard power consumption graph with 5-, 15- and 30-minute windows, data coverage, and battery runtime estimates for current and average system load.
+
 ## 0.3.70
 
 - Add Keep Awake with presets, a custom timer, and an untimed option. Configure the battery floor, whether to stop on battery power, and whether the display can sleep.

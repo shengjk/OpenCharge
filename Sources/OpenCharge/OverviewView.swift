@@ -56,6 +56,8 @@ struct OverviewView: View {
    SignificantEnergyView(monitor: m.energyMonitor)
   case .manualAwake:
    Card(item.title) { ManualAwakeView(model: m, session: m.manualAwake) }
+  case .powerConsumption:
+   Card(item.title) { PowerConsumptionView(reading: d.reading, history: d.history) }
   case .trend:
    Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: Array(d.history.suffix(120))).frame(height: 150) }
   case .calibration:
