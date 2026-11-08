@@ -716,3 +716,8 @@
 "此时间段尚无该指标的记录" = "No readings for this statistic in this period";
 "最新 %@" = "Latest %@";
 "范围 %@ 至 %@" = "Range %@ to %@";
+"低电量组件使用精简样式" = "Use Compact Low Power Widget";
+"精简样式仅在 macOS 报告低电量模式已开启时显示。" = "The compact widget appears only while macOS reports Low Power Mode is on.";
+"低电量模式已开启" = "Low Power Mode is on";
+"低电量模式已关闭" = "Low Power Mode is off";
+"系统电源模式读回不符合请求" = "System power mode readback differs from the request";

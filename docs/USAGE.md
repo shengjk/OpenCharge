@@ -120,3 +120,5 @@ An acknowledged input cut can make the raw external-connected flag report false 
 应用主动切断电源输入后，即使线缆仍连接，底层接电位也可能变为“未接电”。在已确认自身切断输入的状态下，此信号不再单独取消放电；它也不能独立证明真实拔线。需要取消时请点击“停止放电”，目标电量和保底检查仍然有效。此修复的真实目标完成及拔线/重接行为仍需实机验证。
 
 Temperature, capacity health and cycle-count graphs can be shown as separate dashboard cards. Battery History also offers a full-charge-capacity graph in mAh. Choose one hour, 24 hours or seven days. Missing readings and gaps longer than two minutes break the curve. Full-charge capacity is recorded from this version onward, so older records may show no mAh values.
+
+Add **Low Power Mode** through the popover editor. Full style shows separate battery and power-adapter controls. Compact style appears only while macOS reports Low Power Mode is active and provides an explicit Off button. Quick changes require the system-actions permission in Settings and a compatible helper. Read Status refreshes the per-source preferences; an unavailable source stays disabled.

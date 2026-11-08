@@ -329,17 +329,13 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard config.systemActionsEnabled == true else { error = NSLocalizedString("请先允许菜单栏快捷操作改变系统模式", comment: ""); return }
   do {
    let status = try request("lowPowerStatus")
-   let fields = status.split(separator: " ")
-   guard fields.count == 2, fields[0].hasPrefix("battery="), fields[1].hasPrefix("ac="),
-         ["0", "1", "unknown"].contains(String(fields[0].dropFirst(8))),
-         ["0", "1", "unknown"].contains(String(fields[1].dropFirst(3))),
-         fields[0] != "battery=unknown" || fields[1] != "ac=unknown" else {
+   let preferences = try LowPowerStatus(helperResponse: status)
+   guard preferences.battery != nil || preferences.ac != nil else {
     throw HelperError.rejected(NSLocalizedString("低电量模式能力不可用", comment: ""))
    }
    guard let active = isActive() else { throw HelperError.rejected(NSLocalizedString("低电量模式能力不可用", comment: "")) }
    let enabled = !active
-   lowPowerStatus = try request(enabled ? "lowPowerOn" : "lowPowerOff")
-   config.policy.lowPowerMode = enabled; save()
+   setLowPower(enabled, request: request)
   } catch { self.error = error.localizedDescription }
  }
  var controlModeSelection: Binding<ChargeMode> {
@@ -437,10 +433,35 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    (refresh ?? { self.refresh() })()
   } catch { self.error = error.localizedDescription }
  }
- func setLowPower(_ enabled: Bool, source: String? = nil) {
+ func setLowPower(_ enabled: Bool, source: String? = nil, request: (String) throws -> String = HelperClient.request) {
   guard !quitting, !settingsResetPending else { return }
+  error = nil
   let command = source == "battery" ? (enabled ? "lowPowerBatteryOn" : "lowPowerBatteryOff") : source == "ac" ? (enabled ? "lowPowerACOn" : "lowPowerACOff") : (enabled ? "lowPowerOn" : "lowPowerOff")
-  do { lowPowerStatus = try HelperClient.request(command); config.policy.lowPowerMode = enabled; save() } catch { self.error = error.localizedDescription }
+  do {
+   let response = try request(command)
+   let status = try LowPowerStatus(helperResponse: response)
+   let values = source == "battery" ? [status.battery] : source == "ac" ? [status.ac] : [status.battery, status.ac].filter { $0 != nil }
+   guard !values.isEmpty, values.allSatisfy({ $0 == enabled }) else {
+    throw HelperError.rejected(NSLocalizedString("系统电源模式读回不符合请求", comment: ""))
+   }
+   lowPowerStatus = response; config.policy.lowPowerMode = enabled; save()
+  } catch { self.error = error.localizedDescription }
+ }
+ var lowPowerPreferences: LowPowerStatus? { try? LowPowerStatus(helperResponse: lowPowerStatus) }
+ func setLowPowerFromPopover(_ enabled: Bool, source: PowerSource? = nil,
+  request: (String) throws -> String = HelperClient.request) {
+  guard !quitting, !settingsResetPending else { return }
+  guard config.systemActionsEnabled == true else { error = NSLocalizedString("请先允许菜单栏快捷操作改变系统模式", comment: ""); return }
+  do {
+   let response = try request("lowPowerStatus")
+   let status = try LowPowerStatus(helperResponse: response)
+   let available = source.map { $0 == .battery ? status.battery != nil : status.ac != nil } ?? (status.battery != nil || status.ac != nil)
+   guard available else {
+    throw HelperError.rejected(NSLocalizedString("低电量模式能力不可用", comment: ""))
+   }
+   lowPowerStatus = response
+   setLowPower(enabled, source: source?.rawValue, request: request)
+  } catch { self.error = error.localizedDescription }
  }
  func setMagSafe(_ color: MagSafeColor?, request: (String) throws -> String = HelperClient.request) {
   guard !settingsResetPending else { return }

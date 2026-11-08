@@ -1,5 +1,6 @@
 import SwiftUI
 import ChargeCore
+import ChargeHardware
 
 struct MenuView: View {
  @EnvironmentObject var m: ChargeModel
@@ -16,13 +17,17 @@ struct PopoverContents: View {
  @ObservedObject var preferences: PopoverPreferences
  let consumer: PopoverConsumer
  let dismiss: (() -> Void)?
+ @State private var lowPowerActive = LowPowerObservation.current
+ private var visibleWidgets: [PopoverWidget] {
+  preferences.layout.widgets.filter { $0 != .lowPower || !preferences.compactLowPower || lowPowerActive == true }
+ }
  private var editing: Bool { preferences.isEditing(consumer) }
  private func setEditing(_ value: Bool) { preferences.setEditing(value, consumer: consumer) }
  private var height: CGFloat {
   if editing { return 460 }
   let energyRows = preferences.layout.widgets.contains(.energyApps) ? min(m.energyMonitor.rows.count, 5) : 0
   let calibrationHeight = m.calibrationSummary().showsInPopover ? 125 : 0
-  return min(640, 210 + CGFloat(preferences.layout.widgets.count * 155 + energyRows * 30 + calibrationHeight))
+  return min(640, 210 + CGFloat(visibleWidgets.count * 155 + energyRows * 30 + calibrationHeight))
  }
  var body: some View {
   ScrollView {
@@ -39,6 +44,10 @@ struct PopoverContents: View {
      ForEach(PopoverWidget.allCases.filter { !preferences.layout.widgets.contains($0) }) { widget in
       Toggle(widget.title, isOn: Binding(get: { false }, set: { preferences.layout.setVisible(widget, visible: $0) }))
      }
+     if preferences.layout.widgets.contains(.lowPower) {
+      Toggle(NSLocalizedString("低电量组件使用精简样式", comment: ""), isOn: $preferences.compactLowPower)
+      Text(NSLocalizedString("精简样式仅在 macOS 报告低电量模式已开启时显示。", comment: "")).font(.caption).presentationSecondary()
+     }
      Button(NSLocalizedString("完成编辑", comment: "")) { setEditing(false) }
     } else {
      let calibration = m.calibrationSummary()
@@ -48,7 +57,7 @@ struct PopoverContents: View {
        CalibrationSummaryView(model: m, summary: calibration, compact: true)
       }.frame(maxWidth: .infinity, alignment: .leading).padding(12).presentationPrimaryBackground(opacity: 0.04, radius: 12)
      }
-     ForEach(preferences.layout.widgets) { widget in
+     ForEach(visibleWidgets) { widget in
       VStack(alignment: .leading, spacing: 10) { Text(widget.title).font(.subheadline.bold()); content(widget) }
        .frame(maxWidth: .infinity, alignment: .leading).padding(12).presentationPrimaryBackground(opacity: 0.04, radius: 12)
        .onLongPressGesture(minimumDuration: 0.6) { setEditing(true) }
@@ -59,6 +68,11 @@ struct PopoverContents: View {
    }.padding(18)
   }.frame(width: 380, height: height)
    .background(Group { if consumer == .preview { PopoverWindowObserver(model: m, consumer: consumer).frame(width: 0, height: 0) } })
+   .onReceive(NotificationCenter.default.publisher(for: LowPowerObservation.changeNotification ?? Notification.Name("OpenCharge.lowPowerUnavailable"))) { _ in
+    lowPowerActive = LowPowerObservation.current
+    if preferences.layout.widgets.contains(.lowPower), m.config.systemActionsEnabled == true { m.inspectLowPower() }
+   }
+   .onAppear { lowPowerActive = LowPowerObservation.current }
    .onAppear { if consumer == .preview { m.setPopoverVisible(true, consumer: consumer) } }
    .onDisappear { if consumer == .preview { m.setPopoverVisible(false, consumer: consumer); setEditing(false) } }
  }
@@ -82,6 +96,9 @@ struct PopoverContents: View {
    PowerFlowView(snapshot: PowerFlowSnapshot(adapterWatts: m.reading?.adapterPowerW, batteryWatts: m.watts, systemWatts: m.reading?.systemPowerW), animationEnabled: m.popoverVisible, compact: true, adapterConnected: m.reading?.physicalAdapterConnected ?? (m.reading?.connected ?? false))
   case .energyApps:
    PopoverEnergyView(monitor: m.energyMonitor)
+  case .lowPower:
+   LowPowerWidget(model: m, active: lowPowerActive, compact: preferences.compactLowPower)
+    .onAppear { if m.config.systemActionsEnabled == true { m.inspectLowPower() } }
   case .manualAwake:
    ManualAwakeView(model: m, session: m.manualAwake)
   }

@@ -5,7 +5,7 @@ import AppKit
 enum AppPreferenceReset {
  static let keys = ["appearance", "menuDisplay", "menuIconStyle", "menuTintLowPower", "showDockIcon",
   "energySensitivity", "dashboardShowOnStartup", "dashboardBackgroundUpdates", "dashboardLayout",
-  "popoverAnimationsEnabled", "popoverShowPercentage", "popoverLayout", "menuRightClickAction",
+  "popoverCompactLowPower", "popoverAnimationsEnabled", "popoverShowPercentage", "popoverLayout", "menuRightClickAction",
   "updatesAutomatic", "updatesAutomaticDownloads", "updatesPreviews", "updatesLastAttempt", SetupWizardPresentation.key, LowChargeLimitNotice.key]
  static func removeOverrides(from defaults: UserDefaults) {
   for key in keys where !defaults.objectIsForced(forKey:key) { defaults.removeObject(forKey:key) }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.73
+
+- Add a Low Power Mode popover widget with per-source controls and a compact style that appears only while the mode is active. Validate helper readback before saving a requested mode.
+
 ## 0.3.72
 
 - Add dashboard temperature, capacity health and cycle-count graphs. Battery History also offers measured full-charge capacity, with one-hour, 24-hour and seven-day windows and gaps for unavailable readings.

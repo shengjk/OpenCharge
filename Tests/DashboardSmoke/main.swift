@@ -10,6 +10,7 @@ import ChargeHardware
   powerFlowConnectionChecks()
   powerConsumptionChecks()
   try batteryStatisticChecks()
+  try lowPowerWidgetChecks()
   powerFlowAnimationChecks()
   try menuBarAppearanceChecks()
   try updateChecks()

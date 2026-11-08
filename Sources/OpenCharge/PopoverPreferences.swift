@@ -12,9 +12,13 @@ import ChargeCore
  var changed: (() -> Void)?
  @Published var animationsEnabled: Bool { didSet { guard !reloading else { return }; defaults.set(animationsEnabled, forKey: "popoverAnimationsEnabled") } }
  @Published var showPercentage: Bool { didSet { guard !reloading else { return }; defaults.set(showPercentage, forKey: "popoverShowPercentage") } }
+ @Published var compactLowPower: Bool { didSet {
+  guard !reloading else { return }; defaults.set(compactLowPower, forKey: "popoverCompactLowPower"); changed?()
+ } }
  @Published var layout: PopoverLayout { didSet { guard !reloading else { return }; if let data = try? JSONEncoder().encode(layout) { defaults.set(data, forKey: "popoverLayout") }; changed?() } }
  func reloadAfterReset() {
   reloading = true
+  compactLowPower = defaults.object(forKey:"popoverCompactLowPower") as? Bool ?? false
   animationsEnabled = defaults.object(forKey:"popoverAnimationsEnabled") as? Bool ?? true
   showPercentage = defaults.object(forKey:"popoverShowPercentage") as? Bool ?? true
   if let data = defaults.data(forKey:"popoverLayout"), data.count <= 16_384, let saved = try? JSONDecoder().decode(PopoverLayout.self,from:data) { layout = saved } else { layout = PopoverLayout() }
@@ -22,7 +26,7 @@ import ChargeCore
   reloading = false; changed?()
  }
  init(defaults: UserDefaults = .standard) {
-  self.defaults = defaults; animationsEnabled = defaults.object(forKey: "popoverAnimationsEnabled") as? Bool ?? true; showPercentage = defaults.object(forKey: "popoverShowPercentage") as? Bool ?? true
+  self.defaults = defaults; compactLowPower = defaults.object(forKey:"popoverCompactLowPower") as? Bool ?? false; animationsEnabled = defaults.object(forKey: "popoverAnimationsEnabled") as? Bool ?? true; showPercentage = defaults.object(forKey: "popoverShowPercentage") as? Bool ?? true
   if let data = defaults.data(forKey: "popoverLayout"), data.count <= 16_384, let saved = try? JSONDecoder().decode(PopoverLayout.self, from: data) { layout = saved } else { layout = PopoverLayout() }
  }
 }

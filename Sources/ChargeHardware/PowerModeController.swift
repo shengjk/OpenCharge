@@ -13,6 +13,22 @@ public struct LowPowerStatus: Codable, Sendable {
         func value(_ mode: Bool?) -> String { mode.map { $0 ? "1" : "0" } ?? "unknown" }
         return "battery=\(value(battery)) ac=\(value(ac))"
     }
+    public init(helperResponse: String) throws {
+        let fields = helperResponse.split(whereSeparator: { $0.isWhitespace })
+        guard fields.count == 2, fields[0].hasPrefix("battery="), fields[1].hasPrefix("ac=") else {
+            throw PowerModeError.invalidOutput("missing power-source preferences")
+        }
+        func value(_ text: Substring) throws -> Bool? {
+            switch text {
+            case "0": return false
+            case "1": return true
+            case "unknown": return nil
+            default: throw PowerModeError.invalidOutput("invalid power-source preference")
+            }
+        }
+        battery = try value(fields[0].dropFirst(8)); ac = try value(fields[1].dropFirst(3))
+    }
+    public init(battery: Bool?, ac: Bool?) { self.battery = battery; self.ac = ac }
     fileprivate subscript(_ source: PowerSource) -> Bool? { source == .battery ? battery : ac }
 }
 public enum PowerModeError: Error, LocalizedError {
