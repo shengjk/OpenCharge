@@ -19,7 +19,7 @@ struct PopoverContents: View {
  let dismiss: (() -> Void)?
  @State private var lowPowerActive = LowPowerObservation.current
  private var visibleWidgets: [PopoverWidget] {
-  preferences.layout.widgets.filter { $0 != .lowPower || !preferences.compactLowPower || lowPowerActive == true }
+  preferences.layout.widgets.filter { $0 != .lowPower || !preferences.compactLowPower || (m.energyModes?.current.map { $0 != .automatic } ?? (lowPowerActive == true)) }
  }
  private var editing: Bool { preferences.isEditing(consumer) }
  private func setEditing(_ value: Bool) { preferences.setEditing(value, consumer: consumer) }
@@ -45,8 +45,8 @@ struct PopoverContents: View {
       Toggle(widget.title, isOn: Binding(get: { false }, set: { preferences.layout.setVisible(widget, visible: $0) }))
      }
      if preferences.layout.widgets.contains(.lowPower) {
-      Toggle(NSLocalizedString("低电量组件使用精简样式", comment: ""), isOn: $preferences.compactLowPower)
-      Text(NSLocalizedString("精简样式仅在 macOS 报告低电量模式已开启时显示。", comment: "")).font(.caption).presentationSecondary()
+      Toggle(NSLocalizedString("电源模式组件使用精简样式", comment: ""), isOn: $preferences.compactLowPower)
+      Text(NSLocalizedString("精简样式仅在系统报告低电量或高功率模式已开启时显示。", comment: "")).font(.caption).presentationSecondary()
      }
      Button(NSLocalizedString("完成编辑", comment: "")) { setEditing(false) }
     } else {
@@ -70,9 +70,15 @@ struct PopoverContents: View {
    .background(Group { if consumer == .preview { PopoverWindowObserver(model: m, consumer: consumer).frame(width: 0, height: 0) } })
    .onReceive(NotificationCenter.default.publisher(for: LowPowerObservation.changeNotification ?? Notification.Name("OpenCharge.lowPowerUnavailable"))) { _ in
     lowPowerActive = LowPowerObservation.current
-    if preferences.layout.widgets.contains(.lowPower), m.config.systemActionsEnabled == true { m.inspectLowPower() }
+    if preferences.layout.widgets.contains(.lowPower) { m.inspectEnergyModes() }
    }
-   .onAppear { lowPowerActive = LowPowerObservation.current }
+   .onAppear {
+    lowPowerActive = LowPowerObservation.current
+    if preferences.layout.widgets.contains(.lowPower) { m.inspectEnergyModes() }
+   }
+   .onChange(of: preferences.layout.widgets) { widgets in
+    if widgets.contains(.lowPower) { m.inspectEnergyModes() }
+   }
    .onAppear { if consumer == .preview { m.setPopoverVisible(true, consumer: consumer) } }
    .onDisappear { if consumer == .preview { m.setPopoverVisible(false, consumer: consumer); setEditing(false) } }
  }
@@ -98,7 +104,7 @@ struct PopoverContents: View {
    PopoverEnergyView(monitor: m.energyMonitor)
   case .lowPower:
    LowPowerWidget(model: m, active: lowPowerActive, compact: preferences.compactLowPower)
-    .onAppear { if m.config.systemActionsEnabled == true { m.inspectLowPower() } }
+
   case .manualAwake:
    ManualAwakeView(model: m, session: m.manualAwake)
   }

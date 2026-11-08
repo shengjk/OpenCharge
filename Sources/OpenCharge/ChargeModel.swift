@@ -141,6 +141,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published var sleepStatus = NSLocalizedString("尚未使用合盖睡眠控制", comment: "")
  private var magSafeSessionActive = false
  private var magSafePolicyFailed = false
+ @Published var energyModes: EnergyModeStatus?
  @Published var lowPowerStatus = LowPowerObservation.current.map { $0 ? NSLocalizedString("当前电源：已开启", comment: "") : NSLocalizedString("当前电源：已关闭", comment: "") } ?? NSLocalizedString("不可用", comment: "")
  private let readBattery: () throws -> BatteryReading
  private var engine = ChargeEngine()
@@ -444,7 +445,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    guard !values.isEmpty, values.allSatisfy({ $0 == enabled }) else {
     throw HelperError.rejected(NSLocalizedString("系统电源模式读回不符合请求", comment: ""))
    }
-   lowPowerStatus = response; config.policy.lowPowerMode = enabled; save()
+   lowPowerStatus = response; energyModes = nil; config.policy.lowPowerMode = enabled; save()
   } catch { self.error = error.localizedDescription }
  }
  var lowPowerPreferences: LowPowerStatus? { try? LowPowerStatus(helperResponse: lowPowerStatus) }
@@ -461,6 +462,38 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    }
    lowPowerStatus = response
    setLowPower(enabled, source: source?.rawValue, request: request)
+  } catch { self.error = error.localizedDescription }
+ }
+ func inspectEnergyModes(request: (String) throws -> String = HelperClient.request) {
+  guard !quitting, !settingsResetPending else { return }
+  do {
+   let status = try EnergyModeStatus(helperResponse: request("energyModeStatus"))
+   energyModes = status; lowPowerStatus = status.lowPower.description
+  } catch {
+   energyModes = nil
+   // Existing helpers retain their low-power interface during a source-only update.
+   do { let legacy = try request("lowPowerStatus"); _ = try LowPowerStatus(helperResponse: legacy); lowPowerStatus = legacy }
+   catch { self.error = error.localizedDescription }
+  }
+ }
+ func setEnergyMode(_ mode: EnergyMode, source: PowerSource? = nil,
+  request: (String) throws -> String = HelperClient.request) {
+  guard !quitting, !settingsResetPending else { return }
+  guard config.systemActionsEnabled == true else { error = NSLocalizedString("请先允许菜单栏快捷操作改变系统模式", comment: ""); return }
+  error = nil
+  do {
+   let before = try EnergyModeStatus(helperResponse: request("energyModeStatus"))
+   energyModes = before
+   let selected = source.map { [$0] } ?? PowerSource.allCases.filter { before.mode(for: $0) != nil }
+   guard !selected.isEmpty, selected.allSatisfy({ before.mode(for: $0) != nil && (mode != .high || before.supportsHigh(on: $0)) }) else {
+    throw HelperError.rejected(NSLocalizedString("所选电源来源不支持此电源模式", comment: ""))
+   }
+   let updated = try EnergyModeStatus(helperResponse: request(EnergyModeRequest(mode: mode, source: source).command))
+   energyModes = updated; lowPowerStatus = updated.lowPower.description
+   guard selected.allSatisfy({ updated.mode(for: $0) == mode }) else {
+    throw HelperError.rejected(NSLocalizedString("系统电源模式读回不符合请求", comment: ""))
+   }
+   config.policy.lowPowerMode = mode == .low; save()
   } catch { self.error = error.localizedDescription }
  }
  func setMagSafe(_ color: MagSafeColor?, request: (String) throws -> String = HelperClient.request) {
@@ -629,6 +662,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
     history = Array(history.suffix(10080)); try FileManager.default.createDirectory(at: Configuration.directory, withIntermediateDirectories: true)
     try JSONEncoder().encode(history).write(to: historyURL, options: .atomic)
    }
+   if popoverVisible, popoverPreferences.layout.widgets.contains(.lowPower) { inspectEnergyModes() }
    if config.notifications && decision.reason != lastNotice {
     lastNotice = decision.reason
     let content = UNMutableNotificationContent(); content.title = "OpenCharge"; content.body = decision.reason

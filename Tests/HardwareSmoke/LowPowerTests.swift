@@ -23,7 +23,7 @@ final class FakePMSet {
   state[arguments[0]] = Int(arguments[2])!
   return ""
  }
- func controller() -> PowerModeController { PowerModeController(runner: run, authorizeWrites: { true }) }
+ func controller() -> PowerModeController { PowerModeController(runner: run, authorizeWrites: { true }, highPowerAvailability: { _ in false }) }
 }
 @main struct Tests {
  static func main() throws {

@@ -11,6 +11,7 @@ import ChargeHardware
   powerConsumptionChecks()
   try batteryStatisticChecks()
   try lowPowerWidgetChecks()
+  try energyModeChecks()
   powerFlowAnimationChecks()
   try menuBarAppearanceChecks()
   try updateChecks()

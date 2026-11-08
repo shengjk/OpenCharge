@@ -41,16 +41,20 @@ struct SettingsView: View {
    HStack { Button(NSLocalizedString("读取状态", comment: "")) { m.inspectMagSafe() }; Button(NSLocalizedString("绿色", comment: "")) { m.setMagSafe(.green) }; Button(NSLocalizedString("橙色", comment: "")) { m.setMagSafe(.orange) }; Button(NSLocalizedString("闪烁橙色", comment: "")) { m.setMagSafe(.orangeBlinking) }; Button(NSLocalizedString("熄灭", comment: "")) { m.setMagSafe(.off) }; Button(NSLocalizedString("恢复原值", comment: "")) { m.setMagSafe(nil) }; Button(NSLocalizedString("使用自动策略", comment: "")) { m.useMagSafePolicy() } }
    Text(NSLocalizedString("需要服务及可识别的 ACLC 硬件键。手动颜色优先于自动指示；睡眠熄灯优先于手动颜色。应用运行时续期，退出或 45 秒无心跳后尝试恢复原值。灯光效果依赖适配器，尚未完成实机验收。", comment: "")).font(.caption).presentationSecondary()
   }
-  Card(NSLocalizedString("低电量模式", comment: "")) {
+  Card(m.energyModes?.usesEnergyModes == true ? NSLocalizedString("电源模式", comment: "") : NSLocalizedString("低电量模式", comment: "")) {
    Toggle(NSLocalizedString("允许定时任务与菜单栏快捷操作改变系统模式", comment: ""), isOn: Binding(get: { m.config.systemActionsEnabled ?? false }, set: { enabled in
     if enabled { do { m.lowPowerStatus = try HelperClient.request("lowPowerStatus"); m.config.systemActionsEnabled = true } catch { m.error = error.localizedDescription; m.config.systemActionsEnabled = false } }
     else { m.config.systemActionsEnabled = false }
     m.save()
    }))
-   Text(m.lowPowerStatus).font(.callout).presentationSecondary()
-   HStack { Button(NSLocalizedString("全部开启", comment: "")) { m.setLowPower(true) }; Button(NSLocalizedString("全部关闭", comment: "")) { m.setLowPower(false) }; Button(NSLocalizedString("读取状态", comment: "")) { m.inspectLowPower() } }
+   Text(m.energyModes?.current?.title ?? m.lowPowerStatus).font(.callout).presentationSecondary().onAppear { m.inspectEnergyModes() }
+   if let modes = m.energyModes, modes.usesEnergyModes {
+    EnergyModeControls(model: m, modes: modes)
+   } else {
+   HStack { Button(NSLocalizedString("全部开启", comment: "")) { m.setLowPower(true) }; Button(NSLocalizedString("全部关闭", comment: "")) { m.setLowPower(false) }; Button(NSLocalizedString("读取状态", comment: "")) { m.inspectEnergyModes() } }
    HStack { Text(NSLocalizedString("电池供电", comment: "")); Button(NSLocalizedString("开启", comment: "")) { m.setLowPower(true, source: "battery") }; Button(NSLocalizedString("关闭", comment: "")) { m.setLowPower(false, source: "battery") }; Spacer() }
    HStack { Text(NSLocalizedString("电源适配器", comment: "")); Button(NSLocalizedString("开启", comment: "")) { m.setLowPower(true, source: "ac") }; Button(NSLocalizedString("关闭", comment: "")) { m.setLowPower(false, source: "ac") }; Spacer() }
+   }
    Text(NSLocalizedString("需要硬件服务。此项是持久系统偏好，仅明确操作或定时任务会改变；退出应用不会自动重置。", comment: "")).font(.caption).presentationSecondary()
   }
   Card(NSLocalizedString("外观", comment: "")) {

@@ -60,6 +60,7 @@ func restoreSMC() throws {
 }
 func capabilities() -> String {
  var values = controller?.capabilities() ?? ["chargeControl:unavailable", "SMC:\(smcFailure ?? "unknown")"]
+ values.append("energyModes:triState")
  do { values.append("lowPower:\(try powerModes.status().description)") }
  catch { values.append("lowPower:unavailable") }
  if let status = try? magSafe?.status() { values.append("magSafe:" + status); values.append("magSafeEncoding:aclcNativeV2") }
@@ -357,6 +358,10 @@ source.setEventHandler {
    let patterns: [String: MagSafePattern] = ["magSafeSystem": .system, "magSafeOff": .off, "magSafeGreen": .green, "magSafeOrange": .orange, "magSafeBlinkOrange": .blinkOrange]
    attemptedLED = true; ledNeedsRestore = true; ledLease.request(at: ProcessInfo.processInfo.systemUptime)
    try ledSession.select(patterns[command]!, now: ProcessInfo.processInfo.systemUptime); response = "OK " + (try magSafe.status())
+  }
+  else if command == "energyModeStatus" { response = "OK " + (try powerModes.energyStatus()).description }
+  else if let action = EnergyModeRequest(command: command) {
+   response = "OK " + (try powerModes.setMode(action.mode, source: action.source)).description
   }
   else if command == "lowPowerStatus" { response = "OK " + (try powerModes.status()).description }
   else if command == "lowPowerOn" || command == "lowPowerOff" {

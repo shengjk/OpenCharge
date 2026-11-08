@@ -716,8 +716,13 @@
 "此时间段尚无该指标的记录" = "No readings for this statistic in this period";
 "最新 %@" = "Latest %@";
 "范围 %@ 至 %@" = "Range %@ to %@";
-"低电量组件使用精简样式" = "Use Compact Low Power Widget";
-"精简样式仅在 macOS 报告低电量模式已开启时显示。" = "The compact widget appears only while macOS reports Low Power Mode is on.";
 "低电量模式已开启" = "Low Power Mode is on";
 "低电量模式已关闭" = "Low Power Mode is off";
 "系统电源模式读回不符合请求" = "System power mode readback differs from the request";
+"电源模式" = "Power Mode";
+"自动电源模式" = "Automatic Power Mode";
+"高功率模式" = "High Power Mode";
+"全部切换为自动模式" = "Set All Sources to Automatic";
+"所选电源来源不支持此电源模式" = "This power mode is unavailable for the selected source";
+"电源模式组件使用精简样式" = "Use Compact Power Mode Widget";
+"精简样式仅在系统报告低电量或高功率模式已开启时显示。" = "The compact widget appears only while the system reports Low Power Mode or High Power Mode is on.";

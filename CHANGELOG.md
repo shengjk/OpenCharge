@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.74
+
+- Support Automatic, Low Power and High Power modes when the system reports tri-state capability. Settings and the popover share per-source controls. Preserve complete modes during recovery and keep the legacy Low Power Mode helper interface.
+
 ## 0.3.73
 
 - Add a Low Power Mode popover widget with per-source controls and a compact style that appears only while the mode is active. Validate helper readback before saving a requested mode.
