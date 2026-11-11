@@ -71,6 +71,10 @@ struct OpenChargeShortcuts: AppShortcutsProvider {
   AppShortcut(intent: GetBatteryPercentageIntent(), phrases: ["读取 \(.applicationName) 电量"], shortTitle: "读取电量", systemImageName: "battery.100percent")
   AppShortcut(intent: GetChargeStateIntent(), phrases: ["读取 \(.applicationName) 充电状态"], shortTitle: "读取充电状态", systemImageName: "info.circle")
   AppShortcut(intent: GetPolicyStateIntent(), phrases: ["读取 \(.applicationName) 应用状态"], shortTitle: "读取应用状态", systemImageName: "app.badge")
+  AppShortcut(intent: EnableLowPowerModeIntent(), phrases: ["开启 \(.applicationName) 低电量模式"], shortTitle: "开启低电量模式", systemImageName: "leaf")
+  AppShortcut(intent: DisableLowPowerModeIntent(), phrases: ["关闭 \(.applicationName) 低电量模式"], shortTitle: "关闭低电量模式", systemImageName: "leaf")
+  AppShortcut(intent: EnableHighPowerModeIntent(), phrases: ["开启 \(.applicationName) 高功率模式"], shortTitle: "开启高功率模式", systemImageName: "bolt")
+  AppShortcut(intent: DisableHighPowerModeIntent(), phrases: ["关闭 \(.applicationName) 高功率模式"], shortTitle: "关闭高功率模式", systemImageName: "bolt")
  }
 }
 
@@ -124,5 +128,49 @@ struct SetMagSafeLEDIntent: AppIntent {
   var config = try Configuration.load()
   guard let mode = MagSafeMode(rawValue: color.rawValue) else { throw HelperError.rejected(NSLocalizedString("无效灯光颜色", comment: "")) }
   config.magSafeMode = mode; try config.save(); return .result(dialog: "已保存灯光设置，请在 OpenCharge 查看应用结果。")
+ }
+}
+
+@available(macOS 13.0, *)
+struct EnableLowPowerModeIntent: AppIntent {
+ static var title: LocalizedStringResource = "开启 OpenCharge 低电量模式"
+ static var description = IntentDescription("在所有可用电源来源开启低电量模式，需要已有系统模式授权。")
+ static var openAppWhenRun = true
+ func perform() async throws -> some IntentResult {
+  try await MainActor.run { try PowerModeIntentRuntime.perform(.enableLow) }
+  return .result()
+ }
+}
+
+@available(macOS 13.0, *)
+struct DisableLowPowerModeIntent: AppIntent {
+ static var title: LocalizedStringResource = "关闭 OpenCharge 低电量模式"
+ static var description = IntentDescription("在所有可用电源来源关闭低电量模式，保留已有高功率模式。")
+ static var openAppWhenRun = true
+ func perform() async throws -> some IntentResult {
+  try await MainActor.run { try PowerModeIntentRuntime.perform(.disableLow) }
+  return .result()
+ }
+}
+
+@available(macOS 13.0, *)
+struct EnableHighPowerModeIntent: AppIntent {
+ static var title: LocalizedStringResource = "开启 OpenCharge 高功率模式"
+ static var description = IntentDescription("在所有可用电源来源开启高功率模式，需要已有授权及系统确认支持。")
+ static var openAppWhenRun = true
+ func perform() async throws -> some IntentResult {
+  try await MainActor.run { try PowerModeIntentRuntime.perform(.enableHigh) }
+  return .result()
+ }
+}
+
+@available(macOS 13.0, *)
+struct DisableHighPowerModeIntent: AppIntent {
+ static var title: LocalizedStringResource = "关闭 OpenCharge 高功率模式"
+ static var description = IntentDescription("在所有可用电源来源关闭高功率模式，保留已有低电量模式。")
+ static var openAppWhenRun = true
+ func perform() async throws -> some IntentResult {
+  try await MainActor.run { try PowerModeIntentRuntime.perform(.disableHigh) }
+  return .result()
  }
 }

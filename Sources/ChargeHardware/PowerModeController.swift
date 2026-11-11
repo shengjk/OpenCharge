@@ -206,15 +206,21 @@ public final class PowerModeController {
     }
     @discardableResult public func setEnabled(_ enabled: Bool, source: PowerSource? = nil) throws -> LowPowerStatus {
         lock.lock(); defer { lock.unlock() }
-        return try apply(enabled ? .low : .automatic, source: source, lowPowerOnly: true).lowPower
+        return try apply(enabled ? .low : .automatic, source: source, disableOnly: enabled ? nil : .low, legacyRollback: true).lowPower
     }
     @discardableResult public func setMode(_ mode: EnergyMode, source: PowerSource? = nil) throws -> EnergyModeStatus {
         lock.lock(); defer { lock.unlock() }
-        var status = try apply(mode, source: source, lowPowerOnly: false)
+        var status = try apply(mode, source: source)
         status.current = try? Self.parseCurrent(runner(["-g", "live"], ProcessInfo.processInfo.systemUptime + 2))
         return status
     }
-    private func apply(_ mode: EnergyMode, source: PowerSource?, lowPowerOnly: Bool) throws -> EnergyModeStatus {
+    @discardableResult public func setHighPowerEnabled(_ enabled: Bool, source: PowerSource? = nil) throws -> EnergyModeStatus {
+        lock.lock(); defer { lock.unlock() }
+        var status = try apply(enabled ? .high : .automatic, source: source, disableOnly: enabled ? nil : .high)
+        status.current = try? Self.parseCurrent(runner(["-g", "live"], ProcessInfo.processInfo.systemUptime + 2))
+        return status
+    }
+    private func apply(_ mode: EnergyMode, source: PowerSource?, disableOnly: EnergyMode? = nil, legacyRollback: Bool = false) throws -> EnergyModeStatus {
         guard authorizeWrites() else { throw PowerModeError.permissionRequired }
         let deadline = ProcessInfo.processInfo.systemUptime + 2
         let original = try read(deadline: deadline)
@@ -231,8 +237,8 @@ public final class PowerModeController {
         do {
             for source in selected {
                 guard let before = original.mode(for: source) else { continue }
-                // Disabling Low Power Mode leaves an existing High Power Mode unchanged.
-                let target = lowPowerOnly && mode == .automatic && before == .high ? before : mode
+                // An off action preserves a different power mode.
+                let target = disableOnly.map { before == $0 ? mode : before } ?? mode
                 guard before != target else { continue }
                 if let existing = owned[source], existing.expected != before { owned.removeValue(forKey: source) }
                 priorEntries[source] = owned[source]
@@ -249,7 +255,7 @@ public final class PowerModeController {
         } catch {
             do {
                 let recoveryDeadline = ProcessInfo.processInfo.systemUptime + 2
-                if lowPowerOnly { try restoreOwned(deadline: recoveryDeadline, sources: selected) }
+                if legacyRollback { try restoreOwned(deadline: recoveryDeadline, sources: selected) }
                 else { try rollbackModeOperation(original, priorEntries: priorEntries, sources: attempted, deadline: recoveryDeadline) }
             }
             catch let cleanup { throw PowerModeError.unavailable("action failed: \(error.localizedDescription); cleanup incomplete: \(cleanup.localizedDescription)") }

@@ -54,6 +54,7 @@ public enum HelperSocketIO {
 public enum HelperClient {
  public static let socketPath = "/var/run/opencharge.sock"
  public static let supportedActions: Set<String> = Set(["sleepOverrideOn", "sleepOverrideDisplayOn", "sleepOverrideRestore", "sleepPolicyOn", "sleepPolicyOff", "retainChargeInhibit", "chargeContext", "capabilities", "allowCharge", "inhibitCharge", "forceDischarge", "restore",
+         "highPowerOn", "highPowerOff",
          "energyModeStatus", "energyModeAutomatic", "energyModeLow", "energyModeHigh",
          "energyModeBatteryAutomatic", "energyModeBatteryLow", "energyModeBatteryHigh",
          "energyModeACAutomatic", "energyModeACLow", "energyModeACHigh",
@@ -73,7 +74,7 @@ public enum HelperClient {
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
   setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
   var noSig: Int32 = 1; setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSig, socklen_t(MemoryLayout<Int32>.size))
-  let deadline = ProcessInfo.processInfo.systemUptime + ((action.hasPrefix("lowPower") || action.hasPrefix("energyMode")) ? 6 : 3)
+  let deadline = ProcessInfo.processInfo.systemUptime + ((action.hasPrefix("lowPower") || action.hasPrefix("highPower") || action.hasPrefix("energyMode")) ? 6 : 3)
   let flags = fcntl(fd, F_GETFL)
   guard flags >= 0, fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0 else { throw HelperError.unavailable }
   var address = sockaddr_un(); address.sun_family = sa_family_t(AF_UNIX)

@@ -359,6 +359,9 @@ source.setEventHandler {
    attemptedLED = true; ledNeedsRestore = true; ledLease.request(at: ProcessInfo.processInfo.systemUptime)
    try ledSession.select(patterns[command]!, now: ProcessInfo.processInfo.systemUptime); response = "OK " + (try magSafe.status())
   }
+  else if command == "highPowerOn" || command == "highPowerOff" {
+   response = "OK " + (try powerModes.setHighPowerEnabled(command == "highPowerOn")).description
+  }
   else if command == "energyModeStatus" { response = "OK " + (try powerModes.energyStatus()).description }
   else if let action = EnergyModeRequest(command: command) {
    response = "OK " + (try powerModes.setMode(action.mode, source: action.source)).description

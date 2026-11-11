@@ -40,6 +40,10 @@ import ChargeHardware
   precondition(phrase == expected("Get the battery level in ${applicationName}", "读取 ${applicationName} 电量"))
   let appStatePhrase = bundle.localizedString(forKey:"读取 ${applicationName} 应用状态",value:nil,table:"AppShortcuts")
   precondition(appStatePhrase == expected("Get the app state in ${applicationName}", "读取 ${applicationName} 应用状态"))
+  let highPowerPhrase = bundle.localizedString(forKey:"开启 ${applicationName} 高功率模式",value:nil,table:"AppShortcuts")
+  precondition(highPowerPhrase == expected("Enable High Power Mode in ${applicationName}", "开启 ${applicationName} 高功率模式"))
+  let disableLowTitle = String(localized:"关闭 OpenCharge 低电量模式")
+  precondition(disableLowTitle == expected("Disable OpenCharge Low Power Mode", "关闭 OpenCharge 低电量模式"))
   var engine = ChargeEngine(); var policy = ChargePolicy(); policy.heatProtection = false
   let decision = engine.decide(ChargeSample(percent:50,temperature:30),policy:policy)
   precondition(decision.action == .allowCharge && decision.phase == .charging)

@@ -464,6 +464,49 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    setLowPower(enabled, source: source?.rawValue, request: request)
   } catch { self.error = error.localizedDescription }
  }
+ func performPowerModeShortcut(_ action: PowerModeShortcutAction,
+  request: (String) throws -> String = HelperClient.request) throws {
+  try requirePowerShortcutAuthorization()
+  if action.usesLowPowerInterface {
+   let before = try LowPowerStatus(helperResponse: request("lowPowerStatus"))
+   guard before.battery != nil || before.ac != nil else {
+    throw HelperError.rejected(NSLocalizedString("低电量模式能力不可用", comment: ""))
+   }
+   try requirePowerShortcutAuthorization()
+   let response = try request(action.rawValue)
+   let updated = try LowPowerStatus(helperResponse: response)
+   lowPowerStatus = response; energyModes = nil
+   let values = [updated.battery, updated.ac].compactMap { $0 }
+   guard !values.isEmpty, values.allSatisfy({ $0 == action.enablesMode }),
+         (before.battery == nil || updated.battery != nil), (before.ac == nil || updated.ac != nil) else {
+    throw HelperError.rejected(NSLocalizedString("系统电源模式读回不符合请求", comment: ""))
+   }
+  } else {
+   let before = try EnergyModeStatus(helperResponse: request("energyModeStatus"))
+   let selected = PowerSource.allCases.filter { before.mode(for: $0) != nil }
+   guard !selected.isEmpty, !action.enablesMode || selected.allSatisfy({ before.supportsHigh(on: $0) }) else {
+    throw HelperError.rejected(NSLocalizedString("所选电源来源不支持此电源模式", comment: ""))
+   }
+   try requirePowerShortcutAuthorization()
+   let updated = try EnergyModeStatus(helperResponse: request(action.rawValue))
+   energyModes = updated; lowPowerStatus = updated.lowPower.description
+   guard selected.allSatisfy({ source in
+    guard let mode = updated.mode(for: source) else { return false }
+    let expected: EnergyMode? = action.enablesMode ? .high : (before.mode(for: source) == .high ? .automatic : before.mode(for: source))
+    return mode == expected
+   }) else {
+    throw HelperError.rejected(NSLocalizedString("系统电源模式读回不符合请求", comment: ""))
+   }
+  }
+ }
+ private func requirePowerShortcutAuthorization() throws {
+  guard !quitting else { throw HelperError.rejected(NSLocalizedString("退出期间不能修改系统模式", comment: "")) }
+  guard !settingsResetPending else { throw HelperError.rejected(NSLocalizedString("设置重置未完成，请重试；自动控制与任务已暂停", comment: "")) }
+  let saved = try Configuration.load()
+  guard config.systemActionsEnabled == true, saved.systemActionsEnabled == true else {
+   throw HelperError.rejected(NSLocalizedString("请先允许菜单栏快捷操作改变系统模式", comment: ""))
+  }
+ }
  func inspectEnergyModes(request: (String) throws -> String = HelperClient.request) {
   guard !quitting, !settingsResetPending else { return }
   do {

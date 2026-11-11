@@ -726,3 +726,14 @@
 "所选电源来源不支持此电源模式" = "This power mode is unavailable for the selected source";
 "电源模式组件使用精简样式" = "Use Compact Power Mode Widget";
 "精简样式仅在系统报告低电量或高功率模式已开启时显示。" = "The compact widget appears only while the system reports Low Power Mode or High Power Mode is on.";
+"开启 OpenCharge 低电量模式" = "Enable OpenCharge Low Power Mode";
+"关闭 OpenCharge 低电量模式" = "Disable OpenCharge Low Power Mode";
+"开启 OpenCharge 高功率模式" = "Enable OpenCharge High Power Mode";
+"关闭 OpenCharge 高功率模式" = "Disable OpenCharge High Power Mode";
+"在所有可用电源来源开启低电量模式，需要已有系统模式授权。" = "Enable Low Power Mode for all observable power sources. Requires the existing system-actions permission.";
+"在所有可用电源来源关闭低电量模式，保留已有高功率模式。" = "Disable Low Power Mode for all observable power sources while preserving High Power Mode.";
+"在所有可用电源来源开启高功率模式，需要已有授权及系统确认支持。" = "Enable High Power Mode for all observable power sources. Requires existing permission and confirmed system support.";
+"在所有可用电源来源关闭高功率模式，保留已有低电量模式。" = "Disable High Power Mode for all observable power sources while preserving Low Power Mode.";
+"开启高功率模式" = "Enable High Power Mode";
+"关闭高功率模式" = "Disable High Power Mode";
+"退出期间不能修改系统模式" = "System power modes cannot change while the app is quitting";

@@ -7,7 +7,16 @@ import UniformTypeIdentifiers
 import ChargeCore
 import ChargeHardware
 
-@MainActor enum OpenChargeRuntime { static let model = ChargeModel() }
+@MainActor enum OpenChargeRuntime {
+ static let model: ChargeModel = {
+  let model = ChargeModel()
+  PowerModeIntentRuntime.perform = { [weak model] action in
+   guard let model else { throw HelperError.rejected(NSLocalizedString("应用策略状态尚不可读，请先打开 OpenCharge", comment: "")) }
+   try model.performPowerModeShortcut(action)
+  }
+  return model
+ }()
+}
 final class OpenChargeDelegate: NSObject, NSApplicationDelegate {
  weak var model: ChargeModel?
  var menuBar: MenuBarController?

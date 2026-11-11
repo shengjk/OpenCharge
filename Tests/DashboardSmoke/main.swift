@@ -12,6 +12,7 @@ import ChargeHardware
   try batteryStatisticChecks()
   try lowPowerWidgetChecks()
   try energyModeChecks()
+  try await powerModeIntentChecks()
   powerFlowAnimationChecks()
   try menuBarAppearanceChecks()
   try updateChecks()

@@ -91,6 +91,16 @@ final class EnergyPMSetFixture {
   let unknownWrites = sourceDependent.writes.count
   do { _ = try unknownCapability.setMode(.high, source: .battery); preconditionFailure("unknown capability accepted") } catch {}
   precondition(sourceDependent.writes.count == unknownWrites)
+  let switchingOff = EnergyPMSetFixture()
+  switchingOff.modes = ["-b": 1, "-c": 2]
+  let offController = switchingOff.controller()
+  _ = try offController.setHighPowerEnabled(false)
+  precondition(switchingOff.modes == ["-b": 1, "-c": 0])
+  precondition(switchingOff.writes == [["-c", "powermode", "0"]])
+  _ = try offController.restore()
+  precondition(switchingOff.modes == ["-b": 1, "-c": 2])
+  _ = try offController.setHighPowerEnabled(true)
+  precondition(switchingOff.modes == ["-b": 2, "-c": 2])
   let ambiguous = EnergyPMSetFixture()
   ambiguous.failAfterWrite = true
   ambiguous.reject = { $0 == ["-c", "powermode", "1"] }

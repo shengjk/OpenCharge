@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.75
+
+- Add four Shortcuts actions to enable or disable Low Power Mode and High Power Mode. Off actions preserve the other mode. Require the existing system-actions permission, recheck it before writes, and validate readback before reporting success.
+
 ## 0.3.74
 
 - Support Automatic, Low Power and High Power modes when the system reports tri-state capability. Settings and the popover share per-source controls. Preserve complete modes during recovery and keep the legacy Low Power Mode helper interface.

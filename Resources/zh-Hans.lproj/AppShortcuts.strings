@@ -4,3 +4,7 @@
 "读取 ${applicationName} 充电状态" = "读取 ${applicationName} 充电状态";
 "读取 ${applicationName} 应用状态" = "读取 ${applicationName} 应用状态";
 "读取 ${applicationName} 电量" = "读取 ${applicationName} 电量";
+"开启 ${applicationName} 低电量模式" = "开启 ${applicationName} 低电量模式";
+"开启 ${applicationName} 高功率模式" = "开启 ${applicationName} 高功率模式";
+"关闭 ${applicationName} 低电量模式" = "关闭 ${applicationName} 低电量模式";
+"关闭 ${applicationName} 高功率模式" = "关闭 ${applicationName} 高功率模式";

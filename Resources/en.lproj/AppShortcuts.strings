@@ -4,3 +4,7 @@
 "读取 ${applicationName} 充电状态" = "Get the charging status in ${applicationName}";
 "读取 ${applicationName} 应用状态" = "Get the app state in ${applicationName}";
 "读取 ${applicationName} 电量" = "Get the battery level in ${applicationName}";
+"开启 ${applicationName} 低电量模式" = "Enable Low Power Mode in ${applicationName}";
+"开启 ${applicationName} 高功率模式" = "Enable High Power Mode in ${applicationName}";
+"关闭 ${applicationName} 低电量模式" = "Disable Low Power Mode in ${applicationName}";
+"关闭 ${applicationName} 高功率模式" = "Disable High Power Mode in ${applicationName}";
