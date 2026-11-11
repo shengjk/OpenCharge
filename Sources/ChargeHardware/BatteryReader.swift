@@ -60,6 +60,8 @@ public struct BatteryReading: Codable, Sendable {
     public var remainingCapacityMAH: Double?
     /// Design pack voltage, when the registry exposes it explicitly.
     public var designVoltageMV: Double?
+    /// Model-table nominal pack voltage for runtime estimation; not a control capability.
+    public var modelNominalVoltageMV: Double?
 
     public init(date: Date = Date(), percent: Double, temperature: Double? = nil,
                 currentMA: Double? = nil, voltageMV: Double? = nil, cycleCount: Int? = nil,
@@ -73,7 +75,8 @@ public struct BatteryReading: Codable, Sendable {
                 adapterPowerW: Double? = nil, temperatureSource: BatteryTemperatureSource? = nil,
                 registryTemperature: Double? = nil, virtualTemperature: Double? = nil,
                 nominalCapacityMAH: Double? = nil, healthCondition: String? = nil,
-                remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil) {
+                remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil,
+                modelNominalVoltageMV: Double? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -89,6 +92,7 @@ public struct BatteryReading: Codable, Sendable {
         self.virtualTemperature = virtualTemperature; self.nominalCapacityMAH = nominalCapacityMAH
         self.healthCondition = healthCondition
         self.remainingCapacityMAH = remainingCapacityMAH; self.designVoltageMV = designVoltageMV
+        self.modelNominalVoltageMV = modelNominalVoltageMV
     }
 }
 
@@ -138,11 +142,15 @@ public enum BatteryReader {
                 break
             }
         }
-        return try decode(properties: properties, source: source)
+        let identity = try? registryProperties("IOPlatformExpertDevice")
+        let model: String?
+        if let data = identity?["model"] as? Data { model = String(decoding: data.prefix { $0 != 0 }, as: UTF8.self) }
+        else { model = identity?["model"] as? String }
+        return try decode(properties: properties, source: source, modelIdentifier: model)
     }
 
     /// Converts one snapshot without accessing hardware; shared by production and fixtures.
-    public static func decode(properties: [String: Any], source: [String: Any]?) throws -> BatteryReading {
+    public static func decode(properties: [String: Any], source: [String: Any]?, modelIdentifier: String? = nil) throws -> BatteryReading {
         guard (properties["BatteryInstalled"] as? NSNumber)?.boolValue != false else {
             throw HardwareError.unavailable("No built-in battery")
         }
@@ -220,7 +228,8 @@ public enum BatteryReader {
             virtualTemperature: TelemetryMath.batteryTemperatureCelsius(raw: number("VirtualTemperature")),
             nominalCapacityMAH: nominal,
             healthCondition: (source?[kIOPSBatteryHealthConditionKey] as? String).flatMap { $0.isEmpty ? nil : $0 },
-            remainingCapacityMAH: remaining, designVoltageMV: valid(number("DesignVoltage"), 1...65535))
+            remainingCapacityMAH: remaining, designVoltageMV: valid(number("DesignVoltage"), 1...65535),
+            modelNominalVoltageMV: modelIdentifier.flatMap { ModelNominalBatteryVoltage.millivolts(for: $0) })
     }
 }
 
@@ -233,4 +242,77 @@ func registryProperties(_ className: String) throws -> [String: Any] {
     guard result == KERN_SUCCESS, let resultProperties = properties?.takeRetainedValue() as? [String: Any]
     else { throw HardwareError.unavailable("Cannot read \(className): \(result)") }
     return resultProperties
+}
+
+/// Nominal pack-voltage data used only for displayed runtime estimates.
+/// Unknown models keep telemetry/terminal-voltage fallback; this table does not admit hardware writes.
+public enum ModelNominalBatteryVoltage {
+    private static let volts: [String: UInt32] = [
+        "MacBook8,1": 0x40f91687,
+        "MacBook9,1": 0x40f9f3b6,
+        "MacBook10,1": 0x40f9f3b6,
+        "MacBookAir6,1": 0x40ee6e98,
+        "MacBookAir6,2": 0x40f1a9fc,
+        "MacBookAir7,1": 0x40ee6e98,
+        "MacBookAir7,2": 0x40f1a9fc,
+        "MacBookAir8,1": 0x4137cac1,
+        "MacBookAir8,2": 0x413651ec,
+        "MacBookAir9,1": 0x413651ec,
+        "MacBookAir10,1": 0x413651ec,
+        "Mac14,2": 0x4138872b,
+        "Mac14,15": 0x4138a7f0,
+        "Mac15,12": 0x4138872b,
+        "Mac15,13": 0x4138a7f0,
+        "Mac16,12": 0x4138b852,
+        "Mac16,3": 0x413753f8,
+        "MacBookPro10,1": 0x4134f1aa,
+        "MacBookPro10,2": 0x4133645a,
+        "MacBookPro11,1": 0x412f26e9,
+        "MacBookPro11,2": 0x4133a9fc,
+        "MacBookPro11,3": 0x4133a9fc,
+        "MacBookPro11,4": 0x4135d70a,
+        "MacBookPro11,5": 0x4135d70a,
+        "MacBookPro12,1": 0x4136b439,
+        "MacBookPro13,1": 0x4136624e,
+        "MacBookPro13,2": 0x41367ae1,
+        "MacBookPro13,3": 0x4136624e,
+        "MacBookPro14,1": 0x4136624e,
+        "MacBookPro14,2": 0x41367ae1,
+        "MacBookPro14,3": 0x4136624e,
+        "MacBookPro15,1": 0x41365604,
+        "MacBookPro15,2": 0x4135f7cf,
+        "MacBookPro15,3": 0x4136978d,
+        "MacBookPro15,4": 0x4136978d,
+        "MacBookPro16,1": 0x4135a9fc,
+        "MacBookPro16,2": 0x4136978d,
+        "MacBookPro16,3": 0x4136978d,
+        "MacBookPro16,4": 0x4136978d,
+        "MacBookPro17,1": 0x4134c083,
+        "MacBookPro18,3": 0x4137851f,
+        "MacBookPro18,4": 0x4137851f,
+        "MacBookPro18,1": 0x413753f8,
+        "MacBookPro18,2": 0x41374fdf,
+        "Mac14,7": 0x4134c083,
+        "Mac14,9": 0x4137851f,
+        "Mac14,5": 0x4137851f,
+        "Mac14,10": 0x413753f8,
+        "Mac14,6": 0x413753f8,
+        "Mac15,7": 0x413753f8,
+        "Mac15,9": 0x413753f8,
+        "Mac15,11": 0x4138c8b4,
+        "Mac15,6": 0x4138c8b4,
+        "Mac15,8": 0x4138c8b4,
+        "Mac15,10": 0x4138c8b4,
+        "Mac15,3": 0x4137851f,
+        "Mac16,1": 0x4138c8b4,
+        "Mac16,6": 0x413753f8,
+        "Mac16,8": 0x4138c8b4,
+        "Mac16,7": 0x413753f8,
+        "Mac16,5": 0x413753f8,
+        "Mac16,10": 0x413753f8,
+    ]
+    public static func millivolts(for model: String) -> Double? {
+        guard let bits = volts[model] else { return nil }
+        return Double(Float(bitPattern: bits)) * 1000
+    }
 }

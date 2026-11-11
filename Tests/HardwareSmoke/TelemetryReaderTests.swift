@@ -21,6 +21,13 @@ import ChargeHardware
   check(base.temperature == 30 && base.registryTemperature == 30 && base.virtualTemperature == 35 && base.temperatureSource == .registry, "registry and virtual sensors must remain distinct")
   let measured = try decode(properties.merging(["AppleRawCurrentCapacity": 2100, "DesignVoltage": 11000]) { _, new in new })
   check(measured.remainingCapacityMAH == 2100 && measured.hardwarePercent == 50 && measured.designVoltageMV == 11000, "paired raw capacity and design voltage")
+  let modeled = try BatteryReader.decode(properties: properties.merging(["DesignVoltage": 12000]) { _, new in new }, source: nil, modelIdentifier: "MacBookPro17,1")
+  check(modeled.designVoltageMV == 12000 && abs((modeled.modelNominalVoltageMV ?? 0) - 11296.99993133545) < 0.00001, "model nominal and registry design voltage remain distinct")
+  let modeledRoundTrip = try JSONDecoder().decode(BatteryReading.self, from: JSONEncoder().encode(modeled))
+  check(modeledRoundTrip.modelNominalVoltageMV == modeled.modelNominalVoltageMV, "model voltage survives telemetry coding")
+  for name in ["unknown", "MacBookPro17,1-extra", "MacBookPro1,1", ""] {
+   check(ModelNominalBatteryVoltage.millivolts(for: name) == nil, "unlisted or unresolved models do not invent nominal voltage")
+  }
   let invalid = try decode(properties.merging(["AppleRawCurrentCapacity": 4201, "DesignVoltage": 0]) { _, new in new })
   check(invalid.remainingCapacityMAH == nil && invalid.designVoltageMV == nil, "invalid capacity or design voltage cannot produce an estimate")
   let legacyMeasured = try decode(["CurrentCapacity": 2400, "MaxCapacity": 4200])
@@ -58,9 +65,9 @@ import ChargeHardware
   let roundTrip = try JSONDecoder().decode(BatteryReading.self, from: data)
   check(roundTrip.temperatureSource == .smc && roundTrip.nominalCapacityMAH == 4400 && roundTrip.healthCondition == "CheckBattery", "new provenance fields must round-trip")
   var legacy = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-  for field in ["temperatureSource", "registryTemperature", "virtualTemperature", "nominalCapacityMAH", "healthCondition"] { legacy.removeValue(forKey: field) }
+  for field in ["temperatureSource", "registryTemperature", "virtualTemperature", "nominalCapacityMAH", "healthCondition", "modelNominalVoltageMV"] { legacy.removeValue(forKey: field) }
   let old = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject: legacy))
-  check(old.temperature == 33.5 && old.temperatureSource == nil && old.nominalCapacityMAH == nil, "legacy telemetry must decode without inventing provenance")
+  check(old.temperature == 33.5 && old.temperatureSource == nil && old.nominalCapacityMAH == nil && old.modelNominalVoltageMV == nil, "legacy telemetry must decode without inventing provenance")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0x21, 0x80]) == 33.5, "signed 8.8 fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0xF5, 0x80]) == -10.5, "negative signed fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "flt ", bytes: [0, 0, 6, 66]) == 33.5, "little-endian float payload")

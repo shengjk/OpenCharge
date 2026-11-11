@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.77
+
+- Estimate runtime with known model-specific nominal battery voltage before falling back to system design or measured terminal voltage. Keep estimation data separate from hardware-control capabilities.
+- Calculate the power card’s selected-window average from valid samples; report time coverage separately and retain stale-gap handling in the graph.
+- Preserve legacy telemetry decoding and expose the optional model nominal voltage separately from measured/design voltage.
+
 ## 0.3.76
 
 - Hide manual discharge buttons and the manual target editor while automatic discharge is enabled; show the active shared target and stopping instructions in charge control.

@@ -3,6 +3,11 @@ import ChargeCore
 import ChargeHardware
 
 struct PowerConsumptionSnapshot {
+ struct SampleAverage {
+  let watts: Double
+  let sampleCount: Int
+  let coverageFraction: Double
+ }
  struct Interval {
   let start: Date
   let end: Date
@@ -11,7 +16,7 @@ struct PowerConsumptionSnapshot {
  let start: Date
  let end: Date
  let intervals: [Interval]
- let average: WeightedPowerAverage?
+ let average: SampleAverage?
  let currentWatts: Double?
  let currentMinutes: Double?
  let averageMinutes: Double?
@@ -36,13 +41,20 @@ struct PowerConsumptionSnapshot {
    guard let watts = point.watts, watts.isFinite, watts >= 0, left < right else { return nil }
    return Interval(start: left, end: right, watts: watts)
   }
-  let average = TelemetryMath.weightedAverage(samples: points, endingAt: end, windowMinutes: Double(minutes))
+  // The displayed average counts valid observations in the selected window.
+  // Time coverage remains separate, with the same stale-gap rule as the graph.
+  let coverage = TelemetryMath.weightedAverage(samples: points, endingAt: end, windowMinutes: Double(minutes))?.coverageFraction ?? 0
+  let values = points.filter { $0.date >= start && $0.date <= end }.compactMap(\.watts)
+   .filter { $0.isFinite && $0 >= 0 }
+  var mean = 0.0
+  for (index, value) in values.enumerated() { mean += (value - mean) / Double(index + 1) }
+  let average = values.isEmpty ? nil : SampleAverage(watts: mean, sampleCount: values.count, coverageFraction: coverage)
   self.average = average
   currentWatts = reading?.systemPowerW.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
-  // Estimate on battery at a given system load. On models with no design
-  // voltage, the measured terminal voltage is an explicit approximation.
+  // Known model nominal voltage matches the pack's estimation profile. Explicit
+  // design telemetry and measured terminal voltage remain distinct fallback sources.
   let energy = TelemetryMath.remainingEnergyWH(remainingCapacityMAH: reading?.remainingCapacityMAH,
-   voltageMV: reading?.designVoltageMV ?? reading?.voltageMV)
+   voltageMV: reading?.modelNominalVoltageMV ?? reading?.designVoltageMV ?? reading?.voltageMV)
   currentMinutes = TelemetryMath.remainingTimeMinutes(remainingEnergyWH: energy, dischargePowerW: currentWatts)
   averageMinutes = TelemetryMath.remainingTimeMinutes(remainingEnergyWH: energy, dischargePowerW: average?.watts)
  }
@@ -75,7 +87,7 @@ struct PowerConsumptionView: View {
    }
    valueRow(label: NSLocalizedString("按平均负载估算续航", comment: ""), value: duration(data.averageMinutes))
    valueRow(label: DashboardSpecification.timeToEmpty.title, value: BatterySpecificationFormatter.value(.timeToEmpty, reading: reading))
-   Text(NSLocalizedString("续航根据剩余容量、电池电压和系统负载估算。缺少设计电压时使用当前电池电压。", comment: ""))
+   Text(NSLocalizedString("续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗按有效样本计算，覆盖率单独反映记录时长。", comment: ""))
     .font(.caption).presentationSecondary()
   }
  }

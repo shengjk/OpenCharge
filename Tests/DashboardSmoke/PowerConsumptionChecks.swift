@@ -13,12 +13,22 @@ import ChargeHardware
  let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: 5)
  precondition(data.intervals.map(\.watts) == [5, 20, 15])
  precondition(data.intervals.map { $0.end.timeIntervalSince($0.start) } == [60, 90, 30])
- precondition(data.average?.watts == 2550 / 180.0 && data.average?.coverageFraction == 0.6)
- precondition(data.currentMinutes == 120 && abs((data.averageMinutes ?? 0) - 1200 / (2550 / 180.0)) < 0.00001)
+ precondition(data.average?.watts == 15 && data.average?.sampleCount == 3 && data.average?.coverageFraction == 0.6)
+ precondition(data.currentMinutes == 120 && abs((data.averageMinutes ?? 0) - 80) < 0.00001)
  var noDesign = reading; noDesign.designVoltageMV = nil
  precondition(PowerConsumptionSnapshot(reading: noDesign, history: [], minutes: 5).currentMinutes == 144)
  noDesign.remainingCapacityMAH = nil
  precondition(PowerConsumptionSnapshot(reading: noDesign, history: [], minutes: 5).currentMinutes == nil)
+ var modelVoltage = BatteryReading(date: end, percent: 80, voltageMV: 11_955, connected: true, charging: false,
+  systemPowerW: 5.65, remainingCapacityMAH: 3288, designVoltageMV: 14_000,
+  modelNominalVoltageMV: ModelNominalBatteryVoltage.millivolts(for: "MacBookPro17,1"))
+ let nominal = PowerConsumptionSnapshot(reading: modelVoltage, history: [], minutes: 15)
+ precondition(abs((nominal.currentMinutes ?? 0) - 394.45524715997476) < 0.00001)
+ precondition(nominal.average?.watts == 5.65 && nominal.average?.sampleCount == 1 && nominal.average?.coverageFraction == 0)
+ modelVoltage.voltageMV = 10_000
+ precondition(PowerConsumptionSnapshot(reading: modelVoltage, history: [], minutes: 15).currentMinutes == nominal.currentMinutes)
+ let invalidHistory = [point(-100, .nan), point(-90, -.infinity), point(-80, -5), point(-600, 1000)]
+ precondition(PowerConsumptionSnapshot(reading: modelVoltage, history: invalidHistory, minutes: 5).average?.watts == 5.65)
  var zeroLoad = reading; zeroLoad.systemPowerW = 0
  precondition(PowerConsumptionSnapshot(reading: zeroLoad, history: [], minutes: 5).currentMinutes == nil)
  let historyOnly = PowerConsumptionSnapshot(reading: nil, history: history, minutes: 5, end: end)
@@ -29,5 +39,5 @@ import ChargeHardware
   view.layoutSubtreeIfNeeded()
   precondition(view.fittingSize.width > 0 && view.fittingSize.height > 0)
  }
- print("PASS dashboard power intervals, coverage gaps, current/average runtime, absent sensors and voltage fallback")
+ print("PASS dashboard power intervals, coverage gaps, sample-counted averages with independent time coverage, current/average runtime, known nominal voltage precedence, absent sensors and voltage fallback")
 }
