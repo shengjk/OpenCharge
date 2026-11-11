@@ -456,7 +456,6 @@
 "能量流向" = "Power Flow";
 "自动" = "Automatic";
 "自动化 URL 参数无效" = "Invalid automation URL parameters";
-"自动放电已开启；请在充电控制中关闭后使用手动按钮。" = "Automatic discharge is enabled. Turn it off in Charge Control before using the manual button.";
 "自动检查更新（每 12 小时）" = "Check for updates automatically (every 12 hours)";
 "自动灯光" = "Automatic light";
 "航行与温度" = "Sailing and Temperature";
@@ -737,3 +736,7 @@
 "开启高功率模式" = "Enable High Power Mode";
 "关闭高功率模式" = "Disable High Power Mode";
 "退出期间不能修改系统模式" = "System power modes cannot change while the app is quitting";
+
+"自动放电目标：%lld%%" = "Automatic discharge target: %lld%%";
+
+"开启自动放电后隐藏手动按钮。需要停止自动放电时，请把充电上限提高到当前电量或更高；校准期间自动放电暂停。" = "Manual buttons are hidden while automatic discharge is enabled. To stop automatic discharge, raise the charge limit to the current percentage or higher. Automatic discharge pauses during calibration.";

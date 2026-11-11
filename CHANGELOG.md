@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.76
+
+- Hide manual discharge buttons and the manual target editor while automatic discharge is enabled; show the active shared target and stopping instructions in charge control.
+- Keep the automatic-discharge toggle available and preserve charging settings when switching the visible controls.
+
 ## 0.3.75
 
 - Add four Shortcuts actions to enable or disable Low Power Mode and High Power Mode. Off actions preserve the other mode. Require the existing system-actions permission, recheck it before writes, and validate readback before reporting success.
