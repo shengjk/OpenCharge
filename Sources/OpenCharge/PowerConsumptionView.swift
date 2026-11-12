@@ -125,7 +125,6 @@ struct PowerConsumptionView: View {
  let reading: BatteryReading?
  let history: [HistoryPoint]
  @State private var minutes = 15
- @State private var pointerFraction: CGFloat?
 
  var body: some View {
   let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: minutes)
@@ -199,24 +198,11 @@ struct PowerConsumptionView: View {
        path.addLine(to: CGPoint(x: lastX, y: positionY))
       }.stroke(Color.orange, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
      }
-     GraphPointerSurface { x in
-      pointerFraction = x.flatMap { width > 0 ? min(1, max(0, $0 / width)) : nil }
-     }
-     if let fraction = pointerFraction,
-        let index = GraphInspection.nearestIndex(dates: data.records.map(\.date), domain: dates,
-          width: width, x: fraction * width) {
-      let point = positions[index]
-      Path { path in
-       path.move(to: CGPoint(x: point.x, y: 0)); path.addLine(to: CGPoint(x: point.x, y: height))
-      }.stroke(Color.secondary, style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-       .allowsHitTesting(false)
-      Circle().fill(PresentationPalette.mint).frame(width: 7, height: 7).position(point)
-       .allowsHitTesting(false)
-      GraphInspectionCallout(date: data.records[index].date, value: watts(data.records[index].watts),
+     GraphInspectionOverlay(samples: data.records.indices.map { index in
+      GraphInspectionSample(date: data.records[index].date, position: positions[index],
+       value: watts(data.records[index].watts),
        secondary: data.average.map { NSLocalizedString("窗口平均", comment: "") + " " + watts($0.watts) })
-       .frame(width: max(0, width - 12), height: height, alignment: point.x > width / 2 ? .topTrailing : .topLeading)
-       .padding(.horizontal, 6)
-     }
+     }, size: geometry.size)
      }
     }
    }.frame(height: 90)

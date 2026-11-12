@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.83
+
+- Add nearest-record inspection to temperature, health, full-charge capacity and cycle-count graphs, plus native and legacy charge trends. Show the stored date, time and value, plus the recorded charge limit when available.
+- Share the power graph's marker and callout implementation across these views. Use actual plot coordinates, preserve earlier ties and duplicate-date ordering, and keep overlays out of the accessibility tree.
+- Fit statistic graph dates to the first and last available records in the selected window. Give native charge trends the same ordered samples and explicit date domain as the legacy plot. Preserve existing trend accessibility and charging/history behavior.
+- Verify display-space selection, secondary values and a correctly sized pointer surface on every graph, with isolated native fixtures and bilingual offscreen previews. Exact interpolation defaults and broader live interaction remain in progress.
+
 ## 0.3.82
 
 - Use the same query records for the power plot, its vertical range, horizontal date range and average. Display isolated records and retain real telemetry gaps without breaking continuously observed plateaus.

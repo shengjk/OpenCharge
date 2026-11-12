@@ -47,6 +47,11 @@ struct BatteryStatisticPlot {
  let lower: Double
  let upper: Double
 
+ var plotDates: ClosedRange<Date> {
+  guard let first = samples.first?.date, let last = samples.last?.date else { return start...end }
+  return first == last ? first.addingTimeInterval(-30)...last.addingTimeInterval(30) : first...last
+ }
+
  init(points: [HistoryPoint], metric: BatteryStatistic, hours: Int, end: Date) {
   self.end = end; start = end.addingTimeInterval(-Double(hours) * 3600)
   var byDate: [Date: HistoryPoint] = [:]
@@ -102,21 +107,30 @@ struct BatteryStatisticChart: View {
     VStack { Text(metric.formatted(data.upper)); Spacer(); Text(metric.formatted(data.lower)) }
      .font(.caption2.monospacedDigit()).presentationSecondary()
     GeometryReader { geometry in
-     let span = data.end.timeIntervalSince(data.start)
+     let span = data.plotDates.upperBound.timeIntervalSince(data.plotDates.lowerBound)
      let range = data.upper - data.lower
-     Path { path in
-      for sample in data.samples {
-       let position = CGPoint(x: sample.date.timeIntervalSince(data.start) / span * geometry.size.width,
-        y: (1 - (sample.value - data.lower) / range) * max(0, geometry.size.height - 4) + 2)
-       if sample.startsSegment { path.move(to: position) }
-       else { path.addLine(to: position) }
-       if sample.startsSegment { path.addEllipse(in: CGRect(x: position.x - 1, y: position.y - 1, width: 2, height: 2)) }
-       path.move(to: position)
-      }
-     }.stroke(PresentationPalette.mint, lineWidth: 1.5)
+     let positions = data.samples.map { sample in
+      CGPoint(x: sample.date.timeIntervalSince(data.plotDates.lowerBound) / span * geometry.size.width,
+       y: (1 - (sample.value - data.lower) / range) * max(0, geometry.size.height - 4) + 2)
+     }
+     ZStack(alignment: .topLeading) {
+      Path { path in
+       for index in data.samples.indices {
+        let sample = data.samples[index], position = positions[index]
+        if sample.startsSegment { path.move(to: position) }
+        else { path.addLine(to: position) }
+        if sample.startsSegment { path.addEllipse(in: CGRect(x: position.x - 1, y: position.y - 1, width: 2, height: 2)) }
+        path.move(to: position)
+       }
+      }.stroke(PresentationPalette.mint, lineWidth: 1.5)
+      GraphInspectionOverlay(samples: data.samples.indices.map { index in
+       GraphInspectionSample(date: data.samples[index].date, position: positions[index],
+        value: metric.formatted(data.samples[index].value), secondary: nil)
+      }, size: geometry.size)
+     }
     }
    }.frame(height: 120)
-   HStack { Text(data.start, style: .date); Text(data.start, style: .time); Spacer(); Text(data.end, style: .date); Text(data.end, style: .time) }
+   HStack { Text(data.plotDates.lowerBound, style: .date); Text(data.plotDates.lowerBound, style: .time); Spacer(); Text(data.plotDates.upperBound, style: .date); Text(data.plotDates.upperBound, style: .time) }
     .font(.caption2.monospacedDigit()).presentationSecondary()
   }.accessibilityElement(children: .ignore).accessibilityLabel(Text(metric.title))
    .accessibilityValue(Text(String.localizedStringWithFormat(NSLocalizedString("范围 %@ 至 %@", comment: ""),

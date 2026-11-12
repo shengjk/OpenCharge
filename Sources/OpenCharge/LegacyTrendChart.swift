@@ -21,11 +21,12 @@ struct LegacyTrendChart: View {
        if plot.charge.count == 1, let point = plot.charge.first {
         Circle().fill(PresentationPalette.mint).frame(width: 5, height: 5).position(point)
        }
+       GraphInspectionOverlay(samples: plot.inspectionSamples, size: plot.size)
       }.frame(width: width, height: height).clipped().accessibilityHidden(true)
      }
      HStack(spacing: 0) {
       ForEach(Array(plot.tickDates.enumerated()), id: \.offset) { index, date in
-       Text(timeLabel(date, domain: plot.domain)).lineLimit(1).minimumScaleFactor(0.7)
+       Text(plot.tickLabel(date)).lineLimit(1).minimumScaleFactor(0.7)
         .frame(maxWidth: .infinity, alignment: index == 0 ? .leading : index == 2 ? .trailing : .center)
       }
      }.font(.caption).presentationSecondary().padding(.leading, 44).accessibilityHidden(true)
@@ -63,10 +64,5 @@ struct LegacyTrendChart: View {
    path.addLine(to: CGPoint(x: last.x, y: height)); path.addLine(to: CGPoint(x: first.x, y: height)); path.closeSubpath()
   }
   return path
- }
- private func timeLabel(_ date: Date, domain: ClosedRange<Date>) -> String {
-  let formatter = DateFormatter()
-  formatter.setLocalizedDateFormatFromTemplate(domain.upperBound.timeIntervalSince(domain.lowerBound) < 86_400 ? "jm" : "Mdjm")
-  return formatter.string(from: date)
  }
 }

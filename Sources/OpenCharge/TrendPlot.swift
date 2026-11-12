@@ -83,6 +83,12 @@ struct TrendPlot {
   }
  }
 
+ func tickLabel(_ date: Date) -> String {
+  let formatter = DateFormatter()
+  formatter.setLocalizedDateFormatFromTemplate(domain.upperBound.timeIntervalSince(domain.lowerBound) < 86_400 ? "jm" : "Mdjm")
+  return formatter.string(from: date)
+ }
+
  var tickDates: [Date] {
   let span = domain.upperBound.timeIntervalSince(domain.lowerBound)
   guard span.isFinite else { return [domain.lowerBound, domain.upperBound] }

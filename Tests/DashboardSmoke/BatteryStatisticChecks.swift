@@ -9,6 +9,9 @@ import SwiftUI
  let points = [point(-180, 30), point(-120, 31), point(-60, nil), point(0, 32)]
  let data = BatteryStatisticPlot(points: points, metric: .temperature, hours: 1, end: end)
  precondition(data.samples.map(\.value) == [30, 31, 32] && data.samples.map(\.startsSegment) == [true, false, true])
+ precondition(data.plotDates == (end.addingTimeInterval(-180)...end))
+ let singleton = BatteryStatisticPlot(points: [point(0, 31)], metric: .temperature, hours: 168, end: end)
+ precondition(singleton.plotDates == (end.addingTimeInterval(-30)...end.addingTimeInterval(30)))
  precondition(data.minimum == 30 && data.maximum == 32 && data.lower < 30 && data.upper > 32)
  let duplicates = BatteryStatisticPlot(points: points + [point(0, nil)], metric: .temperature, hours: 1, end: end)
  precondition(duplicates.samples.count == 2)
@@ -33,5 +36,5 @@ import SwiftUI
    precondition(host.fittingSize.height > 0)
   }
  }
- print("PASS battery statistic units, sparse and duplicate records, stale gaps, legacy capacity history and native layouts")
+ print("PASS battery statistic units, sparse and duplicate records, stale gaps, first/last record dates and singleton domain, legacy capacity history and native layouts")
 }
