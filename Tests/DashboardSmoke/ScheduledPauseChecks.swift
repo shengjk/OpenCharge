@@ -12,8 +12,8 @@ import ChargeHardware
   task.date = Date().addingTimeInterval(-60); task.repeatRule = repeating ? .daily : .once
   return task
  }
- func fixture(mode: ChargeMode = .automatic, limit: Double = 80, hardwarePercent: Bool = false, checkpoint: CalibrationCheckpoint? = nil, departure: Date? = nil, tasks: [ChargeSchedule] = []) throws -> ChargeModel {
-  var config = Configuration(); config.policy.mode = mode; config.policy.limit = limit
+ func fixture(mode: ChargeMode = .automatic, limit: Double = 80, sailing: Bool = true, hardwarePercent: Bool = false, checkpoint: CalibrationCheckpoint? = nil, departure: Date? = nil, tasks: [ChargeSchedule] = []) throws -> ChargeModel {
+  var config = Configuration(); config.policy.mode = mode; config.policy.limit = limit; config.policy.sailing = sailing
   config.policy.useHardwarePercent = hardwarePercent; config.calibrationCheckpoint = checkpoint; config.policy.departure = departure
   config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false
   config.schedules = tasks; try config.save()
@@ -145,6 +145,41 @@ import ChargeHardware
  precondition(rawDischarge.decision.action == .inhibitCharge && rawDischarge.config.policy.mode == .automatic)
  precondition(rawDischarge.config.schedules[0].date > Date() && rawDischarge.config.scheduleHistory?.count == 1)
  rawDischarge.refresh();precondition(rawDischarge.config.scheduleHistory?.count == 1 && rawDischarge.config.policy.mode == .automatic)
+ // A due discharge already at/below target must not request input cutoff.
+ // Preserve the ordinary Sailing band instead of imposing newer schedule semantics.
+ sample = BatteryReading(percent:78,temperature:25,connected:true,charging:false)
+ let higherTarget = try fixture(limit:60,tasks:[task(.discharge,value:80)])
+ precondition(higherTarget.config.policy.mode == .automatic && higherTarget.config.policy.limit == 80)
+ precondition(higherTarget.decision.action == .inhibitCharge && higherTarget.automationPhase == .sailing)
+ higherTarget.refresh()
+ precondition(higherTarget.decision.action == .inhibitCharge && higherTarget.automationPhase == .sailing)
+ let higherTargetRestart = ChargeModel(dashboardDefaults:defaults,observeLid:false,
+  screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
+ precondition(higherTargetRestart.config.policy.mode == .automatic && higherTargetRestart.decision.action == .inhibitCharge)
+ precondition(higherTargetRestart.config.scheduleHistory?.count == 1 && !higherTargetRestart.config.schedules[0].enabled)
+ sample.percent = 75;higherTargetRestart.refresh()
+ precondition(higherTargetRestart.decision.action == .allowCharge && higherTargetRestart.automationPhase == .charging)
+ // Without Sailing, completion returns to ordinary charging on the next refresh.
+ sample.percent = 78
+ let higherTargetNoSailing = try fixture(limit:60,sailing:false,tasks:[task(.discharge,value:80)])
+ precondition(higherTargetNoSailing.config.policy.mode == .automatic && higherTargetNoSailing.decision.action == .inhibitCharge)
+ higherTargetNoSailing.refresh()
+ precondition(higherTargetNoSailing.decision.action == .allowCharge && higherTargetNoSailing.automationPhase == .charging)
+ // Equal whole-percent target completes, even with a fractional telemetry value.
+ sample.percent = 80.75
+ let equalTarget = try fixture(tasks:[task(.discharge,value:80)])
+ precondition(equalTarget.config.policy.mode == .automatic && equalTarget.decision.action == .inhibitCharge)
+ equalTarget.refresh();precondition(equalTarget.decision.action == .inhibitCharge && equalTarget.config.scheduleHistory?.count == 1)
+ // A higher target is measured against the selected control percentage.
+ sample = BatteryReading(percent:90,temperature:25,connected:true,charging:false,hardwarePercent:70)
+ let rawHigherTarget = try fixture(limit:60,hardwarePercent:true,tasks:[task(.discharge,value:80,repeating:true)])
+ precondition(rawHigherTarget.config.policy.mode == .automatic && rawHigherTarget.decision.action == .inhibitCharge)
+ rawHigherTarget.refresh();precondition(rawHigherTarget.decision.action == .allowCharge)
+ precondition(rawHigherTarget.config.schedules[0].date > Date() && rawHigherTarget.config.scheduleHistory?.count == 1)
+ for model in [higherTarget,higherTargetRestart,higherTargetNoSailing,equalTarget,rawHigherTarget] {
+  precondition(!model.config.hardwareEnabled && model.config.systemActionsEnabled != true)
+ }
+ print("PASS production scheduled discharge already at/below target: Sailing hold/restart/lower-bound release, non-Sailing resume, whole-percent equality, selected raw percentage and one-shot/repeating history; fake telemetry only")
  // Same-round tasks still run in order: a following Pause uses the live level.
  sample = BatteryReading(percent:80,temperature:25,connected:true,charging:false)
  let dischargeThenPause = try fixture(departure:dueDeparture,tasks:[task(.discharge,value:40),task(.pause)])
