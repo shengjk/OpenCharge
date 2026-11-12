@@ -16,7 +16,10 @@ struct HistoryView: View {
    Picker(NSLocalizedString("统计指标", comment: ""), selection: $metric) {
     ForEach(BatteryStatistic.allCases) { item in Text(item.title).tag(item) }
    }.pickerStyle(.segmented)
-   BatteryStatisticChart(metric: metric, points: m.history)
+   BatteryStatisticChart(metric: metric, points: m.history, archive: m.statisticArchive,
+    revision: m.statisticRevision, active: !m.dashboard.paused, endingAt: m.reading?.date ?? Date(), archiveWriteError: m.statisticArchiveError).id(metric)
+   Text(NSLocalizedString("容量与循环次数支持查询最近 360 天的已有记录；清空记录会同时删除长期统计。", comment: ""))
+    .font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
   }
   Card(NSLocalizedString("决策日志 · 新功能", comment: "")) { ForEach(Array(m.history.suffix(30).reversed())) { point in HStack { Text(point.date, style: .time).font(.caption.monospacedDigit()).presentationSecondary(); Text(point.reason); Spacer(); Text("\(Int(point.percent))%").font(.caption.monospacedDigit()) }.font(.caption) } }
  }

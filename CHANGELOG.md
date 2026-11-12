@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.84
+
+- Use straight charge-trend segments and stepped recorded-limit changes on native and legacy charts. Show the last 24 hours in the overview; retain fixed percentage bounds and use observed statistic bounds with upper headroom.
+- Add opt-in local SQLite history for battery health, full-charge capacity and cycle counts, with queries through 360 days. Import existing recent observations once when recording next runs; retain raw observations until Clear History. No past observations are invented.
+- Read long-term graphs in the background, discard outdated responses and preserve focus snapshots. Keep archive write failures separate from charging recovery; expose read failures with Retry. Clear History removes both recent and long-term records.
+- Verify migration rollback, restart reads, clock changes, missing values, query boundaries, paired clearing, failure isolation and actual legacy path geometry with isolated fixtures. Physical control, full query-sampling fidelity and older-system runtime remain unverified.
+
 ## 0.3.83
 
 - Add nearest-record inspection to temperature, health, full-charge capacity and cycle-count graphs, plus native and legacy charge trends. Show the stored date, time and value, plus the recorded charge limit when available.

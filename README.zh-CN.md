@@ -47,3 +47,5 @@ bash Scripts/build-universal.sh
 数据目录为 `~/Library/Application Support/OpenCharge/`。导出由用户主动选择，不自动上传。[安全与隐私](SECURITY.md)。MIT 许可；第三方声明保留在 `docs/licenses/`。
 
 更新检查与校验下载见[软件更新说明](docs/UPDATES.md)。自动检查默认关闭；检查会连接 GitHub，不发送电池数据或本机标识，下载需明确点击。
+
+长期统计支持查询最近 360 天的容量健康比例、满充容量与循环次数。沿用本地历史记录开关；下次启用记录时一次性导入已有近期数据，不补造过去的数据。原始统计保留至“清空记录”，清空会同时删除近期记录与长期统计。

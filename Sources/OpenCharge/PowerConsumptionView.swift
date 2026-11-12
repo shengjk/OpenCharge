@@ -41,14 +41,7 @@ struct PowerConsumptionSnapshot {
  let averageMinutes: Double?
  let averageDateRange: ClosedRange<Date>?
 
- var plotRange: ClosedRange<Double> {
-  let values = records.compactMap(\.watts)
-  guard let low = values.min(), let high = values.max() else { return 0...1 }
-  let span = high - low
-  let upper = span > 0 ? low + span * 1.2 : high + max(1, abs(high) * 0.2)
-  if upper.isFinite && upper > low { return low...upper }
-  return 0...max(1, high)
- }
+ var plotRange: ClosedRange<Double> { GraphValueRange.range(records.compactMap(\.watts)) }
 
  init(reading: BatteryReading?, history: [HistoryPoint], minutes: Int, end fallbackEnd: Date = Date()) {
   let end = reading?.date ?? fallbackEnd

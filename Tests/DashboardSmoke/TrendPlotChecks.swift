@@ -11,10 +11,10 @@ func trendPlotChecks() {
   TrendPlot(samples: samples, size: size)
  }
  let empty = plot([])
- precondition(empty.charge.isEmpty && empty.limits.isEmpty && empty.curves.isEmpty)
+ precondition(empty.charge.isEmpty && empty.limits.isEmpty && empty.linePath.isEmpty)
  let singleton = plot([sample(0, 75, 80)])
  precondition(singleton.charge == [CGPoint(x: 300, y: 50)])
- precondition(singleton.limits.count == 1 && singleton.curves.isEmpty)
+ precondition(singleton.limits.count == 1 && !singleton.linePath.isEmpty)
  precondition(singleton.domain.lowerBound == origin.addingTimeInterval(-30) && singleton.domain.upperBound == origin.addingTimeInterval(30))
  let mixed = plot([sample(120, 100, 90), sample(0, 0, 80), sample(60, 50)])
  precondition(mixed.samples.map(\.percent) == [0, 50, 100])
@@ -23,37 +23,50 @@ func trendPlotChecks() {
  precondition(mixed.tickDates == [origin, origin.addingTimeInterval(60), origin.addingTimeInterval(120)])
  let duplicate = plot([sample(0, 20), sample(0, 80), sample(60, 40)])
  precondition(duplicate.samples.count == 3 && duplicate.charge[0].x == duplicate.charge[1].x)
- precondition(duplicate.curves[0].start.y == 160 && abs(duplicate.curves[0].end.y - 40) < 0.00001)
+ precondition(duplicate.charge[0].y == 160 && abs(duplicate.charge[1].y - 40) < 0.00001)
+ var limitVertices: [CGPoint] = []
+ mixed.limitPath.cgPath.applyWithBlock {
+  precondition($0.pointee.type == .moveToPoint || $0.pointee.type == .addLineToPoint)
+  limitVertices.append($0.pointee.points[0])
+ }
+ let expectedLimits = [mixed.limits[0], CGPoint(x: mixed.limits[1].x, y: mixed.limits[0].y), mixed.limits[1]]
+ precondition(limitVertices.count == expectedLimits.count)
+ precondition(zip(limitVertices, expectedLimits).allSatisfy { pair in
+  abs(pair.0.x - pair.1.x) < 0.001 && abs(pair.0.y - pair.1.y) < 0.001
+ }, "a recorded limit changes at its new timestamp, without an interpolated ramp")
  let invalid = plot([sample(0, .nan), sample(1, 20, .infinity), sample(2, -5, -10), sample(3, 120, 150),
   TrendSample(date: Date(timeIntervalSinceReferenceDate: .infinity), percent: 10)])
  precondition(invalid.samples.count == 3 && invalid.charge.allSatisfy { (0...200).contains($0.y) })
  precondition(invalid.limits.count == 2 && invalid.limits[0].y == 200 && invalid.limits[1].y == 0)
  for size in [CGSize.zero, CGSize(width: -1, height: 20), CGSize(width: CGFloat.infinity, height: 10), CGSize(width: 10, height: CGFloat.nan)] {
   let invalidSize = plot([sample(0, 10), sample(1, 20)], size: size)
-  precondition(invalidSize.charge.isEmpty && invalidSize.limits.isEmpty && invalidSize.curves.isEmpty)
+  precondition(invalidSize.charge.isEmpty && invalidSize.limits.isEmpty && invalidSize.linePath.isEmpty)
  }
  let runs: [[Double]] = [[0, 10, 50, 100], [100, 80, 20, 0], [50, 50, 50, 50], [0, 100, 0, 100], [0, 0, 100, 100], [0, 99.99, 100, 100]]
  var evaluated = 0
- for values in runs {
-  let graph = plot(zip([0.0, 0.001, 20, 100], values).map { sample($0.0, $0.1) })
-  for segment in graph.curves {
-   for step in 0...100 {
-    let t = CGFloat(step) / 100, u = 1 - t
-    let x = u*u*u*segment.start.x + 3*u*u*t*segment.control1.x + 3*u*t*t*segment.control2.x + t*t*t*segment.end.x
-    let y = u*u*u*segment.start.y + 3*u*u*t*segment.control1.y + 3*u*t*t*segment.control2.y + t*t*t*segment.end.y
-    precondition(x.isFinite && y.isFinite)
-    precondition(x >= segment.start.x - 0.00001 && x <= segment.end.x + 0.00001)
-    precondition(y >= min(segment.start.y, segment.end.y) - 0.00001 && y <= max(segment.start.y, segment.end.y) + 0.00001,
-     "a trend must not invent a peak or dip between adjacent readings")
-    evaluated += 1
+ func checkStraightPath(_ graph: TrendPlot) {
+  var drawn: [CGPoint] = []
+  graph.linePath.cgPath.applyWithBlock { element in
+   switch element.pointee.type {
+   case .moveToPoint, .addLineToPoint: drawn.append(element.pointee.points[0])
+   default: preconditionFailure("a recorded trend must not introduce interpolated curve elements")
    }
   }
+  precondition(drawn.count == graph.charge.count)
+  precondition(zip(drawn, graph.charge).allSatisfy { pair in abs(pair.0.x - pair.1.x) < 0.001 && abs(pair.0.y - pair.1.y) < 0.001 },
+   "the drawing path must connect stored positions within subpixel serialization precision")
+  evaluated += drawn.count
  }
+ for values in runs {
+  checkStraightPath(plot(zip([0.0, 0.001, 20, 100], values).map { sample($0.0, $0.1) }))
+ }
+ checkStraightPath(duplicate)
  let week = plot((0..<10080).map { sample(Double($0) * 60, Double($0 % 101), $0 % 2 == 0 ? 80 : nil) })
- precondition(week.charge.count == 10080 && week.curves.count == 10079 && week.limits.count == 5040,
+ precondition(week.charge.count == 10080 && week.limits.count == 5040,
   "the fallback must keep the full stored history rather than silently downsample")
+ checkStraightPath(week)
  try! writeTrendGeometryPreview()
- print("PASS legacy trend projection: full history, time scale, duplicates, unknown limits, invalid data/layout and \(evaluated) bounded cubic samples; no UI or hardware")
+ print("PASS legacy trend projection: full history, time scale, duplicates, unknown limits, invalid data/layout and \(evaluated) actual straight path elements; no UI or hardware")
 }
 
 // Optional private geometry artifact only. No app window or UI event is created.
@@ -74,11 +87,10 @@ func writeTrendGeometryPreview() throws {
  for point in plot.charge.dropFirst() { area.addLine(to: point) }
  area.addLine(to: CGPoint(x: plot.charge.last!.x, y: 240)); area.addLine(to: CGPoint(x: plot.charge[0].x, y: 240)); area.closeSubpath()
  context.setFillColor(CGColor(red: 0, green: 0.65, blue: 0.6, alpha: 0.12)); context.addPath(area); context.fillPath()
- context.move(to: plot.charge[0])
- for curve in plot.curves { context.addCurve(to: curve.end, control1: curve.control1, control2: curve.control2) }
+ context.addPath(plot.linePath.cgPath)
  context.setLineWidth(2); context.setStrokeColor(CGColor(red: 0, green: 0.65, blue: 0.6, alpha: 1)); context.strokePath()
  context.setStrokeColor(CGColor(red: 1, green: 0.5, blue: 0, alpha: 1)); context.setLineWidth(1); context.setLineDash(phase: 0, lengths: [4, 4])
- context.move(to: plot.limits[0]); for point in plot.limits.dropFirst() { context.addLine(to: point) }; context.strokePath()
+ context.addPath(plot.limitPath.cgPath); context.strokePath()
  let directory = URL(fileURLWithPath: folder, isDirectory: true)
  try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
  let target = directory.appendingPathComponent("trend-geometry-preview.png")

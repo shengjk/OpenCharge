@@ -75,6 +75,7 @@ import ChargeHardware
   preferences.layout = DashboardLayout(widgets: [.battery, .specifications], specifications: [.voltage, .current])
   var config = Configuration(); config.policy.limit = 80; config.historyEnabled = false
   try config.save()
+  try await batteryStatisticArchiveChecks(defaults: defaults)
   try await automationReloadChecks(defaults: defaults)
   try await policyStateChecks(defaults: defaults)
   try sleepOrderingChecks(defaults: defaults)

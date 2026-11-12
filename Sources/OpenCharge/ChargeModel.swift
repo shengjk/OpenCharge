@@ -121,6 +121,9 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published private(set) var firmwareInspection: FirmwareHelperState?
  @Published private(set) var firmwareStatus = NSLocalizedString("尚未检测数值固件通道", comment: "")
  @Published var history: [HistoryPoint] = []
+ let statisticArchive: BatteryStatisticArchive
+ @Published private(set) var statisticRevision = 0
+ @Published private(set) var statisticArchiveError: String?
  @Published var calibration = CalibrationStage.idle
  @Published var calibrationPending = false {
   didSet { if !calibrationPending { interruptedCalibrationWasEnabled = false } }
@@ -166,7 +169,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil, startupRecoveryRequest: (String) throws -> String = HelperClient.request, startupRecoveryPersist: (Configuration) throws -> Void = { try $0.save() }) {
+ init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, statisticArchive: BatteryStatisticArchive? = nil, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil, startupRecoveryRequest: (String) throws -> String = HelperClient.request, startupRecoveryPersist: (Configuration) throws -> Void = { try $0.save() }) {
+  self.statisticArchive = statisticArchive ?? BatteryStatisticArchive(url: Configuration.directory.appendingPathComponent("battery-statistics.sqlite3"))
   self.helperService = helperService ?? HelperService()
   settingsDefaults = dashboardDefaults
   setupOnLaunch = SetupWizardPresentation.shouldShow(configurationExists:FileManager.default.fileExists(atPath:Configuration.url.path),defaults:dashboardDefaults)
@@ -701,9 +705,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if !plan.preventSystemAndLidSleep { updateSleepOverride(plan) }
    handleLidState(lid)
    if config.historyEnabled && (history.last.map { Date().timeIntervalSince($0.date) >= 60 } ?? true) {
-    history.append(HistoryPoint(date: Date(), percent: r.percent, temperature: r.temperature, watts: watts, reason: decision.reason, temperatureSource: r.temperatureSource, systemWatts: r.systemPowerW, adapterWatts: r.adapterPowerW, limit: config.policy.limit, hardwarePercent: r.hardwarePercent, health: r.healthPercent, cycles: r.cycleCount, fullCapacityMAH: r.fullCapacityMAH))
+    let previousHistory = history
+    let point = HistoryPoint(date: Date(), percent: r.percent, temperature: r.temperature, watts: watts, reason: decision.reason, temperatureSource: r.temperatureSource, systemWatts: r.systemPowerW, adapterWatts: r.adapterPowerW, limit: config.policy.limit, hardwarePercent: r.hardwarePercent, health: r.healthPercent, cycles: r.cycleCount, fullCapacityMAH: r.fullCapacityMAH)
+    history.append(point)
     history = Array(history.suffix(10080)); try FileManager.default.createDirectory(at: Configuration.directory, withIntermediateDirectories: true)
     try JSONEncoder().encode(history).write(to: historyURL, options: .atomic)
+    recordStatistics(point, migrating: previousHistory)
    }
    if popoverVisible, popoverPreferences.layout.widgets.contains(.lowPower) { inspectEnergyModes() }
    if config.notifications && decision.reason != lastNotice {
@@ -1142,5 +1149,24 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    try report.encoded().write(to: url, options: .atomic)
   } catch { self.error = error.localizedDescription }
  }
- func clearHistory() { history = []; do { try Data("[]".utf8).write(to: historyURL, options: .atomic) } catch { self.error = error.localizedDescription } }
+ func recordStatistics(_ point: HistoryPoint, migrating previous: [HistoryPoint],
+                       write: ((HistoryPoint, [HistoryPoint]) throws -> Void)? = nil) {
+  do {
+   if let write { try write(point, previous) }
+   else { try statisticArchive.append(point, migrating: previous) }
+   statisticArchiveError = nil; statisticRevision &+= 1
+  } catch {
+   // Statistics storage failure must not enter the charging-control rollback path.
+   statisticArchiveError = error.localizedDescription
+  }
+ }
+ func clearHistory() {
+  do {
+   try statisticArchive.clear()
+   if FileManager.default.fileExists(atPath: historyURL.path) {
+    try Data("[]".utf8).write(to: historyURL, options: .atomic)
+   }
+   history = []; statisticArchiveError = nil; statisticRevision &+= 1
+  } catch { self.error = error.localizedDescription }
+ }
 }

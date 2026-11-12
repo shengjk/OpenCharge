@@ -13,12 +13,12 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 - Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings.
 - Twelve App Intents, five App Shortcuts, CLI and an `opencharge://` URL scheme.
 - English and Simplified Chinese interface resources, selected through macOS language preferences.
-- Local history and explicit diagnostic exports; no account, analytics or cloud storage.
+- Local history and explicit diagnostic exports; no account, analytics or cloud storage. Opt-in health, full-charge capacity and cycle statistics support 360-day queries; raw observations remain local until Clear History. Existing recent records are imported once on the next enabled recording.
 - Optional GitHub release checks and user-requested ZIP downloads with SHA-256 verification.
 
 ## Quick start
 
-Version 0.3.83 targets macOS 11+. Building requires Swift 5.9+ and Apple's command-line developer tools on a compatible build host. Runtime behavior on macOS 11/12 remains unverified; published 0.3.46 packages still require macOS 13. Native Shortcuts packaging also requires an installed App Intents metadata processor (normally supplied by Xcode).
+Version 0.3.84 targets macOS 11+. Building requires Swift 5.9+ and Apple's command-line developer tools on a compatible build host. Runtime behavior on macOS 11/12 remains unverified; published 0.3.46 packages still require macOS 13. Native Shortcuts packaging also requires an installed App Intents metadata processor (normally supplied by Xcode).
 
 ```sh
 git clone https://github.com/shengjk/OpenCharge.git

@@ -1,6 +1,13 @@
 import SwiftUI
 import Charts
 
+enum TrendWindow {
+ static func day(_ points: [HistoryPoint], endingAt end: Date) -> [HistoryPoint] {
+  let start = end.addingTimeInterval(-86400)
+  return points.filter { $0.date >= start && $0.date <= end && $0.date.timeIntervalSinceReferenceDate.isFinite }
+ }
+}
+
 struct TrendChart: View {
  var points: [HistoryPoint]
  var body: some View {
@@ -25,12 +32,12 @@ private struct NativeTrendChart: View {
    LineMark(x: .value(NSLocalizedString("时间", comment: ""), sample.date),
     y: .value(NSLocalizedString("电量", comment: ""), sample.percent),
     series: .value(NSLocalizedString("类型", comment: ""), NSLocalizedString("电量", comment: "")))
-    .foregroundStyle(PresentationPalette.mint).interpolationMethod(.monotone)
+    .foregroundStyle(PresentationPalette.mint).interpolationMethod(.linear)
    if let limit = sample.limit, limit.isFinite {
     LineMark(x: .value(NSLocalizedString("时间", comment: ""), sample.date),
      y: .value(NSLocalizedString("上限", comment: ""), limit),
      series: .value(NSLocalizedString("类型", comment: ""), NSLocalizedString("上限", comment: "")))
-     .foregroundStyle(.orange).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+     .foregroundStyle(.orange).interpolationMethod(.stepEnd).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
    }
   }.chartYScale(domain: 0...100).chartXScale(domain: plot.domain)
    .chartXAxis {

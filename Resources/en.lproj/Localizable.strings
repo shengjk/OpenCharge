@@ -765,3 +765,13 @@
 "请从 Apple 菜单手动打开系统电池设置。" = "Open Battery settings manually from the Apple menu.";
 
 "等待读数更新" = "Waiting for a Fresh Reading";
+
+"长期统计记录不可用：%@" = "Long-term statistics are unavailable: %@";
+
+"记录格式不受支持，请使用更新版本" = "This record format requires a newer version.";
+
+"360 天" = "360 Days";
+
+"正在读取长期记录…" = "Loading long-term records…";
+
+"容量与循环次数支持查询最近 360 天的已有记录；清空记录会同时删除长期统计。" = "Capacity and cycle statistics can query existing records from the last 360 days. Clear History also deletes long-term statistics.";

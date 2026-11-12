@@ -16,8 +16,8 @@ struct LegacyTrendChart: View {
       ZStack(alignment: .topLeading) {
        grid(size: plot.size).stroke(Color.secondary.opacity(0.18), style: StrokeStyle(lineWidth: 1))
        area(plot.charge, height: height).fill(PresentationPalette.mint.opacity(0.12))
-       curve(plot).stroke(PresentationPalette.mint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-       polyline(plot.limits).stroke(Color.orange, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+       plot.linePath.stroke(PresentationPalette.mint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+       plot.limitPath.stroke(Color.orange, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
        if plot.charge.count == 1, let point = plot.charge.first {
         Circle().fill(PresentationPalette.mint).frame(width: 5, height: 5).position(point)
        }
@@ -44,21 +44,12 @@ struct LegacyTrendChart: View {
   }
   return path
  }
- private func curve(_ plot: TrendPlot) -> Path {
-  var path = Path()
-  guard let first = plot.charge.first else { return path }
-  path.move(to: first)
-  for segment in plot.curves {
-   path.addCurve(to: segment.end, control1: segment.control1, control2: segment.control2)
-  }
-  return path
- }
  private func polyline(_ points: [CGPoint]) -> Path {
   var path = Path(); guard let first = points.first else { return path }; path.move(to: first)
   for point in points.dropFirst() { path.addLine(to: point) }; return path
  }
  private func area(_ points: [CGPoint], height: CGFloat) -> Path {
-  // Native AreaMark keeps its default linear interpolation independently of the SOC line.
+  // The fill and charge line both connect the stored observations directly.
   var path = polyline(points)
   if let first = points.first, let last = points.last {
    path.addLine(to: CGPoint(x: last.x, y: height)); path.addLine(to: CGPoint(x: first.x, y: height)); path.closeSubpath()

@@ -59,13 +59,13 @@ struct OverviewView: View {
   case .powerConsumption:
    Card(item.title) { PowerConsumptionView(reading: d.reading, history: d.history) }
   case .temperatureTrend:
-   Card(item.title) { BatteryStatisticChart(metric: .temperature, points: d.history) }
+   Card(item.title) { BatteryStatisticChart(metric: .temperature, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
   case .capacityTrend:
-   Card(item.title) { BatteryStatisticChart(metric: .health, points: d.history) }
+   Card(item.title) { BatteryStatisticChart(metric: .health, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
   case .cycleTrend:
-   Card(item.title) { BatteryStatisticChart(metric: .cycles, points: d.history) }
+   Card(item.title) { BatteryStatisticChart(metric: .cycles, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
   case .trend:
-   Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: Array(d.history.suffix(120))).frame(height: 150) }
+   Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: TrendWindow.day(d.history, endingAt: d.reading?.date ?? Date())).frame(height: 150) }
   case .calibration:
    Card(item.title) {
     CalibrationSummaryView(model: m, summary: d.calibration)

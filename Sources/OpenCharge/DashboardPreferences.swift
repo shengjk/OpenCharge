@@ -37,6 +37,9 @@ import ChargeHardware
  @Published private(set) var helperStatus = NSLocalizedString("监测模式", comment: "")
  @Published private(set) var limit: Double = 80
  @Published private(set) var history: [HistoryPoint] = []
+ @Published private(set) var statisticArchive: BatteryStatisticArchive?
+ @Published private(set) var statisticRevision = 0
+ @Published private(set) var statisticArchiveError: String?
  @Published private(set) var calibration = CalibrationSummary()
  @Published var paused = true
  @Published var focused = false
@@ -51,6 +54,8 @@ import ChargeHardware
  func capture(_ model: ChargeModel) {
   reading = model.reading; decision = model.decision; helperStatus = model.helperStatus
   limit = model.config.policy.limit; history = model.history
+  statisticArchive = model.statisticArchive; statisticRevision = model.statisticRevision
+  statisticArchiveError = model.statisticArchiveError
   calibration = model.calibrationSummary()
  }
  func value(_ specification: DashboardSpecification) -> String { BatterySpecificationFormatter.value(specification, reading: reading) }
