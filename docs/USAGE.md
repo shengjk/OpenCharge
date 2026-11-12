@@ -144,3 +144,15 @@ The power graph includes a dashed window-average line spanning its valid sample 
 Engagement readings older than 30 seconds, future-dated readings and invalid timestamps show “Waiting for a Fresh Reading”. The display refreshes its freshness state without issuing a hardware command.
 
 超过 30 秒、来自未来或时间无效的介入读数显示“等待读数更新”；显示层定期更新新鲜度状态，不发送硬件控制命令。
+
+## Power modes from the command line
+
+`chargectl power-mode status` reads the battery and power-adapter preferences locally without contacting the helper or changing configuration. Output uses `0` for Automatic, `1` for Low Power and `2` for High Power; `unknown` means that preference or capability was not reported. The `current` field is the observed current mode, distinct from the saved source preferences.
+
+Use `chargectl power-mode automatic|low|high [battery|ac] --confirm` for a persistent system-preference change through a compatible helper. For example, `chargectl power-mode high ac --confirm` requests High Power only on the adapter. Omitting the source selects all observable sources; High Power must be supported on every selected source. The existing helper performs capability checks, per-source readback and rollback/recovery. An older helper can reject the command; the CLI does not substitute another mode. A malformed or mismatched receipt is reported as an error; it does not prove that no setting changed, so inspect status before retrying. Existing `low-power` commands and their shared original-preference restore remain available.
+
+## 在命令行中使用电源模式
+
+`chargectl power-mode status` 在本地只读查询电池与电源适配器的偏好设置，不连接辅助服务，也不修改配置。输出中 `0` 表示自动，`1` 表示低功耗，`2` 表示高功率；`unknown` 表示系统未提供对应偏好或能力。`current` 是当前观察到的模式，与分电源保存的偏好不同。
+
+`chargectl power-mode automatic|low|high [battery|ac] --confirm` 通过兼容的辅助服务持久修改系统电源偏好。例如 `chargectl power-mode high ac --confirm` 只为电源适配器请求高功率模式。省略电源类型时选择所有可读取的电源；请求高功率时，每个选中电源都必须支持该模式。辅助服务继续负责能力检查、逐电源读回和回滚／恢复。旧服务可能拒绝命令，CLI 不会替换成另一种模式。无效或不匹配的回执会报错，但不代表系统设置一定未变，请先查询状态再决定是否重试。现有 `low-power` 命令及共享的原偏好恢复仍可使用。

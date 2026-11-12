@@ -39,6 +39,15 @@ assert result.returncode!=0 and '--confirm' in result.stderr
 for arguments in (['magsafe','green'], ['magsafe','orange-blinking'], ['magsafe','blue','--confirm'], ['magsafe','restore']):
  result=subprocess.run([executable]+arguments,capture_output=True,text=True)
  assert result.returncode!=0 and 'requires' in result.stderr
+# Rejected tri-state commands never contact the helper or rewrite configuration.
+before_energy=(root/'configuration.json').read_bytes()
+for arguments in (['power-mode'], ['power-mode','high'], ['power-mode','high','ups','--confirm'],
+                  ['power-mode','high','battery','--confirm','extra'], ['power-mode','restore','--confirm'],
+                  ['power-mode','status','--confirm'], ['power-mode','--confirm'],
+                  ['power-mode','high','--confirm','battery']):
+ result=subprocess.run([executable]+arguments,capture_output=True,text=True)
+ assert result.returncode!=0 and 'power-mode status' in result.stderr
+ assert (root/'configuration.json').read_bytes()==before_energy
 before_hardware=(root/'configuration.json').read_bytes()
 for arguments in (['hardware'], ['hardware','allowCharge'], ['hardware','restore'],
                   ['hardware','retainChargeInhibit','--confirm'], ['hardware','firmwareAllow','--confirm'],

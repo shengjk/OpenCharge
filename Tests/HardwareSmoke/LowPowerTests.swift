@@ -27,6 +27,7 @@ final class FakePMSet {
 }
 @main struct Tests {
  static func main() throws {
+  try energyModeCommandChecks()
   let text = "Battery Power:\n lowpowermode 1\nAC Power:\n lowpowermode 0\nUPS Power:\n lowpowermode 1\n"
   let parsed = try PowerModeController.parseCustom(text)
   precondition(parsed.battery == true && parsed.ac == false)

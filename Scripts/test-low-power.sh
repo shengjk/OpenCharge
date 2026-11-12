@@ -9,6 +9,8 @@ mkdir -p "$TEST_CACHE_DIR"
 export CLANG_MODULE_CACHE_PATH="$TEST_CACHE_DIR"
 xcrun swiftc -module-cache-path "$CLANG_MODULE_CACHE_PATH" \
   "$PROJECT_DIR/Sources/ChargeHardware/PowerModeController.swift" \
+  "$PROJECT_DIR/Sources/ChargeHardware/EnergyModeCommand.swift" \
+  "$PROJECT_DIR/Tests/HardwareSmoke/EnergyModeCommandTests.swift" \
   "$PROJECT_DIR/Tests/HardwareSmoke/LowPowerTests.swift" \
   -o "$TEST_BUILD_DIR/low-power-tests"
 "$TEST_BUILD_DIR/low-power-tests"

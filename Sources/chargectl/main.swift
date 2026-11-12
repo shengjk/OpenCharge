@@ -16,6 +16,9 @@ OpenCharge CLI
   departure ISO8601 [target] Set a departure charging plan
   schedule ISO8601 action repeat [value]
   schedules                 List tasks
+  power-mode status         Read per-source Automatic(0), Low(1), High(2) preferences
+  power-mode automatic|low|high [battery|ac] --confirm
+                            Persistent system setting; omitted source targets observable sources
   low-power status|on|off|restore [battery|ac] [--confirm]
   schedule-remove UUID      Remove a stored schedule
   schedule-history          Show execution results
@@ -45,6 +48,9 @@ do {
  case "schedules": try output(config.schedules)
  case "schedule-remove": guard args.count == 2, let id = UUID(uuidString: args[1]), config.schedules.contains(where: { $0.id == id }) else { throw HelperError.rejected("unknown schedule UUID") }; config.schedules.removeAll { $0.id == id }; try config.save(); print("Removed schedule")
  case "schedule-history": try output(config.scheduleHistory ?? [])
+ case "power-mode":
+  print(try EnergyModeCommand.run(arguments:Array(args.dropFirst()),
+   readStatus:{ try PowerModeController().energyStatus() },request:HelperClient.request))
  case "low-power":
   guard args.count >= 2 else { throw HelperError.rejected("low-power status|on|off|restore [battery|ac] --confirm") }
   if args[1] == "status" { try output(PowerModeController().status()) }

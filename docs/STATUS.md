@@ -1,4 +1,4 @@
-# Status — 0.3.79 and development source
+# Status — 0.3.80 and development source
 
 This is a development release. Implemented policy, OS integration and physical hardware validation are separate milestones.
 

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.80
+
+- Add `chargectl power-mode status` and explicit `automatic|low|high [battery|ac] --confirm` actions through the existing tri-state helper protocol.
+- Keep status local and read-only; reject malformed arguments before contacting the helper, and validate the returned preferences for every requested source.
+- Preserve source capability checks, persistent preference recovery and existing Low Power Mode commands. No helper deployment or live power-mode changes are performed by the release workflow.
+
 ## 0.3.79
 
 - Show the system’s current optimized-charging engagement in Charge Control and the setup wizard, with separate engaged, not-engaged and unavailable states.
