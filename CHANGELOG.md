@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.82
+
+- Use the same query records for the power plot, its vertical range, horizontal date range and average. Display isolated records and retain real telemetry gaps without breaking continuously observed plateaus.
+- Add power-graph inspection on macOS 11+: show the nearest stored value, timestamp and window average with a snapped marker. Equal-distance and duplicate-date selections retain the earlier record.
+- Keep charge policies, persisted history, runtime calculations and time-coverage measurements unchanged. Validate selection, gap handling and native pointer callbacks with isolated fixtures; broader graph rendering and runtime parity remain in progress.
+
 ## 0.3.81
 
 - Calculate average power and its runtime estimate from change/endpoint query records, including the final-record rule, rather than counting every observation equally.

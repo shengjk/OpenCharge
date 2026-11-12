@@ -16,6 +16,25 @@ struct PowerConsumptionSnapshot {
  let start: Date
  let end: Date
  let intervals: [Interval]
+ let records: [PowerSample]
+
+ var plotDates: ClosedRange<Date> {
+  guard let first = records.first?.date, let last = records.last?.date else { return start...end }
+  return first == last ? first.addingTimeInterval(-30)...last.addingTimeInterval(30) : first...last
+ }
+
+ // Compression can leave a long plateau. Check raw coverage rather than
+ // treating every long interval between query records as missing telemetry.
+ func connects(_ first: Date, _ last: Date) -> Bool {
+  guard first < last else { return first == last }
+  var covered = first
+  for interval in intervals where interval.end > first && interval.start < last {
+   guard interval.start <= covered else { return false }
+   covered = max(covered, interval.end)
+   if covered >= last { return true }
+  }
+  return false
+ }
  let average: SampleAverage?
  let currentWatts: Double?
  let currentMinutes: Double?
@@ -23,7 +42,7 @@ struct PowerConsumptionSnapshot {
  let averageDateRange: ClosedRange<Date>?
 
  var plotRange: ClosedRange<Double> {
-  let values = intervals.map(\.watts) + [currentWatts, average?.watts].compactMap { $0 }
+  let values = records.compactMap(\.watts)
   guard let low = values.min(), let high = values.max() else { return 0...1 }
   let span = high - low
   let upper = span > 0 ? low + span * 1.2 : high + max(1, abs(high) * 0.2)
@@ -52,13 +71,14 @@ struct PowerConsumptionSnapshot {
    return Interval(start: left, end: right, watts: watts)
   }
   // Query-record averaging and time coverage are distinct projections.
-  // Keep the original observations for coverage and the gap-aware curve.
+  // Keep original observations for coverage and detecting real telemetry gaps.
   let coverage = TelemetryMath.weightedAverage(samples: points, endingAt: end, windowMinutes: Double(minutes))?.coverageFraction ?? 0
   let meanCandidates = points.filter {
    guard $0.date >= start, $0.date <= end, let watts = $0.watts else { return false }
    return watts.isFinite && watts >= 0
   }
   let meanSamples = Self.meanQueryRecords(meanCandidates, end: end)
+  records = meanSamples
   let values = meanSamples.compactMap(\.watts)
   if let first = meanSamples.first, let last = meanSamples.last { averageDateRange = first.date...last.date }
   else { averageDateRange = nil }
@@ -105,6 +125,7 @@ struct PowerConsumptionView: View {
  let reading: BatteryReading?
  let history: [HistoryPoint]
  @State private var minutes = 15
+ @State private var pointerFraction: CGFloat?
 
  var body: some View {
   let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: minutes)
@@ -114,7 +135,7 @@ struct PowerConsumptionView: View {
      Text(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟", comment: ""), Int64(value))).tag(value)
     }
    }.pickerStyle(.segmented)
-   if data.intervals.isEmpty {
+   if data.records.isEmpty {
     Text(NSLocalizedString("记录系统负载后，功耗曲线将在这里显示。", comment: "")).font(.caption).presentationSecondary()
    } else {
     graph(data)
@@ -129,12 +150,12 @@ struct PowerConsumptionView: View {
    valueRow(label: NSLocalizedString("按平均负载估算续航", comment: ""), value: duration(data.averageMinutes))
    valueRow(label: DashboardSpecification.timeToEmpty.title, value: BatterySpecificationFormatter.value(.timeToEmpty, reading: reading))
    Text(NSLocalizedString("续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗为记录值平均，不是时间加权值；覆盖率单独反映有效观测时长。", comment: ""))
-    .font(.caption).presentationSecondary()
+    .font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
   }
  }
 
  private func graph(_ data: PowerConsumptionSnapshot) -> some View {
-  let loads = data.intervals.map(\.watts)
+  let loads = data.records.compactMap(\.watts)
   let range = data.plotRange
   let spanY = range.upperBound - range.lowerBound
   func y(_ watts: Double, height: CGFloat) -> CGFloat {
@@ -147,27 +168,54 @@ struct PowerConsumptionView: View {
     }.font(.caption2.monospacedDigit()).presentationSecondary()
     GeometryReader { geometry in
      ZStack(alignment: .topLeading) {
+     let dates = data.plotDates
+     let span = dates.upperBound.timeIntervalSince(dates.lowerBound)
+     let width = geometry.size.width
+     let height = geometry.size.height
+     let positions = data.records.map { sample in
+      CGPoint(x: sample.date.timeIntervalSince(dates.lowerBound) / span * width,
+       y: y(sample.watts ?? 0, height: height))
+     }
      Path { path in
-      let span = data.end.timeIntervalSince(data.start)
-      var previousEnd: Date?
-      for interval in data.intervals {
-       let positionY = y(interval.watts, height: geometry.size.height)
-       let start = CGPoint(x: interval.start.timeIntervalSince(data.start) / span * geometry.size.width, y: positionY)
-       if previousEnd == interval.start { path.addLine(to: start) }
-       else { path.move(to: start) }
-       previousEnd = interval.end
-       path.addLine(to: CGPoint(x: interval.end.timeIntervalSince(data.start) / span * geometry.size.width, y: positionY))
+      for index in positions.indices {
+       if index > 0 && data.connects(data.records[index - 1].date, data.records[index].date) {
+        path.addLine(to: positions[index])
+       } else { path.move(to: positions[index]) }
       }
      }.stroke(PresentationPalette.mint, lineWidth: 2)
+     // Isolated observations stay visible without inventing a connecting line.
+     ForEach(positions.indices, id: \.self) { index in
+      Circle().fill(PresentationPalette.mint).frame(width: 3, height: 3)
+       .position(positions[index])
+     }
      if let average = data.average, let dates = data.averageDateRange {
       Path { path in
        let positionY = y(average.watts, height: geometry.size.height)
-       let span = data.end.timeIntervalSince(data.start)
-       let firstX = dates.lowerBound.timeIntervalSince(data.start) / span * geometry.size.width
-       let lastX = dates.upperBound.timeIntervalSince(data.start) / span * geometry.size.width
+       let domain = data.plotDates
+       let span = domain.upperBound.timeIntervalSince(domain.lowerBound)
+       let firstX = dates.lowerBound.timeIntervalSince(domain.lowerBound) / span * geometry.size.width
+       let lastX = dates.upperBound.timeIntervalSince(domain.lowerBound) / span * geometry.size.width
        path.move(to: CGPoint(x: firstX, y: positionY))
        path.addLine(to: CGPoint(x: lastX, y: positionY))
       }.stroke(Color.orange, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+     }
+     GraphPointerSurface { x in
+      pointerFraction = x.flatMap { width > 0 ? min(1, max(0, $0 / width)) : nil }
+     }
+     if let fraction = pointerFraction,
+        let index = GraphInspection.nearestIndex(dates: data.records.map(\.date), domain: dates,
+          width: width, x: fraction * width) {
+      let point = positions[index]
+      Path { path in
+       path.move(to: CGPoint(x: point.x, y: 0)); path.addLine(to: CGPoint(x: point.x, y: height))
+      }.stroke(Color.secondary, style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+       .allowsHitTesting(false)
+      Circle().fill(PresentationPalette.mint).frame(width: 7, height: 7).position(point)
+       .allowsHitTesting(false)
+      GraphInspectionCallout(date: data.records[index].date, value: watts(data.records[index].watts),
+       secondary: data.average.map { NSLocalizedString("窗口平均", comment: "") + " " + watts($0.watts) })
+       .frame(width: max(0, width - 12), height: height, alignment: point.x > width / 2 ? .topTrailing : .topLeading)
+       .padding(.horizontal, 6)
      }
      }
     }
@@ -183,7 +231,7 @@ struct PowerConsumptionView: View {
     Spacer()
    }.font(.caption2).presentationSecondary()
    HStack {
-    Text(data.start, style: .time); Spacer(); Text(data.end, style: .time)
+    Text(data.plotDates.lowerBound, style: .time); Spacer(); Text(data.plotDates.upperBound, style: .time)
    }.font(.caption2.monospacedDigit()).presentationSecondary()
   }.accessibilityElement(children: .ignore)
    .accessibilityLabel(Text(NSLocalizedString("系统负载曲线", comment: "")))

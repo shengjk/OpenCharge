@@ -14,7 +14,11 @@ import ChargeHardware
  precondition(data.intervals.map(\.watts) == [5, 20, 15])
  precondition(data.intervals.map { $0.end.timeIntervalSince($0.start) } == [60, 90, 30])
  precondition(abs((data.average?.watts ?? 0) - 35.0 / 3) < 0.00001 && data.average?.sampleCount == 3 && data.average?.coverageFraction == 0.6)
- precondition(data.plotRange.lowerBound == 5 && data.plotRange.upperBound == 23)
+ precondition(data.plotRange.lowerBound == 10 && data.plotRange.upperBound == 16)
+ precondition(data.records.compactMap(\.watts) == [15, 10, 10])
+ precondition(data.plotDates == (end.addingTimeInterval(-30)...end))
+ precondition(data.connects(end.addingTimeInterval(-30), end))
+ precondition(!data.connects(end.addingTimeInterval(-150), end))
  precondition(data.averageDateRange == (end.addingTimeInterval(-30)...end))
  // Query records preserve changes and plateau endpoints; they are not every observation.
  var plateauReading = reading; plateauReading.systemPowerW = 20
@@ -29,6 +33,9 @@ import ChargeHardware
  let changing = PowerConsumptionSnapshot(reading:plateauReading,
   history:[point(-180,5),point(-120,10),point(-60,15)],minutes:5)
  precondition(changing.average?.watts == 16.25 && changing.average?.sampleCount == 4)
+ let continuousPlateau = PowerConsumptionSnapshot(reading: plateauReading,
+  history: stride(from: -270, through: -30, by: 30).map { point(Double($0), $0 < -240 ? 5 : 10) }, minutes: 5)
+ precondition(continuousPlateau.connects(end.addingTimeInterval(-240), end))
  let constant = PowerConsumptionSnapshot(reading:reading,
   history:[point(-180,10),point(-120,10),point(-60,10)],minutes:5)
  precondition(constant.average?.watts == 10 && constant.average?.sampleCount == 1)
@@ -69,5 +76,6 @@ import ChargeHardware
   view.layoutSubtreeIfNeeded()
   precondition(view.fittingSize.width > 0 && view.fittingSize.height > 0)
  }
- print("PASS dashboard power intervals, coverage gaps, query-record averages with plateau endpoints/query seed/final record, independent time coverage, current/average runtime, known nominal voltage precedence, dynamic/flat plot bounds, hour/minute duration boundaries, absent sensors and voltage fallback")
+ graphInspectionChecks()
+ print("PASS dashboard power intervals, coverage gaps, query-record averages with plateau endpoints/query seed/final record, independent time coverage, current/average runtime, known nominal voltage precedence, query-record plot bounds/domain and coverage-aware connections, dynamic/flat plot bounds, hour/minute duration boundaries, absent sensors and voltage fallback")
 }
