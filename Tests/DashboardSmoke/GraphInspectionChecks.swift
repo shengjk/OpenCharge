@@ -25,10 +25,10 @@ import SwiftUI
  let trend = TrendPlot(samples: [TrendSample(date: first, percent: 55, limit: 80),
   TrendSample(date: first.addingTimeInterval(30), percent: 54),
   TrendSample(date: last, percent: 56, limit: 75)], size: CGSize(width: 200, height: 100))
- precondition(trend.inspectionSamples.map(\.date) == trend.samples.map(\.date))
+ precondition(trend.inspectionSamples.map(\.date) == trend.chargeSamples.map(\.date))
  precondition(trend.inspectionSamples.map(\.position) == trend.charge)
- precondition(trend.inspectionSamples[0].value == TrendPlot.accessiblePercent(55))
- precondition(trend.inspectionSamples[0].secondary?.contains("80.0%") == true && trend.inspectionSamples[1].secondary == nil)
+ precondition(trend.inspectionSamples[0].value == TrendPlot.accessiblePercent(56))
+ precondition(trend.inspectionSamples.count == 1 && trend.inspectionSamples[0].secondary?.contains("75.0%") == true)
  func surfaces(_ view: NSView) -> [GraphPointerView] {
   (view as? GraphPointerView).map { [$0] } ?? view.subviews.flatMap(surfaces)
  }

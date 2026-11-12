@@ -75,8 +75,8 @@ class LegacyTrendAccessibilityView: NSView {
   return next
  }
  fileprivate func readingFrame(_ index: Int) -> NSRect {
-  guard plot.charge.indices.contains(index) else { return .zero }
-  let point = plot.charge[index]
+  guard plot.observationPositions.indices.contains(index) else { return .zero }
+  let point = plot.observationPositions[index]
   // The rendered plot starts after the 38-point Y axis and 6-point gap.
   let local = NSRect(x: 44 + point.x - 3, y: point.y - 3, width: 6, height: 6)
   guard let window else { return .zero }
@@ -118,8 +118,8 @@ final class AudioTrendAccessibilityView: LegacyTrendAccessibilityView, AXChart {
   set { descriptor = newValue }
  }
  private func makeDescriptor() -> AXChartDescriptor? {
-  let origin = plot.domain.lowerBound
-  let span = plot.domain.upperBound.timeIntervalSince(origin)
+  let origin = plot.observationDomain.lowerBound
+  let span = plot.observationDomain.upperBound.timeIntervalSince(origin)
   guard !plot.samples.isEmpty, span.isFinite, span > 0 else { return nil }
   let xAxis = AXNumericDataAxisDescriptor(title: NSLocalizedString("时间", comment: ""), range: 0...span, gridlinePositions: []) { seconds in
    guard seconds.isFinite else { return NSLocalizedString("未知", comment: "") }

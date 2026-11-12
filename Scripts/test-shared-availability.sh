@@ -39,7 +39,7 @@ for TEST_ARCH in arm64 x86_64; do
   -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
   Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/SelectableStatusText.swift Sources/OpenCharge/Components.swift \
   Sources/OpenCharge/PowerFlowConnections.swift Sources/OpenCharge/PowerFlowArrows.swift Sources/OpenCharge/PowerFlowView.swift \
-  Sources/OpenCharge/GraphInspection.swift Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift Sources/OpenCharge/LegacyTrendAccessibility.swift \
+  Sources/OpenCharge/GraphQueryRecords.swift Sources/OpenCharge/GraphInspection.swift Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift Sources/OpenCharge/LegacyTrendAccessibility.swift \
   Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
   -o "$BUILD_DIR/$TEST_ARCH/PresentationCompatibility.swiftmodule"
  swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -emit-module -module-name FullAppAvailability \
@@ -65,7 +65,7 @@ VERIFY
  OPENCHARGE_ICON_PREVIEW_DIR="" /usr/bin/arch "-$TEST_ARCH" "$BUILD_DIR/$TEST_ARCH/automation-check"
  swiftc -target "$TRIPLE" -parse-as-library -warnings-as-errors -I "$BUILD_DIR/$TEST_ARCH" -I "$BUILD_DIR/ApplePowerConstants" \
   Sources/OpenCharge/PresentationCompatibility.swift Sources/OpenCharge/SelectableStatusText.swift Sources/OpenCharge/PowerFlowConnections.swift \
-  Sources/OpenCharge/GraphInspection.swift Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift Sources/OpenCharge/LegacyTrendAccessibility.swift \
+  Sources/OpenCharge/GraphQueryRecords.swift Sources/OpenCharge/GraphInspection.swift Sources/OpenCharge/TrendPlot.swift Sources/OpenCharge/LegacyTrendChart.swift Sources/OpenCharge/LegacyTrendAccessibility.swift \
   Sources/OpenCharge/HistoryPoint.swift Sources/OpenCharge/TrendChart.swift \
   Tests/DashboardSmoke/PowerFlowConnectionChecks.swift Tests/DashboardSmoke/TrendPlotChecks.swift Tests/DashboardSmoke/TrendAccessibilityChecks.swift Tests/DashboardSmoke/SelectableTextChecks.swift Tests/PresentationAvailability/main.swift \
   "$BUILD_DIR/$TEST_ARCH/libChargeCore.a" "$BUILD_DIR/$TEST_ARCH/libChargeHardware.a" \

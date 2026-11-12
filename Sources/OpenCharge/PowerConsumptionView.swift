@@ -93,24 +93,8 @@ struct PowerConsumptionSnapshot {
  /// the new observation, and the last accepted record is appended at completion.
  /// Missing data remains unavailable rather than creating a synthetic zero.
  static func meanQueryRecords(_ samples: [PowerSample], end: Date) -> [PowerSample] {
-  guard end.timeIntervalSinceReferenceDate.isFinite else { return [] }
-  var previous = PowerSample(date:end,watts:0)
-  var accepted = false
-  var records: [PowerSample] = []
-  for sample in samples {
-   guard sample.date.timeIntervalSinceReferenceDate.isFinite, sample.date <= end,
-         let watts = sample.watts, watts.isFinite, watts >= 0 else { continue }
-   if watts != previous.watts {
-    if let last = records.last, previous.date.timeIntervalSince(last.date) > 0 {
-     records.append(previous)
-    } else if sample.date.timeIntervalSince(previous.date) > 0 {
-     records.append(sample)
-    }
-   }
-   previous = sample; accepted = true
-  }
-  if accepted { records.append(previous) }
-  return records
+  GraphQueryRecords.project(samples.filter { ($0.watts ?? -1) >= 0 }, endingAt: end,
+   spacing: 0, date: { $0.date }, value: { $0.watts ?? .nan })
  }
 }
 

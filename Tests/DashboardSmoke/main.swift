@@ -5,6 +5,7 @@ import ChargeHardware
 @main struct DashboardSmoke {
  @MainActor static func main() async throws {
   selectableTextChecks()
+  graphQueryChecks()
   trendPlotChecks()
   trendAccessibilityChecks()
   powerFlowConnectionChecks()

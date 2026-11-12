@@ -67,13 +67,21 @@ struct BatteryStatisticPlot {
   }
   let ordered = byDate.sorted { $0.key < $1.key }
   var samples: [Sample] = []
-  var previous: Date?
-  for point in ordered {
-   guard let value = point.value else { previous = nil; continue }
-   let startsSegment = previous.map { metric == .temperature && point.key.timeIntervalSince($0) > TelemetryMath.powerSampleMaxAgeSeconds } ?? true
-   samples.append(Sample(date: point.key, value: value, startsSegment: startsSegment))
-   previous = point.key
+  var run: [(date: Date, value: Double)] = []
+  func finishRun() {
+   let records = GraphQueryRecords.project(run, endingAt: end, spacing: 10,
+    date: { $0.date }, value: { $0.value })
+   samples += records.enumerated().map { Sample(date: $0.element.date,
+    value: $0.element.value, startsSegment: $0.offset == 0) }
+   run.removeAll(keepingCapacity: true)
   }
+  for point in ordered {
+   guard let value = point.value else { finishRun(); continue }
+   if metric == .temperature, let previous = run.last,
+      point.key.timeIntervalSince(previous.date) > TelemetryMath.powerSampleMaxAgeSeconds { finishRun() }
+   run.append((point.key, value))
+  }
+  finishRun()
   self.samples = samples
   minimum = samples.map(\.value).min(); maximum = samples.map(\.value).max()
   let range = GraphValueRange.range(samples.map(\.value))

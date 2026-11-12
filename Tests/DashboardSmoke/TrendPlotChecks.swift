@@ -16,20 +16,33 @@ func trendPlotChecks() {
  precondition(singleton.charge == [CGPoint(x: 300, y: 50)])
  precondition(singleton.limits.count == 1 && !singleton.linePath.isEmpty)
  precondition(singleton.domain.lowerBound == origin.addingTimeInterval(-30) && singleton.domain.upperBound == origin.addingTimeInterval(30))
- let mixed = plot([sample(120, 100, 90), sample(0, 0, 80), sample(60, 50)])
- precondition(mixed.samples.map(\.percent) == [0, 50, 100])
- precondition(mixed.charge == [CGPoint(x: 0, y: 200), CGPoint(x: 300, y: 100), CGPoint(x: 600, y: 0)])
- precondition(mixed.limits.count == 2 && mixed.limits[0].x == 0 && mixed.limits[1].x == 600)
- precondition(mixed.tickDates == [origin, origin.addingTimeInterval(60), origin.addingTimeInterval(120)])
+ let future = TrendPlot(samples: [sample(0,20,80),sample(60,30,85),sample(120,40,90)],
+  size: CGSize(width:600,height:200), endingAt: origin.addingTimeInterval(60))
+ precondition(future.samples.count == 3 && future.chargeSamples.map(\.date) == [origin.addingTimeInterval(60)])
+ precondition(future.limitSamples.compactMap(\.limit) == [85], "a clock rollback must not plot future charge or limit observations")
+ let futureOnly = TrendPlot(samples: [sample(120,40,90)], size: CGSize(width:600,height:200), endingAt: origin)
+ precondition(futureOnly.charge.isEmpty && futureOnly.limits.isEmpty && futureOnly.samples.count == 1)
+ let dense = plot([sample(0, 0, 80), sample(60, 50), sample(120, 100, 90)])
+ precondition(dense.samples.count == 3 && dense.chargeSamples.map(\.percent) == [100])
+ precondition(dense.domain == origin.addingTimeInterval(90)...origin.addingTimeInterval(150))
+ precondition(dense.observationPositions.map(\.x) == [0,300,600])
+ let mixed = plot([sample(720, 50, 70), sample(0, 20, 80), sample(240, 30, 80), sample(480, 40, 90)])
+ precondition(mixed.samples.map(\.percent) == [20,30,40,50])
+ precondition(mixed.chargeSamples.map(\.percent) == [30,40,50,50])
+ precondition(mixed.limitSamples.compactMap(\.limit) == [90,70,70])
+ precondition(mixed.domain == origin.addingTimeInterval(240)...origin.addingTimeInterval(720))
+ precondition(mixed.tickDates == [origin.addingTimeInterval(240),origin.addingTimeInterval(480),origin.addingTimeInterval(720)])
  let duplicate = plot([sample(0, 20), sample(0, 80), sample(60, 40)])
- precondition(duplicate.samples.count == 3 && duplicate.charge[0].x == duplicate.charge[1].x)
- precondition(duplicate.charge[0].y == 160 && abs(duplicate.charge[1].y - 40) < 0.00001)
+ precondition(duplicate.samples.count == 3 && duplicate.chargeSamples.map(\.percent) == [40])
+ precondition(duplicate.observationPositions[0].x == duplicate.observationPositions[1].x)
+ precondition(duplicate.observationPositions[0].y == 160 && abs(duplicate.observationPositions[1].y - 40) < 0.00001)
  var limitVertices: [CGPoint] = []
  mixed.limitPath.cgPath.applyWithBlock {
   precondition($0.pointee.type == .moveToPoint || $0.pointee.type == .addLineToPoint)
   limitVertices.append($0.pointee.points[0])
  }
- let expectedLimits = [mixed.limits[0], CGPoint(x: mixed.limits[1].x, y: mixed.limits[0].y), mixed.limits[1]]
+ let expectedLimits = [mixed.limits[0], CGPoint(x: mixed.limits[1].x, y: mixed.limits[0].y), mixed.limits[1],
+  CGPoint(x: mixed.limits[2].x, y: mixed.limits[1].y), mixed.limits[2]]
  precondition(limitVertices.count == expectedLimits.count)
  precondition(zip(limitVertices, expectedLimits).allSatisfy { pair in
   abs(pair.0.x - pair.1.x) < 0.001 && abs(pair.0.y - pair.1.y) < 0.001
@@ -37,7 +50,7 @@ func trendPlotChecks() {
  let invalid = plot([sample(0, .nan), sample(1, 20, .infinity), sample(2, -5, -10), sample(3, 120, 150),
   TrendSample(date: Date(timeIntervalSinceReferenceDate: .infinity), percent: 10)])
  precondition(invalid.samples.count == 3 && invalid.charge.allSatisfy { (0...200).contains($0.y) })
- precondition(invalid.limits.count == 2 && invalid.limits[0].y == 200 && invalid.limits[1].y == 0)
+ precondition(invalid.limits.count == 1 && invalid.limits[0].y == 0)
  for size in [CGSize.zero, CGSize(width: -1, height: 20), CGSize(width: CGFloat.infinity, height: 10), CGSize(width: 10, height: CGFloat.nan)] {
   let invalidSize = plot([sample(0, 10), sample(1, 20)], size: size)
   precondition(invalidSize.charge.isEmpty && invalidSize.limits.isEmpty && invalidSize.linePath.isEmpty)
@@ -62,8 +75,9 @@ func trendPlotChecks() {
  }
  checkStraightPath(duplicate)
  let week = plot((0..<10080).map { sample(Double($0) * 60, Double($0 % 101), $0 % 2 == 0 ? 80 : nil) })
- precondition(week.charge.count == 10080 && week.limits.count == 5040,
-  "the fallback must keep the full stored history rather than silently downsample")
+ precondition(week.samples.count == 10080 && week.observationPositions.count == 10080)
+ precondition(week.charge.count == 1 && week.limits.count == 1,
+  "dense changes without an initial spacing gap retain the final actual record; full observations remain available to accessibility")
  checkStraightPath(week)
  try! writeTrendGeometryPreview()
  print("PASS legacy trend projection: full history, time scale, duplicates, unknown limits, invalid data/layout and \(evaluated) actual straight path elements; no UI or hardware")

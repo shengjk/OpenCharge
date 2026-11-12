@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.85
+
+- Share query-time change and endpoint selection across power, temperature, capacity, cycles and both charge-trend renderers. Apply strict minimum intervals of 0 seconds for power, 10 seconds for statistics and 180 seconds for charge/limit records, with the previous plateau endpoint and final-record rules.
+- Project charge and recorded-limit series independently, excluding observations newer than the captured query time after a clock rollback. Use the projected primary dates for the displayed time range and nearest-record inspection; show a marker for a single visible charge timestamp.
+- Preserve every stored observation, CSV export and the complete legacy accessibility history. Keep explicit missing-value breaks and unavailable empty queries; no synthetic zero observation is created.
+- Verify interval equality, short dense windows, plateau changes, duplicate timestamps, final duplicate records and archive compaction equivalence, alongside dashboard and native geometry checks. Persisted average/instant mode selection, logger cadence and physical parity remain in progress.
+
 ## 0.3.84
 
 - Use straight charge-trend segments and stepped recorded-limit changes on native and legacy charts. Show the last 24 hours in the overview; retain fixed percentage bounds and use observed statistic bounds with upper headroom.

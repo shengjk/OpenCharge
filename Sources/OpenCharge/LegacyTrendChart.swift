@@ -3,11 +3,12 @@ import ChargeCore
 
 struct LegacyTrendChart: View {
  var samples: [TrendSample]
+ var endingAt: Date? = nil
  var body: some View {
   GeometryReader { geometry in
    let width = max(0, geometry.size.width - 44)
    let height = max(0, geometry.size.height - 32)
-   let plot = TrendPlot(samples: samples, size: CGSize(width: width, height: height))
+   let plot = TrendPlot(samples: samples, size: CGSize(width: width, height: height), endingAt: endingAt)
    ZStack(alignment: .topLeading) {
     VStack(spacing: 6) {
      HStack(spacing: 6) {
@@ -18,7 +19,7 @@ struct LegacyTrendChart: View {
        area(plot.charge, height: height).fill(PresentationPalette.mint.opacity(0.12))
        plot.linePath.stroke(PresentationPalette.mint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
        plot.limitPath.stroke(Color.orange, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-       if plot.charge.count == 1, let point = plot.charge.first {
+       if let point = plot.charge.first, plot.chargeSamples.first?.date == plot.chargeSamples.last?.date {
         Circle().fill(PresentationPalette.mint).frame(width: 5, height: 5).position(point)
        }
        GraphInspectionOverlay(samples: plot.inspectionSamples, size: plot.size)

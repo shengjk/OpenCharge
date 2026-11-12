@@ -10,21 +10,25 @@ enum TrendWindow {
 
 struct TrendChart: View {
  var points: [HistoryPoint]
+ let endingAt: Date
+ init(points: [HistoryPoint], endingAt: Date = Date()) { self.points = points; self.endingAt = endingAt }
  var body: some View {
   if points.isEmpty {
    return AnyView(Text(NSLocalizedString("开始记录后，电量趋势将在这里显示。", comment: "")).presentationSecondary().frame(maxWidth: .infinity, maxHeight: .infinity))
   }
-  if #available(macOS 13, *) { return AnyView(NativeTrendChart(points: points)) }
-  return AnyView(LegacyTrendChart(samples: points.map { TrendSample(date: $0.date, percent: $0.percent, limit: $0.limit) }))
+  if #available(macOS 13, *) { return AnyView(NativeTrendChart(points: points, endingAt: endingAt)) }
+  return AnyView(LegacyTrendChart(samples: points.map { TrendSample(date: $0.date, percent: $0.percent, limit: $0.limit) }, endingAt: endingAt))
  }
 }
 
 @available(macOS 13, *)
 private struct NativeTrendChart: View {
  var points: [HistoryPoint]
+ let endingAt: Date
  var body: some View {
-  let plot = TrendPlot(samples: points.map { TrendSample(date: $0.date, percent: $0.percent, limit: $0.limit) }, size: CGSize(width: 1, height: 1))
-  Chart(Array(plot.samples.enumerated()), id: \.offset) { entry in
+  let plot = TrendPlot(samples: points.map { TrendSample(date: $0.date, percent: $0.percent, limit: $0.limit) }, size: CGSize(width: 1, height: 1), endingAt: endingAt)
+  Chart {
+   ForEach(Array(plot.chargeSamples.enumerated()), id: \.offset) { entry in
    let sample = entry.element
    AreaMark(x: .value(NSLocalizedString("时间", comment: ""), sample.date),
     y: .value(NSLocalizedString("电量", comment: ""), sample.percent))
@@ -33,11 +37,20 @@ private struct NativeTrendChart: View {
     y: .value(NSLocalizedString("电量", comment: ""), sample.percent),
     series: .value(NSLocalizedString("类型", comment: ""), NSLocalizedString("电量", comment: "")))
     .foregroundStyle(PresentationPalette.mint).interpolationMethod(.linear)
-   if let limit = sample.limit, limit.isFinite {
+   }
+   ForEach(Array(plot.limitSamples.enumerated()), id: \.offset) { entry in
+    let sample = entry.element
+    if let limit = sample.limit, limit.isFinite {
     LineMark(x: .value(NSLocalizedString("时间", comment: ""), sample.date),
      y: .value(NSLocalizedString("上限", comment: ""), limit),
      series: .value(NSLocalizedString("类型", comment: ""), NSLocalizedString("上限", comment: "")))
      .foregroundStyle(.orange).interpolationMethod(.stepEnd).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+   }
+   }
+   if let sample = plot.chargeSamples.first, sample.date == plot.chargeSamples.last?.date {
+    PointMark(x: .value(NSLocalizedString("时间", comment: ""), sample.date),
+     y: .value(NSLocalizedString("电量", comment: ""), sample.percent))
+     .foregroundStyle(PresentationPalette.mint).symbolSize(20)
    }
   }.chartYScale(domain: 0...100).chartXScale(domain: plot.domain)
    .chartXAxis {
@@ -51,7 +64,7 @@ private struct NativeTrendChart: View {
    .chartOverlay { proxy in
     GeometryReader { geometry in
      let frame = geometry[proxy.plotAreaFrame]
-     let samples = plot.samples.compactMap { sample -> GraphInspectionSample? in
+     let samples = plot.chargeSamples.compactMap { sample -> GraphInspectionSample? in
       guard let x = proxy.position(forX: sample.date),
             let y = proxy.position(forY: sample.percent) else { return nil }
       return GraphInspectionSample(date: sample.date, position: CGPoint(x: x, y: y),

@@ -112,9 +112,9 @@ struct GraphInspectionOverlay: View {
 
 extension TrendPlot {
  var inspectionSamples: [GraphInspectionSample] {
-  guard charge.count == samples.count else { return [] }
-  return samples.indices.map { index in
-   let sample = samples[index]
+  guard charge.count == chargeSamples.count else { return [] }
+  return chargeSamples.indices.map { index in
+   let sample = chargeSamples[index]
    return GraphInspectionSample(date: sample.date, position: charge[index],
     value: Self.accessiblePercent(sample.percent),
     secondary: sample.limit.flatMap { value in

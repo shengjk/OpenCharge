@@ -75,6 +75,26 @@ private final class ArchiveReadCounter: @unchecked Sendable {
  let compact = try dense.load(hours: 8640, endingAt: end, compactFor: .cycles)
  precondition(compact.count == 2 && compact.first?.date == steady.first?.date && compact.last?.date == end)
  precondition(try! dense.load(hours: 8640, endingAt: end).count == 10_081)
+ // The archive's endpoint compaction must preserve the later spacing projection,
+ // including query seeds, NULL breaks and recent in-memory overlap.
+ let changingArchive = BatteryStatisticArchive(url: root.appendingPathComponent("changing.sqlite3"))
+ let changing = (0..<300).map { index in
+  point(Double(index - 300) * 7, health: index % 23 == 0 ? nil : 96 + Double(index / 9),
+   cycles: index % 29 == 0 ? nil : 120 + index / 11,
+   capacity: index % 31 == 0 ? nil : 4400 + Double(index / 13))
+ }
+ try changingArchive.append(point(0), migrating: changing)
+ let uncompressed = try changingArchive.load(hours: 24, endingAt: end)
+ for metric in [BatteryStatistic.health, .fullCapacity, .cycles] {
+  let reduced = try changingArchive.load(hours: 24, endingAt: end, compactFor: metric)
+  for recent in [Array(changing.suffix(20)), []] {
+   let completePlot = BatteryStatisticPlot(points: recent, metric: metric, hours: 24, end: end, archived: uncompressed)
+   let reducedPlot = BatteryStatisticPlot(points: recent, metric: metric, hours: 24, end: end, archived: reduced)
+   precondition(completePlot.samples.map(\.date) == reducedPlot.samples.map(\.date))
+   precondition(completePlot.samples.map(\.value) == reducedPlot.samples.map(\.value))
+   precondition(completePlot.samples.map(\.startsSegment) == reducedPlot.samples.map(\.startsSegment))
+  }
+ }
  for (name, sql) in [
   ("future", "PRAGMA user_version=999; PRAGMA application_id=1329817683;"),
   ("foreign", "CREATE TABLE other(value INTEGER); INSERT INTO other VALUES(42);")] {
