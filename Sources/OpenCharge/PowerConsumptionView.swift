@@ -20,6 +20,16 @@ struct PowerConsumptionSnapshot {
  let currentWatts: Double?
  let currentMinutes: Double?
  let averageMinutes: Double?
+ let averageDateRange: ClosedRange<Date>?
+
+ var plotRange: ClosedRange<Double> {
+  let values = intervals.map(\.watts) + [currentWatts, average?.watts].compactMap { $0 }
+  guard let low = values.min(), let high = values.max() else { return 0...1 }
+  let span = high - low
+  let upper = span > 0 ? low + span * 1.2 : high + max(1, abs(high) * 0.2)
+  if upper.isFinite && upper > low { return low...upper }
+  return 0...max(1, high)
+ }
 
  init(reading: BatteryReading?, history: [HistoryPoint], minutes: Int, end fallbackEnd: Date = Date()) {
   let end = reading?.date ?? fallbackEnd
@@ -44,8 +54,13 @@ struct PowerConsumptionSnapshot {
   // The displayed average counts valid observations in the selected window.
   // Time coverage remains separate, with the same stale-gap rule as the graph.
   let coverage = TelemetryMath.weightedAverage(samples: points, endingAt: end, windowMinutes: Double(minutes))?.coverageFraction ?? 0
-  let values = points.filter { $0.date >= start && $0.date <= end }.compactMap(\.watts)
-   .filter { $0.isFinite && $0 >= 0 }
+  let meanSamples = points.filter {
+   guard $0.date >= start, $0.date <= end, let watts = $0.watts else { return false }
+   return watts.isFinite && watts >= 0
+  }
+  let values = meanSamples.compactMap(\.watts)
+  if let first = meanSamples.first, let last = meanSamples.last { averageDateRange = first.date...last.date }
+  else { averageDateRange = nil }
   var mean = 0.0
   for (index, value) in values.enumerated() { mean += (value - mean) / Double(index + 1) }
   let average = values.isEmpty ? nil : SampleAverage(watts: mean, sampleCount: values.count, coverageFraction: coverage)
@@ -94,34 +109,60 @@ struct PowerConsumptionView: View {
 
  private func graph(_ data: PowerConsumptionSnapshot) -> some View {
   let loads = data.intervals.map(\.watts)
-  let peak = max(1, (loads.max() ?? 0).rounded(.up))
+  let range = data.plotRange
+  let spanY = range.upperBound - range.lowerBound
+  func y(_ watts: Double, height: CGFloat) -> CGFloat {
+   CGFloat(1 - (watts - range.lowerBound) / spanY) * max(0, height - 2) + 1
+  }
   return VStack(spacing: 3) {
    HStack(spacing: 6) {
     VStack {
-     Text(watts(peak)); Spacer(); Text(watts(0))
+     Text(watts(range.upperBound)); Spacer(); Text(watts(range.lowerBound))
     }.font(.caption2.monospacedDigit()).presentationSecondary()
     GeometryReader { geometry in
+     ZStack(alignment: .topLeading) {
      Path { path in
       let span = data.end.timeIntervalSince(data.start)
       var previousEnd: Date?
       for interval in data.intervals {
-       let y = (1 - interval.watts / peak) * max(0, geometry.size.height - 2) + 1
-       let start = CGPoint(x: interval.start.timeIntervalSince(data.start) / span * geometry.size.width, y: y)
+       let positionY = y(interval.watts, height: geometry.size.height)
+       let start = CGPoint(x: interval.start.timeIntervalSince(data.start) / span * geometry.size.width, y: positionY)
        if previousEnd == interval.start { path.addLine(to: start) }
        else { path.move(to: start) }
        previousEnd = interval.end
-       path.addLine(to: CGPoint(x: interval.end.timeIntervalSince(data.start) / span * geometry.size.width, y: y))
+       path.addLine(to: CGPoint(x: interval.end.timeIntervalSince(data.start) / span * geometry.size.width, y: positionY))
       }
      }.stroke(PresentationPalette.mint, lineWidth: 2)
+     if let average = data.average, let dates = data.averageDateRange {
+      Path { path in
+       let positionY = y(average.watts, height: geometry.size.height)
+       let span = data.end.timeIntervalSince(data.start)
+       let firstX = dates.lowerBound.timeIntervalSince(data.start) / span * geometry.size.width
+       let lastX = dates.upperBound.timeIntervalSince(data.start) / span * geometry.size.width
+       path.move(to: CGPoint(x: firstX, y: positionY))
+       path.addLine(to: CGPoint(x: lastX, y: positionY))
+      }.stroke(Color.orange, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+     }
+     }
     }
    }.frame(height: 90)
+   HStack(spacing: 6) {
+    Rectangle().fill(PresentationPalette.mint).frame(width: 18, height: 2)
+    Text(NSLocalizedString("负载曲线", comment: ""))
+    if data.average != nil {
+     Path { path in path.move(to: .zero); path.addLine(to: CGPoint(x: 18, y: 0)) }
+      .stroke(Color.orange, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])).frame(width: 18, height: 2)
+     Text(NSLocalizedString("窗口平均", comment: ""))
+    }
+    Spacer()
+   }.font(.caption2).presentationSecondary()
    HStack {
     Text(data.start, style: .time); Spacer(); Text(data.end, style: .time)
    }.font(.caption2.monospacedDigit()).presentationSecondary()
   }.accessibilityElement(children: .ignore)
    .accessibilityLabel(Text(NSLocalizedString("系统负载曲线", comment: "")))
-   .accessibilityValue(Text(String.localizedStringWithFormat(NSLocalizedString("记录范围 %@ 至 %@", comment: ""),
-    watts(loads.min()), watts(loads.max()))))
+   .accessibilityValue(Text(String.localizedStringWithFormat(NSLocalizedString("记录范围 %@ 至 %@；窗口平均 %@", comment: ""),
+    watts(loads.min()), watts(loads.max()), watts(data.average?.watts))))
  }
 
  private func valueRow(label: String, value: String) -> some View {
@@ -131,11 +172,20 @@ struct PowerConsumptionView: View {
   }.font(.caption)
  }
 
- private func watts(_ value: Double?) -> String { value.map { String(format: "%.1f W", $0) } ?? "—" }
+ private func watts(_ value: Double?) -> String { value.map { String(format: "%.2f W", $0) } ?? "—" }
 
  private func duration(_ value: Double?) -> String {
-  guard let value else { return "—" }
-  if value > 1440 { return NSLocalizedString("超过 24 小时", comment: "") }
-  return String.localizedStringWithFormat(NSLocalizedString("%lld 分钟", comment: ""), Int64(value.rounded()))
+  guard let duration = PowerRuntimeDuration(minutes: value) else { return "—" }
+  return String.localizedStringWithFormat(NSLocalizedString("%lld 小时 %lld 分钟", comment: ""), duration.hours, duration.minutes)
+ }
+}
+
+struct PowerRuntimeDuration {
+ let hours: Int64
+ let minutes: Int64
+ init?(minutes value: Double?) {
+  guard let value, value.isFinite, value >= 0, value < Double(Int64.max) else { return nil }
+  let wholeMinutes = Int64(value)
+  hours = wholeMinutes / 60; minutes = wholeMinutes % 60
  }
 }

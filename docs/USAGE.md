@@ -132,3 +132,7 @@ When automatic discharge is enabled, manual discharge buttons and the manual tar
 开启自动放电后，手动放电按钮和手动目标编辑器会隐藏；充电控制会显示共用的充电上限目标。把充电上限提高到当前电量或更高可停止自动放电。校准期间自动放电暂停，关闭自动放电后重新显示手动控件。
 
 功耗卡片优先采用已知机型的电池标称电压；未知机型依次回退到系统设计电压和当前端电压。窗口平均值按有效样本计算，记录时长覆盖率单独显示。机型电压数据仅用于续航估算，不代表支持该机型的硬件控制。更换电池或实际负载变化仍会影响估算准确度。
+
+The power graph includes a dashed window-average line spanning its valid sample dates. Its vertical range follows the plotted data with upper headroom; flat data uses a nonzero range. Stale/missing load intervals remain blank. Power values show two decimal places, and runtime uses whole hours and minutes without a 24-hour display cutoff.
+
+功耗图的虚线表示窗口平均值，仅延伸到有效样本的日期范围；纵轴随数据范围调整，并在上方留出空间，恒定数据也有非零显示范围。缺失或过期的负载区间仍留空。功耗显示两位小数，续航显示整小时和分钟，不再以“超过 24 小时”代替具体估算。

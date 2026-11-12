@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.78
+
+- Add a dashed average line to the power graph over the actual valid-sample date range, with a legend and an accessible average value.
+- Scale the power graph to its data range with upper headroom; use a nonzero range for flat or empty data.
+- Show power values to two decimal places and runtime as whole hours/minutes, including estimates longer than 24 hours.
+
 ## 0.3.77
 
 - Estimate runtime with known model-specific nominal battery voltage before falling back to system design or measured terminal voltage. Keep estimation data separate from hardware-control capabilities.
