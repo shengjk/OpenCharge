@@ -13,9 +13,26 @@ import ChargeHardware
  let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: 5)
  precondition(data.intervals.map(\.watts) == [5, 20, 15])
  precondition(data.intervals.map { $0.end.timeIntervalSince($0.start) } == [60, 90, 30])
- precondition(data.average?.watts == 15 && data.average?.sampleCount == 3 && data.average?.coverageFraction == 0.6)
+ precondition(abs((data.average?.watts ?? 0) - 35.0 / 3) < 0.00001 && data.average?.sampleCount == 3 && data.average?.coverageFraction == 0.6)
  precondition(data.plotRange.lowerBound == 5 && data.plotRange.upperBound == 23)
- precondition(data.averageDateRange == (end.addingTimeInterval(-150)...end))
+ precondition(data.averageDateRange == (end.addingTimeInterval(-30)...end))
+ // Query records preserve changes and plateau endpoints; they are not every observation.
+ var plateauReading = reading; plateauReading.systemPowerW = 20
+ let repeated = PowerConsumptionSnapshot(reading:plateauReading,
+  history:[point(-120,10),point(-90,10),point(-60,10),point(-30,20)],minutes:5)
+ precondition(repeated.average?.watts == 20 && repeated.average?.sampleCount == 2)
+ precondition(repeated.averageDateRange == (end.addingTimeInterval(-30)...end))
+ let plateauEnd = PowerConsumptionSnapshot(reading:plateauReading,
+  history:[point(-180,5),point(-120,10),point(-90,10),point(-60,20)],minutes:5)
+ precondition(abs((plateauEnd.average?.watts ?? 0) - 40.0 / 3) < 0.00001 && plateauEnd.average?.sampleCount == 3)
+ precondition(plateauEnd.averageDateRange == (end.addingTimeInterval(-120)...end))
+ let changing = PowerConsumptionSnapshot(reading:plateauReading,
+  history:[point(-180,5),point(-120,10),point(-60,15)],minutes:5)
+ precondition(changing.average?.watts == 16.25 && changing.average?.sampleCount == 4)
+ let constant = PowerConsumptionSnapshot(reading:reading,
+  history:[point(-180,10),point(-120,10),point(-60,10)],minutes:5)
+ precondition(constant.average?.watts == 10 && constant.average?.sampleCount == 1)
+ precondition(PowerConsumptionSnapshot(reading:nil,history:[],minutes:5,end:end).average == nil)
  let flat = PowerConsumptionSnapshot(reading: reading, history: [], minutes: 5)
  precondition(flat.plotRange.lowerBound == 10 && flat.plotRange.upperBound == 12)
  var flatZero = reading; flatZero.systemPowerW = 0
@@ -27,7 +44,7 @@ import ChargeHardware
  for value: Double? in [nil, .nan, .infinity, -1, Double(Int64.max)] {
   precondition(PowerRuntimeDuration(minutes: value) == nil)
  }
- precondition(data.currentMinutes == 120 && abs((data.averageMinutes ?? 0) - 80) < 0.00001)
+ precondition(data.currentMinutes == 120 && abs((data.averageMinutes ?? 0) - 1200 / (35.0 / 3)) < 0.00001)
  var noDesign = reading; noDesign.designVoltageMV = nil
  precondition(PowerConsumptionSnapshot(reading: noDesign, history: [], minutes: 5).currentMinutes == 144)
  noDesign.remainingCapacityMAH = nil
@@ -52,5 +69,5 @@ import ChargeHardware
   view.layoutSubtreeIfNeeded()
   precondition(view.fittingSize.width > 0 && view.fittingSize.height > 0)
  }
- print("PASS dashboard power intervals, coverage gaps, sample-counted averages with independent time coverage, current/average runtime, known nominal voltage precedence, dynamic/flat plot bounds, hour/minute duration boundaries, absent sensors and voltage fallback")
+ print("PASS dashboard power intervals, coverage gaps, query-record averages with plateau endpoints/query seed/final record, independent time coverage, current/average runtime, known nominal voltage precedence, dynamic/flat plot bounds, hour/minute duration boundaries, absent sensors and voltage fallback")
 }

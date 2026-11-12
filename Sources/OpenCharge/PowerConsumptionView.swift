@@ -51,13 +51,14 @@ struct PowerConsumptionSnapshot {
    guard let watts = point.watts, watts.isFinite, watts >= 0, left < right else { return nil }
    return Interval(start: left, end: right, watts: watts)
   }
-  // The displayed average counts valid observations in the selected window.
-  // Time coverage remains separate, with the same stale-gap rule as the graph.
+  // Query-record averaging and time coverage are distinct projections.
+  // Keep the original observations for coverage and the gap-aware curve.
   let coverage = TelemetryMath.weightedAverage(samples: points, endingAt: end, windowMinutes: Double(minutes))?.coverageFraction ?? 0
-  let meanSamples = points.filter {
+  let meanCandidates = points.filter {
    guard $0.date >= start, $0.date <= end, let watts = $0.watts else { return false }
    return watts.isFinite && watts >= 0
   }
+  let meanSamples = Self.meanQueryRecords(meanCandidates, end: end)
   let values = meanSamples.compactMap(\.watts)
   if let first = meanSamples.first, let last = meanSamples.last { averageDateRange = first.date...last.date }
   else { averageDateRange = nil }
@@ -72,6 +73,31 @@ struct PowerConsumptionSnapshot {
    voltageMV: reading?.modelNominalVoltageMV ?? reading?.designVoltageMV ?? reading?.voltageMV)
   currentMinutes = TelemetryMath.remainingTimeMinutes(remainingEnergyWH: energy, dischargePowerW: currentWatts)
   averageMinutes = TelemetryMath.remainingTimeMinutes(remainingEnergyWH: energy, dischargePowerW: average?.watts)
+ }
+
+ /// In-window records arrive chronologically. The query-time seed cannot emit
+ /// an older first record. A value change can emit the previous plateau end or
+ /// the new observation, and the last accepted record is appended at completion.
+ /// Missing data remains unavailable rather than creating a synthetic zero.
+ static func meanQueryRecords(_ samples: [PowerSample], end: Date) -> [PowerSample] {
+  guard end.timeIntervalSinceReferenceDate.isFinite else { return [] }
+  var previous = PowerSample(date:end,watts:0)
+  var accepted = false
+  var records: [PowerSample] = []
+  for sample in samples {
+   guard sample.date.timeIntervalSinceReferenceDate.isFinite, sample.date <= end,
+         let watts = sample.watts, watts.isFinite, watts >= 0 else { continue }
+   if watts != previous.watts {
+    if let last = records.last, previous.date.timeIntervalSince(last.date) > 0 {
+     records.append(previous)
+    } else if sample.date.timeIntervalSince(previous.date) > 0 {
+     records.append(sample)
+    }
+   }
+   previous = sample; accepted = true
+  }
+  if accepted { records.append(previous) }
+  return records
  }
 }
 
@@ -102,7 +128,7 @@ struct PowerConsumptionView: View {
    }
    valueRow(label: NSLocalizedString("按平均负载估算续航", comment: ""), value: duration(data.averageMinutes))
    valueRow(label: DashboardSpecification.timeToEmpty.title, value: BatterySpecificationFormatter.value(.timeToEmpty, reading: reading))
-   Text(NSLocalizedString("续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗按有效样本计算，覆盖率单独反映记录时长。", comment: ""))
+   Text(NSLocalizedString("续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗为记录值平均，不是时间加权值；覆盖率单独反映有效观测时长。", comment: ""))
     .font(.caption).presentationSecondary()
   }
  }

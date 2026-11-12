@@ -738,7 +738,7 @@
 
 "开启自动放电后隐藏手动按钮。需要停止自动放电时，请把充电上限提高到当前电量或更高；校准期间自动放电暂停。" = "Manual buttons are hidden while automatic discharge is enabled. To stop automatic discharge, raise the charge limit to the current percentage or higher. Automatic discharge pauses during calibration.";
 
-"续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗按有效样本计算，覆盖率单独反映记录时长。" = "Runtime estimates prefer a known model’s nominal voltage, then system design voltage, and finally current terminal voltage. Average power uses valid samples; coverage separately reports recorded time.";
+"续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗为记录值平均，不是时间加权值；覆盖率单独反映有效观测时长。" = "Runtime estimates prefer a known model’s nominal voltage, then system design voltage, and finally current terminal voltage. Average power is a record-value mean, not a time-weighted value; coverage separately reports valid observation time.";
 
 "负载曲线" = "Load curve";
 

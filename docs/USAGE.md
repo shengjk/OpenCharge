@@ -29,7 +29,7 @@ Command-1 opens the dashboard, Command-2 opens a separate popup preview, Command
 
 Use **Keep Awake** on the dashboard or add it through the menu-bar popover editor. Choose 30 minutes, one hour, three hours, a custom duration from 1 to 1440 minutes, or Until Stopped. Stop it from either view. Charge Control sets the battery floor (20% by default), optional AC-only operation, and whether the display may sleep when the next session starts. This feature blocks idle sleep and works without the helper. Closing the lid or manually sleeping the Mac still uses normal macOS behavior.
 
-Use **Power Consumption and Runtime** on the dashboard to compare current system load with its recent 5-, 15- or 30-minute average. The graph leaves stale or missing intervals blank. Estimates use measured remaining capacity and a known model’s nominal battery voltage, falling back to system design voltage and then measured terminal voltage, to project battery runtime at that load, even while connected to power. The average counts valid samples in the selected window; elapsed-time coverage is reported separately. Model-voltage data does not imply hardware-control support. The macOS estimate is shown separately when available.
+Use **Power Consumption and Runtime** on the dashboard to compare current system load with its recent 5-, 15- or 30-minute average. The graph leaves stale or missing intervals blank. Estimates use measured remaining capacity and a known model’s nominal battery voltage, falling back to system design voltage and then measured terminal voltage, to project battery runtime at that load, even while connected to power. The average uses the historical query’s change/endpoint records, including its final record, rather than counting every observation equally. Query seeding can omit the first observation, and the final append can repeat an endpoint. It is not a time-weighted mean; elapsed-time coverage uses the original valid observations and is reported separately. No valid observations means the average remains unavailable. Model-voltage data does not imply hardware-control support. The macOS estimate is shown separately when available.
 
 ## Menu-bar appearance
 
@@ -131,11 +131,11 @@ When automatic discharge is enabled, manual discharge buttons and the manual tar
 
 开启自动放电后，手动放电按钮和手动目标编辑器会隐藏；充电控制会显示共用的充电上限目标。把充电上限提高到当前电量或更高可停止自动放电。校准期间自动放电暂停，关闭自动放电后重新显示手动控件。
 
-功耗卡片优先采用已知机型的电池标称电压；未知机型依次回退到系统设计电压和当前端电压。窗口平均值按有效样本计算，记录时长覆盖率单独显示。机型电压数据仅用于续航估算，不代表支持该机型的硬件控制。更换电池或实际负载变化仍会影响估算准确度。
+功耗卡片优先采用已知机型的电池标称电压；未知机型依次回退到系统设计电压和当前端电压。窗口平均值使用历史查询的变化／端点记录，并计入收尾记录，不是逐条观测平均，也不是时间加权平均。查询初始化可能省略首条观测，收尾也可能重复端点。时长覆盖率仍按原始有效观测单独计算；没有有效观测时，平均值保持不可用。机型电压数据仅用于续航估算，不代表支持该机型的硬件控制。更换电池或实际负载变化仍会影响估算准确度。
 
-The power graph includes a dashed window-average line spanning its valid sample dates. Its vertical range follows the plotted data with upper headroom; flat data uses a nonzero range. Stale/missing load intervals remain blank. Power values show two decimal places, and runtime uses whole hours and minutes without a 24-hour display cutoff.
+The power graph includes a dashed window-average line spanning the selected average-record dates. Its vertical range follows the plotted data with upper headroom; flat data uses a nonzero range. Stale/missing load intervals remain blank. Power values show two decimal places, and runtime uses whole hours and minutes without a 24-hour display cutoff.
 
-功耗图的虚线表示窗口平均值，仅延伸到有效样本的日期范围；纵轴随数据范围调整，并在上方留出空间，恒定数据也有非零显示范围。缺失或过期的负载区间仍留空。功耗显示两位小数，续航显示整小时和分钟，不再以“超过 24 小时”代替具体估算。
+功耗图的虚线表示窗口平均值，仅延伸到平均值所选记录的日期范围；纵轴随数据范围调整，并在上方留出空间，恒定数据也有非零显示范围。缺失或过期的负载区间仍留空。功耗显示两位小数，续航显示整小时和分钟，不再以“超过 24 小时”代替具体估算。
 
 **System charging status** in Charge Control and the setup wizard reports macOS’s current optimized-charging engagement. “Not currently engaged” does not mean the system setting is off; missing or malformed reports remain unavailable. Check the saved optimization switch and system charge limit in Battery settings. This status is informational and does not change charge-control policy. See [Apple’s charging-settings guide](https://support.apple.com/102338).
 

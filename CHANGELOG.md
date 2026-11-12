@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.81
+
+- Calculate average power and its runtime estimate from change/endpoint query records, including the final-record rule, rather than counting every observation equally.
+- Use the selected record dates for the dashed average line. Keep original history, stale-gap rendering and elapsed-time coverage independent.
+- Keep unavailable averages unknown when there are no valid observations. Add regression fixtures for repeated values, plateau ends, changing values, singleton/empty data and runtime estimates.
+
 ## 0.3.80
 
 - Add `chargectl power-mode status` and explicit `automatic|low|high [battery|ac] --confirm` actions through the existing tri-state helper protocol.
