@@ -747,3 +747,21 @@
 "记录范围 %@ 至 %@；窗口平均 %@" = "Recorded range %@ to %@; window average %@";
 
 "%lld 小时 %lld 分钟" = "%lld h %lld m";
+
+"系统充电状态 · 只读" = "System Charging Status · Read Only";
+
+"系统优化充电" = "System Optimized Charging";
+
+"当前介入" = "Currently Engaged";
+
+"当前未介入" = "Not Currently Engaged";
+
+"系统未提供" = "Not Reported by macOS";
+
+"macOS 报告优化充电正在介入，可能按使用习惯延后充电。" = "macOS reports that optimized charging is engaged and may delay charging based on your routine.";
+
+"此处显示系统当前报告的介入状态；优化充电开关和系统充电上限请在电池设置中确认。" = "This shows the engagement state currently reported by macOS. Check Battery settings for the optimized-charging switch and system charge limit.";
+
+"请从 Apple 菜单手动打开系统电池设置。" = "Open Battery settings manually from the Apple menu.";
+
+"等待读数更新" = "Waiting for a Fresh Reading";

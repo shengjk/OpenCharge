@@ -19,6 +19,20 @@ import ChargeHardware
   check(base.fullCapacityMAH == 4200 && base.nominalCapacityMAH == 4400 && base.healthPercent == 84, "raw and nominal capacities must remain distinct")
   check(base.condition == "Normal" && base.healthCondition == "CheckBattery", "health assessment must not be replaced by a service hint")
   check(base.temperature == 30 && base.registryTemperature == 30 && base.virtualTemperature == 35 && base.temperatureSource == .registry, "registry and virtual sensors must remain distinct")
+  check(base.optimizedChargingEngaged == nil, "missing optimization status is unknown, not disabled")
+  for raw in [NSNumber(value: true), NSNumber(value: false), NSNumber(value: 0), NSNumber(value: 1)] {
+   let value = try decode(properties, source: ["Optimized Battery Charging Engaged": raw])
+   check(value.optimizedChargingEngaged == (raw.doubleValue == 1), "accept explicit IOPS Boolean/0/1 engagement")
+  }
+  for raw: Any in [2, -1, "1", "true", Double.nan, Double.infinity] {
+   let value = try decode(properties, source: ["Optimized Battery Charging Engaged": raw])
+   check(value.optimizedChargingEngaged == nil, "invalid engagement cannot invent a system setting")
+  }
+  let otherHold = try decode(properties.merging(["ChargerData": ["NotChargingReason": 1]]) { _, new in new })
+  check(otherHold.optimizedChargingEngaged == nil, "a generic charging hold is not proof of optimized charging")
+  let engaged = try decode(properties, source: ["Optimized Battery Charging Engaged": 1])
+  let engagedRoundTrip = try JSONDecoder().decode(BatteryReading.self, from: JSONEncoder().encode(engaged))
+  check(engagedRoundTrip.optimizedChargingEngaged == true && engaged.applyingSMCTemperature(31).optimizedChargingEngaged == true, "engagement survives coding and temperature source selection")
   let measured = try decode(properties.merging(["AppleRawCurrentCapacity": 2100, "DesignVoltage": 11000]) { _, new in new })
   check(measured.remainingCapacityMAH == 2100 && measured.hardwarePercent == 50 && measured.designVoltageMV == 11000, "paired raw capacity and design voltage")
   let modeled = try BatteryReader.decode(properties: properties.merging(["DesignVoltage": 12000]) { _, new in new }, source: nil, modelIdentifier: "MacBookPro17,1")
@@ -65,9 +79,9 @@ import ChargeHardware
   let roundTrip = try JSONDecoder().decode(BatteryReading.self, from: data)
   check(roundTrip.temperatureSource == .smc && roundTrip.nominalCapacityMAH == 4400 && roundTrip.healthCondition == "CheckBattery", "new provenance fields must round-trip")
   var legacy = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-  for field in ["temperatureSource", "registryTemperature", "virtualTemperature", "nominalCapacityMAH", "healthCondition", "modelNominalVoltageMV"] { legacy.removeValue(forKey: field) }
+  for field in ["temperatureSource", "registryTemperature", "virtualTemperature", "nominalCapacityMAH", "healthCondition", "modelNominalVoltageMV", "optimizedChargingEngaged"] { legacy.removeValue(forKey: field) }
   let old = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject: legacy))
-  check(old.temperature == 33.5 && old.temperatureSource == nil && old.nominalCapacityMAH == nil && old.modelNominalVoltageMV == nil, "legacy telemetry must decode without inventing provenance")
+  check(old.temperature == 33.5 && old.temperatureSource == nil && old.nominalCapacityMAH == nil && old.modelNominalVoltageMV == nil && old.optimizedChargingEngaged == nil, "legacy telemetry must decode without inventing provenance")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0x21, 0x80]) == 33.5, "signed 8.8 fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0xF5, 0x80]) == -10.5, "negative signed fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "flt ", bytes: [0, 0, 6, 66]) == 33.5, "little-endian float payload")

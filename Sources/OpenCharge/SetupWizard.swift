@@ -68,7 +68,7 @@ struct SetupWizardView: View {
    }
    Card(NSLocalizedString("检查系统充电设置",comment:"")) {
     Text(NSLocalizedString("系统优化充电、系统充电上限和其他电池工具可能同时影响充电。请检查当前设置，再选择你希望使用的管理方式。",comment:""))
-    HStack { Button(NSLocalizedString("打开电池设置",comment:"")) { if let url = URL(string:"x-apple.systempreferences:com.apple.Battery-Settings.extension") { NSWorkspace.shared.open(url) } }; Link(NSLocalizedString("Apple 充电设置说明",comment:""),destination:URL(string:"https://support.apple.com/102338")!) }
+    SystemChargingStatusView(reading: model.reading)
    }
   case 1:
    Card(NSLocalizedString("你多久会外出使用电脑？",comment:"")) {

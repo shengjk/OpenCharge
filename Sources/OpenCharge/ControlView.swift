@@ -36,6 +36,7 @@ struct ControlView: View {
     if m.setChargeLimitFromGUI(value) { m.applyChargeSettingsFromGUI() }
    }.frame(width: 70).disabled(m.config.policy.mode == .calibration || m.settingsLocked).onAppear { limitDraft = String(Int(m.config.policy.limit)) }.onChange(of: m.config.policy.limit) { value in limitDraft = String(Int(value)) }; Text("%"); Spacer() }
   }
+  Card(NSLocalizedString("系统充电状态 · 只读", comment: "")) { SystemChargingStatusView(reading: m.reading) }
   TargetDischargeCard(model:m)
   Card(NSLocalizedString("航行与温度", comment: "")) {
    Toggle(NSLocalizedString("航行模式", comment: ""), isOn: m.chargeSetting(\.sailing)).disabled(m.settingsLocked)

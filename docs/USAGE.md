@@ -136,3 +136,11 @@ When automatic discharge is enabled, manual discharge buttons and the manual tar
 The power graph includes a dashed window-average line spanning its valid sample dates. Its vertical range follows the plotted data with upper headroom; flat data uses a nonzero range. Stale/missing load intervals remain blank. Power values show two decimal places, and runtime uses whole hours and minutes without a 24-hour display cutoff.
 
 功耗图的虚线表示窗口平均值，仅延伸到有效样本的日期范围；纵轴随数据范围调整，并在上方留出空间，恒定数据也有非零显示范围。缺失或过期的负载区间仍留空。功耗显示两位小数，续航显示整小时和分钟，不再以“超过 24 小时”代替具体估算。
+
+**System charging status** in Charge Control and the setup wizard reports macOS’s current optimized-charging engagement. “Not currently engaged” does not mean the system setting is off; missing or malformed reports remain unavailable. Check the saved optimization switch and system charge limit in Battery settings. This status is informational and does not change charge-control policy. See [Apple’s charging-settings guide](https://support.apple.com/102338).
+
+充电控制和设置向导中的“系统充电状态”显示 macOS 当前报告的优化充电介入情况。“当前未介入”并不代表系统开关已关闭；缺失或无效报告显示“系统未提供”。优化充电开关和系统充电上限请在电池设置中确认。此状态仅用于查看，不改变充电控制策略。参见 [Apple 充电设置说明](https://support.apple.com/102338)。
+
+Engagement readings older than 30 seconds, future-dated readings and invalid timestamps show “Waiting for a Fresh Reading”. The display refreshes its freshness state without issuing a hardware command.
+
+超过 30 秒、来自未来或时间无效的介入读数显示“等待读数更新”；显示层定期更新新鲜度状态，不发送硬件控制命令。

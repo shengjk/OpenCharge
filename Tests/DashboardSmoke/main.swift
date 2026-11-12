@@ -9,6 +9,7 @@ import ChargeHardware
   trendAccessibilityChecks()
   powerFlowConnectionChecks()
   powerConsumptionChecks()
+  try systemChargingStatusChecks()
   try batteryStatisticChecks()
   try lowPowerWidgetChecks()
   try energyModeChecks()

@@ -62,6 +62,8 @@ public struct BatteryReading: Codable, Sendable {
     public var designVoltageMV: Double?
     /// Model-table nominal pack voltage for runtime estimation; not a control capability.
     public var modelNominalVoltageMV: Double?
+    /// Current IOPS engagement flag; nil when unavailable. This is not the saved system setting.
+    public var optimizedChargingEngaged: Bool?
 
     public init(date: Date = Date(), percent: Double, temperature: Double? = nil,
                 currentMA: Double? = nil, voltageMV: Double? = nil, cycleCount: Int? = nil,
@@ -76,7 +78,7 @@ public struct BatteryReading: Codable, Sendable {
                 registryTemperature: Double? = nil, virtualTemperature: Double? = nil,
                 nominalCapacityMAH: Double? = nil, healthCondition: String? = nil,
                 remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil,
-                modelNominalVoltageMV: Double? = nil) {
+                modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -93,6 +95,7 @@ public struct BatteryReading: Codable, Sendable {
         self.healthCondition = healthCondition
         self.remainingCapacityMAH = remainingCapacityMAH; self.designVoltageMV = designVoltageMV
         self.modelNominalVoltageMV = modelNominalVoltageMV
+        self.optimizedChargingEngaged = optimizedChargingEngaged
     }
 }
 
@@ -197,6 +200,13 @@ public enum BatteryReader {
             // IOPS documents -1 as calculating; Smart Battery uses 65535 as unavailable.
             valid((source?[key] as? NSNumber)?.doubleValue, 0...65534)
         }
+        // This undocumented IOPS field is also consumed by established monitoring tools.
+        // Accept only explicit Boolean/0/1 reports; missing or malformed data stays unknown.
+        let optimized: Bool?
+        if let value = source?["Optimized Battery Charging Engaged"] as? NSNumber,
+           value.doubleValue == 0 || value.doubleValue == 1 {
+            optimized = value.doubleValue == 1
+        } else { optimized = nil }
         let rawFull = valid(number("AppleRawMaxCapacity"), 1...100000)
         let rawRemaining = rawFull.flatMap { valid(number("AppleRawCurrentCapacity"), 0...$0) }
         let legacyFull = valid(number("MaxCapacity"), 101...100000)
@@ -229,7 +239,8 @@ public enum BatteryReader {
             nominalCapacityMAH: nominal,
             healthCondition: (source?[kIOPSBatteryHealthConditionKey] as? String).flatMap { $0.isEmpty ? nil : $0 },
             remainingCapacityMAH: remaining, designVoltageMV: valid(number("DesignVoltage"), 1...65535),
-            modelNominalVoltageMV: modelIdentifier.flatMap { ModelNominalBatteryVoltage.millivolts(for: $0) })
+            modelNominalVoltageMV: modelIdentifier.flatMap { ModelNominalBatteryVoltage.millivolts(for: $0) },
+            optimizedChargingEngaged: optimized)
     }
 }
 

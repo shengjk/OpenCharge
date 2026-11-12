@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.79
+
+- Show the system’s current optimized-charging engagement in Charge Control and the setup wizard, with separate engaged, not-engaged and unavailable states.
+- Show a waiting state for readings older than 30 seconds or invalid timestamps.
+- Decode the optional IOPS engagement field without inferring the saved system setting or treating a generic charging hold as optimized charging.
+- Keep charging policies and system settings intact; expose the optional telemetry field in JSON and preserve older telemetry decoding.
+
 ## 0.3.78
 
 - Add a dashed average line to the power graph over the actual valid-sample date range, with a legend and an accessible average value.
