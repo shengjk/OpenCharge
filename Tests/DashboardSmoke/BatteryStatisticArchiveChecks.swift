@@ -129,7 +129,7 @@ private final class ArchiveReadCounter: @unchecked Sendable {
  try config.save()
  let modelArchive = BatteryStatisticArchive(url: root.appendingPathComponent("model.sqlite3"))
  let reading = BatteryReading(date: end, percent: 70, connected: false, charging: false)
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no screen lock") },
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no screen lock") },
   readBattery: { reading }, statisticArchive: modelArchive, startupRecoveryRequest: { _ in preconditionFailure("no helper calls") })
  precondition(!FileManager.default.fileExists(atPath: modelArchive.url.path), "disabled recording must not create an archive")
  let errorBefore = model.error, actionBefore = model.decision.action

@@ -30,7 +30,7 @@ private final class ResetManagedDefaults: UserDefaults {
   var c = Configuration(); c.historyEnabled = false; try c.save()
  }
  func model() -> ChargeModel {
-  ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
  }
  func custom(_ m: ChargeModel) {
   m.config.policy.limit = 65; m.config.policy.mode = .calibration
@@ -162,7 +162,7 @@ private final class ResetManagedDefaults: UserDefaults {
  // Busy update work is an independent reset gate, with an entirely injected response.
  try clean()
  let updates = AppUpdates(defaults:defaults,currentVersion:"0.3.40")
- let busyModel = ChargeModel(dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)},appUpdates:updates)
+ let busyModel = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)},appUpdates:updates)
  var continuation: CheckedContinuation<[Data],Error>?
  let job = Task { await updates.check(loadPages:{try await withCheckedThrowingContinuation { continuation = $0 }}) }
  while continuation == nil { await Task.yield() }

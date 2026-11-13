@@ -12,7 +12,7 @@ import ChargeCore
  fixture.policy.keepAwakeUntilLimit = true; fixture.policy.keepAwakeWithLidClosed = true
  fixture.policy.allowDisplaySleep = true; fixture.calibrationCheckpoint = nil
  try fixture.save()
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   screenLockRequest: { preconditionFailure("no locks in thermal-exit fixture") })
  model.inspectSleepInterfaces(request: { command in
   precondition(command == "capabilities")

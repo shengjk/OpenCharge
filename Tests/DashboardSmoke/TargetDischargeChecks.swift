@@ -13,7 +13,7 @@ import ChargeHardware
  var base = Configuration(); base.historyEnabled = false; base.notifications = false; base.systemActionsEnabled = false; try base.save()
  var sample = BatteryReading(percent:80,connected:true,charging:false,physicalAdapterConnected:true)
  var telemetryFails = false, refreshes = 0
- let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{if telemetryFails {throw HelperError.unavailable};return sample})
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{if telemetryFails {throw HelperError.unavailable};return sample})
  func bytes() throws -> Data { try JSONSerialization.data(withJSONObject:JSONSerialization.jsonObject(with:JSONEncoder().encode(model.config)),options:.sortedKeys) }
  func reject(_ target: Double = 40) throws {
   let before = try bytes(), disk = try Data(contentsOf:Configuration.url)
@@ -62,7 +62,7 @@ import ChargeHardware
  model.evaluatePolicy(ChargeSample(percent:40,temperature:30,connected:true));precondition(model.decision.action == .inhibitCharge)
  let held = try Configuration.load();precondition(held.sailingCheckpoint == true)
  var monitorOnly = held;monitorOnly.hardwareEnabled = false;try monitorOnly.save()
- let restarted = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
+ let restarted = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
  restarted.evaluatePolicy(ChargeSample(percent:39.5,temperature:30,connected:true))
  precondition(restarted.decision.action == .inhibitCharge && restarted.decision.phase == .sailing && !restarted.config.hardwareEnabled,"restart after completion must preserve the hold without starting a new discharge")
  model.config.policy.useHardwarePercent = false

@@ -9,7 +9,7 @@ import ChargeHardware
  defer { try? original.save();PolicyStateRuntime.provider=provider;defaults.removePersistentDomain(forName:suite) }
  var config=Configuration();config.historyEnabled=false;config.notifications=false;config.systemActionsEnabled=false
  config.policy.mode = .calibration;config.calibrationCheckpoint=CalibrationCheckpoint(stage:.draining);try config.save()
- let model=ChargeModel(dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
+ let model=ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
  func reject() throws {
   let data=try Data(contentsOf:Configuration.url),limit=model.config.policy.limit,id=model.config.chargeLimitChangeID
   precondition(!model.setChargeLimitFromGUI(65))

@@ -21,7 +21,7 @@ import ChargeHardware
  }
  var config=Configuration();config.historyEnabled=false;config.notifications=false;config.systemActionsEnabled=false
  config.policy.mode = .calibration;config.calibrationCheckpoint=CalibrationCheckpoint(stage:.draining);try config.save()
- let model=ChargeModel(dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
+ let model=ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
  precondition(model.calibrationPending && model.calibration == .draining)
  var intent=SetChargeModeIntent();intent.mode = .calibration
  _ = try await intent.perform()
@@ -43,7 +43,7 @@ import ChargeHardware
   var planned = Configuration(); planned.historyEnabled=false;planned.notifications=false;planned.systemActionsEnabled=false
   planned.policy.limit=40;planned.policy.departure=Date().addingTimeInterval(60);planned.policy.departureTarget=100
   try planned.save()
-  let dischargeModel=ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:80,connected:true,charging:false)})
+  let dischargeModel=ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:80,connected:true,charging:false)})
   switch entry {
   case 0:
    var request=SetChargeModeIntent();request.mode = .discharge;_ = try await request.perform();dischargeModel.reloadExternalConfiguration()

@@ -42,7 +42,7 @@ import ChargeHardware
  let original = try Configuration.load()
  defer { try? original.save() }
  var config = Configuration(); config.historyEnabled = false; try config.save()
- func model() -> ChargeModel { ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)}) }
+ func model() -> ChargeModel { ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)}) }
  let m = model(), root = NumericRoot(profile:readProfile)
  for old in ["chargeControl:fixture",root.capabilities.replacingOccurrences(of:",firmwarePlan:atomicSleepV1",with:"")] {
   do { try m.configureHardwareChannel(capabilities:old,numericRequired:true); preconditionFailure("must not fall back") } catch {}
@@ -126,7 +126,7 @@ import ChargeHardware
   var config = Configuration(); config.hardwareEnabled = false; config.systemActionsEnabled = false
   config.notifications = false; config.historyEnabled = false; try config.save()
  }
- func model() -> ChargeModel { ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)}) }
+ func model() -> ChargeModel { ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)}) }
  let openPlan = SleepProtectionPlan.evaluate(controlEnabled:true,connected:true,physicalAdapterConnected:true,action:.forceDischarge,percent:90,target:80,calibrating:false,idleUntilTarget:false,systemUntilTarget:false,allowDisplaySleep:true,lidClosed:false)
  for appNotificationFirst in [false,true] {
   try clean(); let m = model(); var transition = ChargePowerTransition()
@@ -215,7 +215,7 @@ import ChargeHardware
  for sleepingCycle in [false,true] {
   var config = Configuration(); config.hardwareEnabled = false; config.systemActionsEnabled = false
   config.historyEnabled = false; config.notifications = false; try config.save()
-  let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  let m = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
   let root = NumericRoot(); var transition = ChargePowerTransition(); var cycle = true
   var ordinarySession = false; var protected = false; var forceCount = 0; var accepted: [String] = []; var refused = 0
   func request(_ wire: String) throws -> String {
@@ -273,7 +273,7 @@ import ChargeHardware
  for preventDisplay in [false,true] {
   var config = Configuration(); config.hardwareEnabled = false; config.historyEnabled = false
   config.systemActionsEnabled = false; config.notifications = false; try config.save()
-  let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  let m = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
   let numericRoot = NumericRoot(); var transition = ChargePowerTransition(), entry = DischargeSleepEntry()
   var ordinaryDischarge = false, protected = false
   func request(_ wire: String) throws -> String {

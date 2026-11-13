@@ -14,7 +14,7 @@ import ChargeHardware
   config.policy.pauseAtCurrent = currentPause ? true : nil; config.calibrationCheckpoint = checkpoint
   config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false
   try config.save()
-  return ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("mode fixture must not lock") }, readBattery: {
+  return ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("mode fixture must not lock") }, readBattery: {
    if failReading { throw HardwareError.unavailable("fixture telemetry unavailable") }; return sample
   })
  }
@@ -102,7 +102,7 @@ import ChargeHardware
   config.policy.mode = .calibration
   config.calibrationCheckpoint = checkpoint; config.calibrationRecoveryChoice = choice
   try config.save()
-  return ChargeModel(dashboardDefaults: defaults, observeLid: false, readBattery: {
+  return ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, readBattery: {
    BatteryReading(percent: 80, connected: connected, charging: false)
   })
  }
@@ -173,7 +173,7 @@ import ChargeHardware
  config.lastCalibration = Date(timeIntervalSince1970: 1000)
  try config.save()
  var sample = BatteryReading(percent: 100, connected: false, charging: false)
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, readBattery: { sample })
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, readBattery: { sample })
  precondition(model.calibrationSummary().interrupted && model.calibrationSummary().showsInPopover)
  precondition(model.calibrationSummary().remainingHoldMinutes == nil)
  model.resumeCalibration()

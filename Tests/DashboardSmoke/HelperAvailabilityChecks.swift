@@ -12,7 +12,7 @@ import ChargeHardware
  let defaults = UserDefaults(suiteName:suite)!
  defer { defaults.removePersistentDomain(forName:suite) }
  let service = HelperService(bundle:.main,backend:nil,legacyCheck:{ false },signatureCheck:{ _ in preconditionFailure("unavailable backend cannot verify or register") })
- let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{ preconditionFailure("no locks") },readBattery:{ BatteryReading(percent:50,connected:true,charging:false) },helperService:service)
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{ preconditionFailure("no locks") },readBattery:{ BatteryReading(percent:50,connected:true,charging:false) },helperService:service)
  model.config.hardwareEnabled = true
  let bytes = try Data(contentsOf:Configuration.url)
  await model.removeHelperService(request:{_ in preconditionFailure("unavailable removal must not invoke helper")})
@@ -41,7 +41,7 @@ import ChargeHardware
  defer { defaults.removePersistentDomain(forName:suite) }
  let backend = PendingHelperRemoval()
  let service = HelperService(bundle:.main,backend:backend,legacyCheck:{false},signatureCheck:{_ in false})
- let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no screen lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no screen lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
  let operation = Task { do { try await service.unregister() } catch {} }
  let deadline = Date().addingTimeInterval(5)
  while backend.pending == nil && Date() < deadline { await Task.yield() }
@@ -75,7 +75,7 @@ import ChargeHardware
  let suite="org.opencharge.removal-retry-fixture."+UUID().uuidString, backend=AcknowledgedFileRemoval()
  let defaults=UserDefaults(suiteName:suite)!;defer {defaults.removePersistentDomain(forName:suite)}
  let service=HelperService(bundle:.main,backend:backend,legacyCheck:{false},signatureCheck:{_ in preconditionFailure("pending removal cannot require a fresh package")})
- let m=ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
+ let m=ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
  m.enableHardware(true,request:{_ in preconditionFailure("pending removal must not query or change hardware")},refresh:{preconditionFailure("pending removal must not refresh control")})
  precondition(!m.config.hardwareEnabled && m.error != nil)
  await m.removeHelperService(deleteFiles:true,request:{_ in preconditionFailure("acknowledged retry must not need a live daemon for redundant restoration")})

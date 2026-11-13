@@ -9,7 +9,7 @@ import ChargeHardware
  var config = Configuration(); config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false
  try config.save()
  var reads = 0
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no lock requests") }, readBattery: {
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no lock requests") }, readBattery: {
   reads += 1; return BatteryReading(percent: 50, temperature: 30, connected: true, charging: false)
  })
  precondition(!model.settingsLocked)

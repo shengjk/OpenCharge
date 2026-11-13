@@ -112,7 +112,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published private(set) var settingsLocked = false
  private let settingsDefaults: UserDefaults
  private var settingsPreferenceObservation: SettingsLockObservation?
- @Published var config: Configuration
+ @Published var config: Configuration { didSet { sampleMonitor?.invalidate() } }
  @Published var reading: BatteryReading?
  @Published var decision = Decision(.restore, NSLocalizedString("正在读取电池…", comment: ""), limit: 80)
  @Published var error: String?
@@ -166,11 +166,13 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  var automationPhase: PolicyPhase { quitting ? .exit : calibrationPending ? .calibration : decision.phase ?? engine.phase }
  var needsQuitPreparation: Bool { quitChargeRecoveryPending || config.hardwareEnabled || firmwareControl?.mayOwnSession == true || dischargeExitPending || lastHardwareAction == .forceDischarge || magSafeSessionActive || sleepOverrideSessionActive || sleepController.active }
  var needsDischargeExitWait: Bool { dischargeExitPending }
- private var timer: Timer?
+ private var sampleMonitor: BatterySampleMonitor?
+ private var sleeping = false
+ var automaticSamplePending: Bool { sampleMonitor?.loading ?? false }
  private var observers: [NSObjectProtocol] = []
  private var lastNotice = ""
  private let historyURL = Configuration.directory.appendingPathComponent("history.json")
- init(dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, statisticArchive: BatteryStatisticArchive? = nil, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil, startupRecoveryRequest: (String) throws -> String = HelperClient.request, startupRecoveryPersist: (Configuration) throws -> Void = { try $0.save() }) {
+ init(automaticRead: BatterySampleMonitor.Read? = { try BatteryTelemetryReader.read() }, automaticSchedule: BatterySampleMonitor.Schedule? = nil, dashboardDefaults: UserDefaults = .standard, observeLid: Bool = true, screenLockRequest: @escaping () throws -> Void = ScreenLockClient.requestLock, readBattery: @escaping () throws -> BatteryReading = { try BatteryTelemetryReader.read() }, statisticArchive: BatteryStatisticArchive? = nil, helperService: HelperService? = nil, appUpdates: AppUpdates? = nil, startupRecoveryRequest: (String) throws -> String = HelperClient.request, startupRecoveryPersist: (Configuration) throws -> Void = { try $0.save() }) {
   self.statisticArchive = statisticArchive ?? BatteryStatisticArchive(url: Configuration.directory.appendingPathComponent("battery-statistics.sqlite3"))
   self.helperService = helperService ?? HelperService()
   settingsDefaults = dashboardDefaults
@@ -221,12 +223,18 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    guard let self else { throw HelperError.rejected(NSLocalizedString("应用策略实例已结束", comment: "")) }
    return self.automationPhase
   }
-  // Policy and helper-lease refresh must continue inside native panels and tracking.
-  let timer = Timer(timeInterval:10,repeats:true) { [weak self] _ in MainActor.assumeIsolated { self?.refresh() } }
-  self.timer = timer
-  for mode in [RunLoop.Mode.common,.modalPanel,.eventTracking] { RunLoop.main.add(timer,forMode:mode) }
+  // The initial/manual refresh remains synchronous; only automatic acquisition
+  // runs on the serial worker. Accepted samples enter the same policy pipeline.
+  if let automaticRead {
+   sampleMonitor = BatterySampleMonitor(read:automaticRead,schedule:automaticSchedule,isEligible: { [weak self] in
+    guard let self else { return false }; return !self.quitting && !self.sleeping && !self.settingsResetPending
+   }) { [weak self] result in
+    self?.refresh(using:result)
+   }
+   sampleMonitor?.start()
+  }
   observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.sleep() } })
-  observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.refresh() } })
+  observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.wake() } })
  }
  var powerAverages: [Double: WeightedPowerAverage] {
   let points = history.map { PowerSample(date: $0.date, watts: $0.systemWatts) }
@@ -614,7 +622,13 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   } catch { manualAwake.reportReadFailure(error) }
  }
  func refresh() {
-  guard !quitting else { return }
+  guard !quitting, !sleeping else { return }
+  sampleMonitor?.invalidate()
+  guard !settingsResetPending else { refresh(using:nil); return }
+  refresh(using:Result { try readBattery() })
+ }
+ private func refresh(using result: Result<BatteryReading, Error>?) {
+  guard !quitting, !sleeping else { return }
   reloadSettingsLock()
   defer { syncDashboard() }
   guard !settingsResetPending else {
@@ -622,7 +636,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   }
   do {
    let r: BatteryReading
-   do { r = try readBattery() }
+   do { guard let result else { return }; r = try result.get() }
    catch { if manualAwake.active { manualAwake.reportReadFailure(error) }; throw error }
    reading = r
    manualAwake.observe(percent: r.percent, connected: r.physicalAdapterConnected ?? r.connected,
@@ -920,7 +934,15 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   else { do { try restoreChargeControl(request:request); helperStatus = NSLocalizedString("服务已确认恢复", comment: ""); lastHardwareAction = .restore; config.hardwareEnabled = false } catch { self.error = String.localizedStringWithFormat(NSLocalizedString("恢复请求失败；服务会在心跳超时后尝试恢复：%@", comment: ""), error.localizedDescription); config.hardwareEnabled = false } }
   save(); (refresh ?? { self.refresh() })()
  }
- func sleep(request: (String) throws -> String = HelperClient.request) { guard !quitting, config.hardwareEnabled else { return }
+ func wake() {
+  guard !quitting else { return }
+  sleeping = false
+  refresh()
+  sampleMonitor?.start()
+ }
+ func sleep(request: (String) throws -> String = HelperClient.request) {
+  sleeping = true; sampleMonitor?.stop()
+  guard !quitting, config.hardwareEnabled else { return }
   // Coordinated helpers own sleep preparation for both charge backends. App
   // notifications must not race it with an unscoped action after a wake cycle.
   if firmwareControl != nil || chargeContextEnabled { return }
@@ -937,7 +959,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
 
  }
  func prepareForQuit(request: (String) throws -> String = HelperClient.request) throws {
-  quitting = true
+  quitting = true; sampleMonitor?.stop()
   var failures: [String] = []
   if sleepOverrideSessionActive { do { _ = try request("sleepOverrideRestore"); sleepOverrideSessionActive = false } catch { failures.append(error.localizedDescription) } }
   if magSafeSessionActive { do { _ = try request("magSafeRestore"); magSafeSessionActive = false } catch { failures.append(error.localizedDescription) } }
@@ -1005,6 +1027,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   if let recoveryFailure { error! += NSLocalizedString("恢复仍待重试：", comment: "") + recoveryFailure }
   if let persistenceFailure { error! += "\n"+persistenceFailure }
   (refresh ?? { self.refresh() })()
+  if !sleeping { sampleMonitor?.start() }
  }
  func cleanupOnQuit() {
   manualAwake.stop()

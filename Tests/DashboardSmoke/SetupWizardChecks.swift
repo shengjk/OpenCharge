@@ -19,7 +19,7 @@ import ChargeHardware
  }
  var c = Configuration(); c.historyEnabled = false; try c.save()
  let service = HelperService(bundle:.main,backend:nil,legacyCheck:{false},signatureCheck:{_ in preconditionFailure("wizard must not authorize service")})
- let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
+ let m = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},helperService:service)
  let now = Date(timeIntervalSince1970:1_800_000_000)
  let answers = SetupAnswers(usage:.rarely,temperature:40,unit:.celsius,regularSwitchOff:true,automaticCalibration:true)
  func rejects(_ body: () throws -> Void) { do { try body(); preconditionFailure("invalid setup accepted") } catch {} }

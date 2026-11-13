@@ -9,7 +9,7 @@ import ChargeCore
  try fixture.save()
  for mode in [ChargeMode.discharge, .automatic] {
   for closed in [false, true] {
-   let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+   let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
     screenLockRequest: { preconditionFailure("no locks in discharge/temperature fixture") })
    var policy = fixture.policy; policy.mode = mode; policy.automaticDischarge = mode == .automatic
    var engine = ChargeEngine()
@@ -44,7 +44,7 @@ import ChargeCore
  fixture.policy = ChargePolicy(); fixture.calibrationCheckpoint = nil
  try fixture.save()
  for mode in [ChargeMode.discharge, .automatic] {
-  let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("no locks in fractional discharge fixture") })
   model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
   var policy = fixture.policy; policy.mode = mode; policy.automaticDischarge = mode == .automatic

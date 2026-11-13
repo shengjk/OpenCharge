@@ -12,7 +12,7 @@ import ChargeHardware
  for mode in [MagSafeMode.green, .orangeBlinking] {
   for capability in ["magSafe:legacy", "magSafeEncoding:aclcNativeV2", "magSafe:unavailable"] {
    let modern = capability == "magSafeEncoding:aclcNativeV2"
-   let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+   let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
     screenLockRequest: { preconditionFailure("no locks in LED encoding fixture") },
     readBattery: { BatteryReading(percent: 80, connected: true, charging: false, physicalAdapterConnected: true) })
    model.config.magSafeMode = mode

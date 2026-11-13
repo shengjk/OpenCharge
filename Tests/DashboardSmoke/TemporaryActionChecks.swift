@@ -13,7 +13,7 @@ import ChargeHardware
   config.policy.protectDuringTopUp = topUpHeat
   config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false
   try config.save()
-  return ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  return ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("temporary action fixture must not lock") }, readBattery: { sample })
  }
  let topUp = try fixture()

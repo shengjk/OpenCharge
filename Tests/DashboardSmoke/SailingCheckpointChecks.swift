@@ -10,7 +10,7 @@ import ChargeHardware
   var config = Configuration(); config.sailingCheckpoint = checkpoint
   config.historyEnabled = false; config.hardwareEnabled = false; config.systemActionsEnabled = false
   try config.save()
-  return ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  return ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("no locks in sailing checkpoint fixture") },
    readBattery: { BatteryReading(percent: percent, temperature: 30, connected: true, charging: false) })
  }
@@ -54,7 +54,7 @@ import ChargeHardware
  calibration.policy.mode = .calibration
  calibration.calibrationCheckpoint = CalibrationCheckpoint(stage: .draining)
  try calibration.save()
- let pending = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let pending = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   screenLockRequest: { preconditionFailure("no locks in sailing calibration fixture") },
   readBattery: { BatteryReading(percent: 78, temperature: 30, connected: true, charging: false) })
  precondition(pending.calibrationPending && !pending.config.hardwareEnabled)

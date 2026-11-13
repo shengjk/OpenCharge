@@ -8,7 +8,7 @@ import ChargeCore
  fixture.policy = ChargePolicy(); fixture.calibrationCheckpoint = nil
  try fixture.save()
  for mode in [ChargeMode.automatic, .topUp] {
-  let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("no locks in full-charge fixture") })
   model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
   var policy = fixture.policy; policy.mode = mode

@@ -10,7 +10,7 @@ import ChargeHardware
  defer { try? original.save(); defaults.removePersistentDomain(forName:suite); PolicyStateRuntime.provider = provider }
  enum Failure: Error { case storage }
  func model() -> ChargeModel {
-  ChargeModel(dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
+  ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
  }
  func reject(_ value: String, in model: ChargeModel) throws {
   let before = try Data(contentsOf:Configuration.url)

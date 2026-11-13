@@ -6,7 +6,7 @@ import ChargeHardware
  let before = try Configuration.load()
  defer { try? before.save() }
  var c = Configuration(); c.historyEnabled = false; c.policy.stopOnQuit = true; try c.save()
- let m = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+ let m = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
  let root = OrdinaryExitSession(); var calls: [String] = [], writes = 0, held = false, originalJournal = true
  var loseCommit = false
  func request(_ wire: String) throws -> String {

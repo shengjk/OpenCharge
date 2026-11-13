@@ -17,7 +17,7 @@ import ChargeHardware
   config.policy.useHardwarePercent = hardwarePercent; config.calibrationCheckpoint = checkpoint; config.policy.departure = departure
   config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false
   config.schedules = tasks; try config.save()
-  return ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  return ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("scheduled pause fixture must not lock") }, readBattery: { sample })
  }
  // A due task on the first refresh must use the live policy projection, not initial Pause.
@@ -59,7 +59,7 @@ import ChargeHardware
  let offline = try fixture(tasks: [task(.calibrate)])
  precondition(offline.config.policy.mode == .calibration && offline.decision.action == .restore)
  precondition(offline.config.scheduleHistory?.last?.result.contains("等待接电") == true)
- let waitingAfterRestart = ChargeModel(dashboardDefaults: defaults, observeLid: false, readBattery: { sample })
+ let waitingAfterRestart = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, readBattery: { sample })
  precondition(waitingAfterRestart.config.policy.mode == .calibration && waitingAfterRestart.decision.action == .restore)
  precondition(!waitingAfterRestart.config.schedules[0].enabled && waitingAfterRestart.config.scheduleHistory?.count == 1)
  sample.connected = true
@@ -134,7 +134,7 @@ import ChargeHardware
  precondition(scheduledDischarge.decision.action == .inhibitCharge && scheduledDischarge.automationPhase == .sailing)
  precondition(scheduledDischarge.config.scheduleHistory?.count == 1,"completed one-shot discharge must not run again")
  // A restarted model must retain the completed task and Sailing hold.
- let afterRestart = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
+ let afterRestart = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
  precondition(afterRestart.config.policy.mode == .automatic && afterRestart.decision.action == .inhibitCharge && afterRestart.automationPhase == .sailing)
  precondition(afterRestart.config.scheduleHistory?.count == 1 && !afterRestart.config.schedules[0].enabled)
  // The selected raw control percentage, not the displayed OS value, ends discharge.
@@ -153,7 +153,7 @@ import ChargeHardware
  precondition(higherTarget.decision.action == .inhibitCharge && higherTarget.automationPhase == .sailing)
  higherTarget.refresh()
  precondition(higherTarget.decision.action == .inhibitCharge && higherTarget.automationPhase == .sailing)
- let higherTargetRestart = ChargeModel(dashboardDefaults:defaults,observeLid:false,
+ let higherTargetRestart = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,
   screenLockRequest:{preconditionFailure("no locks")},readBattery:{sample})
  precondition(higherTargetRestart.config.policy.mode == .automatic && higherTargetRestart.decision.action == .inhibitCharge)
  precondition(higherTargetRestart.config.scheduleHistory?.count == 1 && !higherTargetRestart.config.schedules[0].enabled)

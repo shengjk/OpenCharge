@@ -10,7 +10,7 @@ import ChargeHardware
  defer { try? original.save(); defaults.removePersistentDomain(forName:suite); PolicyStateRuntime.provider = provider }
  enum Failure: Error { case service, storage }
  func model(request: (String) throws -> String, persist: (Configuration) throws -> Void = {try $0.save()}) -> ChargeModel {
-  ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no screen lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},startupRecoveryRequest:request,startupRecoveryPersist:persist)
+  ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no screen lock")},readBattery:{BatteryReading(percent:50,connected:true,charging:false)},startupRecoveryRequest:request,startupRecoveryPersist:persist)
  }
  var fresh = Configuration(); fresh.historyEnabled = false; try fresh.save()
  let first = model(request:{ _ in preconditionFailure("fresh startup IPC") })

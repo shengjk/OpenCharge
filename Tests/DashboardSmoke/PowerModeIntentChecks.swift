@@ -16,7 +16,7 @@ import Foundation
  var configuration = Configuration()
  configuration.hardwareEnabled = false; configuration.historyEnabled = false; configuration.systemActionsEnabled = true
  try configuration.save()
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   readBattery: { BatteryReading(percent: 60, connected: true, charging: false) })
  var battery = 0, ac = 0, highSupported = true
  var writes: [[String]] = [], requests: [String] = []

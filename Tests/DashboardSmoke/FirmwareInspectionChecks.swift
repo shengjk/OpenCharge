@@ -4,7 +4,7 @@ import ChargeHardware
 
 @MainActor func firmwareInspectionChecks(defaults: UserDefaults) throws {
  var config = Configuration(); config.historyEnabled = false; try config.save()
- let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{ BatteryReading(percent:50,connected:true,charging:false) })
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no lock")},readBattery:{ BatteryReading(percent:50,connected:true,charging:false) })
  let baseline = try Data(contentsOf:Configuration.url)
  let capabilities = "firmwareProtocol:fixedV1, firmwareRead:CH0B+BCLM, firmwareWrite:fixedV1, chargeRecovery:ready, internalBattery:present"
  var calls: [String] = []

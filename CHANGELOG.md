@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.89
+
+- Acquire automatic battery telemetry every two seconds on a serial background worker and feed accepted samples into the production policy pipeline, independently of dashboard focus. Keep initial and explicit manual refreshes fresh and synchronous.
+- Coalesce timer ticks during slow reads. Reject results invalidated by configuration changes, manual refreshes, sleep, settings reset or quit; suspend sampling during sleep and resume after wake or a safely cancelled quit.
+- Verify real model integration, error recovery and lifecycle transitions with injected providers and timers. Preserve the existing minute-based history admission; per-channel recording migration and physical hardware parity remain in progress.
+
 ## 0.3.88
 
 - Capture the power graph query time independently of the sensor timestamp. Delayed, future-dated and unavailable sensor readings no longer move the selected history window or hide otherwise valid recorded observations.

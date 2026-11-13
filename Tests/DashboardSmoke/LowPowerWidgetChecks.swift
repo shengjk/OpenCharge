@@ -11,7 +11,7 @@ import ChargeHardware
  var configuration = Configuration(); configuration.hardwareEnabled = false
  configuration.systemActionsEnabled = false; configuration.historyEnabled = false
  try configuration.save()
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   readBattery: { BatteryReading(percent: 60, connected: true, charging: false) })
  var commands: [String] = []
  func request(_ command: String) -> String {

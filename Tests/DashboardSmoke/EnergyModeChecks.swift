@@ -10,7 +10,7 @@ import ChargeHardware
  defer { try? original.save(); defaults.removePersistentDomain(forName: suite); PolicyStateRuntime.provider = originalProvider }
  var config = Configuration(); config.hardwareEnabled = false; config.historyEnabled = false; config.systemActionsEnabled = false
  try config.save()
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   readBattery: { BatteryReading(percent: 60, connected: true, charging: false) })
  let before = EnergyModeStatus(battery: .low, ac: .automatic, highBattery: true, highAC: true, current: .automatic)
  let high = EnergyModeStatus(battery: .low, ac: .high, highBattery: true, highAC: true, current: .high)

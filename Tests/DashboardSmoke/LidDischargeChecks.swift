@@ -10,7 +10,7 @@ import ChargeHardware
  fixture.policy.stopInSleep = false; fixture.calibrationCheckpoint = nil
  try fixture.save()
  func model() -> ChargeModel {
-  ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("no locks in lid/discharge fixture") })
  }
  func plan(_ action: ChargeAction, lid: Bool?, idle: Bool = false) -> SleepProtectionPlan {

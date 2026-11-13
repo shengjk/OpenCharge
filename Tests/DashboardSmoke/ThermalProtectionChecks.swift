@@ -8,7 +8,7 @@ import ChargeCore
  fixture.policy = ChargePolicy(); fixture.policy.sailing = true
  fixture.policy.keepAwakeWithLidClosed = true; fixture.calibrationCheckpoint = nil
  try fixture.save()
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   screenLockRequest: { preconditionFailure("no locks in thermal fixture") })
  model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
  model.config.hardwareEnabled = true

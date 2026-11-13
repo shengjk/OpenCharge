@@ -10,7 +10,7 @@ import ChargeCore
  interrupted.policy.mode = .calibration
  interrupted.calibrationCheckpoint = CalibrationCheckpoint(stage: .draining)
  try interrupted.save()
- let model = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no real locks in automation fixture") })
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no real locks in automation fixture") })
  precondition(model.calibrationPending && model.calibration == .draining && !model.config.hardwareEnabled)
  var preferencesOnly = try Configuration.load()
  preferencesOnly.policy.maxTemperature = 37; preferencesOnly.hardwareEnabled = true
@@ -45,7 +45,7 @@ import ChargeCore
  holding.policy.mode = .calibration; holding.policy.protectDuringCalibration = false
  holding.calibrationCheckpoint = CalibrationCheckpoint(stage: .holding, holdingSince: Date())
  try holding.save()
- let active = ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no locks in active-calibration fixture") })
+ let active = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("no locks in active-calibration fixture") })
  active.resumeCalibration()
  precondition(!active.calibrationPending && active.calibration == .holding && !active.config.hardwareEnabled)
  let restart = SetChargeModeIntent(); restart.mode = .calibration

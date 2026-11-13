@@ -9,7 +9,7 @@ import ChargeHardware
  fixture.policy.mode = .automatic; fixture.calibrationCheckpoint = nil
  try fixture.save()
  for action in [ChargeAction.allowCharge, .forceDischarge] {
-  let model = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+  let model = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
    screenLockRequest: { preconditionFailure("no locks in ordering fixture") })
   model.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
   model.config.hardwareEnabled = true
@@ -29,7 +29,7 @@ import ChargeHardware
   }
   precondition(commands == ["inhibitCharge", "sleepOverrideDisplayOn", "restore"] && !model.config.hardwareEnabled)
   for failureAfterProtection in [false, true] {
-   let protected = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+   let protected = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
     screenLockRequest: { preconditionFailure("no locks in protected-order fixture") })
    protected.inspectSleepInterfaces(request: { _ in "sleepOverride:interfacesDetected, sleepRecovery:phasesV1" })
    protected.config.hardwareEnabled = true
@@ -60,7 +60,7 @@ import ChargeHardware
  for failure in ["none", "inhibitCharge", "sleepOverrideOn", "forceDischarge", "suspend-bootstrap", "suspend-protection"] {
   var config = Configuration(); config.hardwareEnabled = false; config.systemActionsEnabled = false
   config.historyEnabled = false; config.notifications = false; try config.save()
-  let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
   var session = false, protection = false, failed = false
   var accepted: [String] = []; var transition = ChargePowerTransition()
   func request(_ wire: String) throws -> String {
@@ -114,7 +114,7 @@ import ChargeHardware
  for fails in [false,true] {
   var config = Configuration(); config.hardwareEnabled = false; config.historyEnabled = false
   config.notifications = false; config.systemActionsEnabled = false; try config.save()
-  let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
+  let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,screenLockRequest:{preconditionFailure("no locks")},readBattery:{BatteryReading(percent:90,connected:true,charging:false)})
   model.inspectSleepInterfaces(request:{_ in "sleepOverride:interfacesDetected,sleepRecovery:phasesV1"})
   model.config.hardwareEnabled = true; model.config.policy.stopInSleep = false
   model.decision = Decision(action,"fixture",limit:80)

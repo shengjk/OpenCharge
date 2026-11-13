@@ -26,7 +26,7 @@ import ChargeHardware
  AppPreferenceReset.removeOverrides(from:defaults)
  precondition(defaults.object(forKey:LowChargeLimitNotice.key) == nil)
  var config = Configuration(); config.historyEnabled = false; config.notifications = false; config.systemActionsEnabled = false; try config.save()
- let model = ChargeModel(dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
+ let model = ChargeModel(automaticRead: nil, dashboardDefaults:defaults,observeLid:false,readBattery:{BatteryReading(percent:50,connected:true,charging:false)})
  defaults.set(true,forKey:"settingsLock")
  model.applyChargeSettingsFromGUI(presentLowLimitNotice:{preconditionFailure("locked GUI")})
  precondition(defaults.object(forKey:LowChargeLimitNotice.key) == nil)

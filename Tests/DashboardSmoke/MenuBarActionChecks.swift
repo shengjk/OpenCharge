@@ -24,7 +24,7 @@ import ChargeHardware
   var config = Configuration(); config.policy.mode = mode; config.policy.limit = limit
   config.policy.useHardwarePercent = hardware; config.calibrationCheckpoint = checkpoint
   config.hardwareEnabled = false; config.systemActionsEnabled = false; config.historyEnabled = false; try config.save()
-  return ChargeModel(dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("menu fixture must not lock") }, readBattery: { sample })
+  return ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false, screenLockRequest: { preconditionFailure("menu fixture must not lock") }, readBattery: { sample })
  }
  let model = try fixture()
  model.toggleChargingFromMenu()

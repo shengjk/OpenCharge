@@ -10,7 +10,7 @@ import ChargeCore
  fixture.hardwareEnabled = false; fixture.systemActionsEnabled = false
  fixture.magSafeMode = .system; fixture.magSafeOffDuringSleep = false
  try fixture.save()
- var model: ChargeModel? = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ var model: ChargeModel? = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   screenLockRequest: { preconditionFailure("policy getter must not lock the screen") })
  weak var releasedModel = model
  let before = try Data(contentsOf: Configuration.url)
@@ -39,7 +39,7 @@ import ChargeCore
  fixture.policy.mode = .calibration
  fixture.calibrationCheckpoint = CalibrationCheckpoint(stage: .draining)
  try fixture.save()
- let interrupted = ChargeModel(dashboardDefaults: defaults, observeLid: false,
+ let interrupted = ChargeModel(automaticRead: nil, dashboardDefaults: defaults, observeLid: false,
   screenLockRequest: { preconditionFailure("no locks in interrupted-state fixture") })
  precondition(interrupted.calibrationPending)
  let pending = try await GetPolicyStateIntent().perform()
