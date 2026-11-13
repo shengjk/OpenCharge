@@ -36,6 +36,8 @@ public struct BatteryReading: Codable, Sendable {
     public var designCapacityMAH: Double?
     /// Raw full-charge capacity when valid; nominal/legacy capacity otherwise.
     public var fullCapacityMAH: Double?
+    /// AppleRawMaxCapacity only; no nominal or legacy fallback.
+    public var rawFullCapacityMAH: Double?
     public var condition: String?
     public var timeToFullMinutes: Double?
     public var timeToEmptyMinutes: Double?
@@ -78,7 +80,7 @@ public struct BatteryReading: Codable, Sendable {
                 registryTemperature: Double? = nil, virtualTemperature: Double? = nil,
                 nominalCapacityMAH: Double? = nil, healthCondition: String? = nil,
                 remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil,
-                modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil) {
+                modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil, rawFullCapacityMAH: Double? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -96,6 +98,7 @@ public struct BatteryReading: Codable, Sendable {
         self.remainingCapacityMAH = remainingCapacityMAH; self.designVoltageMV = designVoltageMV
         self.modelNominalVoltageMV = modelNominalVoltageMV
         self.optimizedChargingEngaged = optimizedChargingEngaged
+        self.rawFullCapacityMAH = rawFullCapacityMAH
     }
 }
 
@@ -240,7 +243,7 @@ public enum BatteryReader {
             healthCondition: (source?[kIOPSBatteryHealthConditionKey] as? String).flatMap { $0.isEmpty ? nil : $0 },
             remainingCapacityMAH: remaining, designVoltageMV: valid(number("DesignVoltage"), 1...65535),
             modelNominalVoltageMV: modelIdentifier.flatMap { ModelNominalBatteryVoltage.millivolts(for: $0) },
-            optimizedChargingEngaged: optimized)
+            optimizedChargingEngaged: optimized, rawFullCapacityMAH: rawFull)
     }
 }
 

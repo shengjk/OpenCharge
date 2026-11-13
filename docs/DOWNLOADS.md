@@ -31,3 +31,13 @@ The interface includes only Simplified Chinese and English, selected through mac
 首次使用为监测模式。安装或更新 root 服务前，请先阅读 `docs/HELPER-SETUP.md` 并审阅脚本，再在解压目录运行上方的安装命令。当前预览版使用本地签名，尚未公证，不支持应用内注册。服务安装不会自动开启应用的硬件控制开关；更新后的服务启动时可能先恢复此前拥有的修改。
 
 脚本需要同一解压目录内的 `dist/bin/charged`，请保持目录结构。移除或降级服务前必须完成恢复，不要手动删除恢复记录。界面仅保留简体中文和英文，跟随 macOS 语言偏好。
+
+## Statistics / 统计
+
+With history recording enabled, **Periodic records** keeps raw full-charge capacity and cycle counts in separate daily channels, up to 3650 rows per channel. Periodic health divides saved raw capacity by current design capacity. **Raw observations** retains the original health and fallback capacity values, including older records; they are not silently converted into raw-sensor samples. Clear History removes both sets together.
+
+开启历史记录后，**周期记录**按每日独立通道保存原始满充容量与循环次数，每个通道最多 3650 条。周期健康比例使用保存的原始容量与当前设计容量计算。**原始观察**保留旧记录原有的健康比例和备用容量，不会被自动改写成原始传感器样本。清空记录会同时清除两组数据。
+
+The statistics archive upgrades transactionally to schema 2, which requires OpenCharge 0.3.90 or newer. Older releases cannot open this archive. Recent JSON history and CSV format remain unchanged.
+
+长期统计存储会在事务中升级至格式 2，需要 OpenCharge 0.3.90 或更新版本读取；旧版本无法打开该统计库。近期 JSON 历史和 CSV 格式保持不变。

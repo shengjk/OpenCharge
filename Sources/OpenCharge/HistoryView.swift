@@ -17,7 +17,7 @@ struct HistoryView: View {
     ForEach(BatteryStatistic.allCases) { item in Text(item.title).tag(item) }
    }.pickerStyle(.segmented)
    BatteryStatisticChart(metric: metric, points: m.history, archive: m.statisticArchive,
-    revision: m.statisticRevision, active: !m.dashboard.paused, endingAt: m.reading?.date ?? Date(), archiveWriteError: m.statisticArchiveError).id(metric)
+    revision: m.statisticRevision, active: !m.dashboard.paused, endingAt: m.reading?.date ?? Date(), archiveWriteError: m.statisticArchiveError, designCapacity: m.reading?.designCapacityMAH).id(metric)
    Text(NSLocalizedString("容量与循环次数支持查询最近 360 天的已有记录；清空记录会同时删除长期统计。", comment: ""))
     .font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
   }

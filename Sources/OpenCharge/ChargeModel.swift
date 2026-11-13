@@ -122,9 +122,15 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
  @Published private(set) var firmwareInspection: FirmwareHelperState?
  @Published private(set) var firmwareStatus = NSLocalizedString("尚未检测数值固件通道", comment: "")
  @Published var history: [HistoryPoint] = []
+ private var channelCache = BatteryStatisticArchive.ChannelCache()
  let statisticArchive: BatteryStatisticArchive
  @Published private(set) var statisticRevision = 0
- @Published private(set) var statisticArchiveError: String?
+ @Published private var rawStatisticArchiveError: String?
+ @Published private var channelStatisticArchiveError: String?
+ var statisticArchiveError: String? {
+  let errors = [rawStatisticArchiveError,channelStatisticArchiveError].compactMap { $0 }
+  return errors.isEmpty ? nil : errors.joined(separator:"\n")
+ }
  @Published var calibration = CalibrationStage.idle
  @Published var calibrationPending = false {
   didSet { if !calibrationPending { interruptedCalibrationWasEnabled = false } }
@@ -720,6 +726,12 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if !calibrationDischargeDeferred { updateMagSafe() }
    if !plan.preventSystemAndLidSleep { updateSleepOverride(plan) }
    handleLidState(lid)
+   if config.historyEnabled {
+    do {
+     if try statisticArchive.appendChannels(r,at:Date(),cache:&channelCache) { statisticRevision &+= 1 }
+     channelStatisticArchiveError = nil
+    } catch { channelStatisticArchiveError = error.localizedDescription }
+   }
    if config.historyEnabled && (history.last.map { Date().timeIntervalSince($0.date) >= 60 } ?? true) {
     let previousHistory = history
     let point = HistoryPoint(date: Date(), percent: r.percent, temperature: r.temperature, watts: watts, reason: decision.reason, temperatureSource: r.temperatureSource, systemWatts: r.systemPowerW, adapterWatts: r.adapterPowerW, limit: config.policy.limit, hardwarePercent: r.hardwarePercent, health: r.healthPercent, cycles: r.cycleCount, fullCapacityMAH: r.fullCapacityMAH)
@@ -1179,10 +1191,10 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   do {
    if let write { try write(point, previous) }
    else { try statisticArchive.append(point, migrating: previous) }
-   statisticArchiveError = nil; statisticRevision &+= 1
+   rawStatisticArchiveError = nil; statisticRevision &+= 1
   } catch {
    // Statistics storage failure must not enter the charging-control rollback path.
-   statisticArchiveError = error.localizedDescription
+   rawStatisticArchiveError = error.localizedDescription
   }
  }
  func clearHistory() {
@@ -1191,7 +1203,8 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
    if FileManager.default.fileExists(atPath: historyURL.path) {
     try Data("[]".utf8).write(to: historyURL, options: .atomic)
    }
-   history = []; statisticArchiveError = nil; statisticRevision &+= 1
+   channelCache = BatteryStatisticArchive.ChannelCache(); channelStatisticArchiveError = nil
+   history = []; rawStatisticArchiveError = nil; statisticRevision &+= 1
   } catch { self.error = error.localizedDescription }
  }
 }

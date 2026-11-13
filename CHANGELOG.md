@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.90
+
+- Record raw full-charge capacity and cycle counts in independent daily channels with anchored time grids, repeated-value admission and a 3650-row limit per channel. Reuse the oldest row at capacity; preserve actual observation times and process-lifetime anchors.
+- Add Periodic records and Raw observations to long-term charts. Periodic health normalizes saved raw capacity by current design capacity; raw observations retain the original recorded health and fallback capacities. Missing raw readings are never inferred from legacy data.
+- Upgrade statistics storage transactionally to schema 2 while preserving existing observations. Clear both record sets atomically. Older releases cannot open schema 2; recent JSON history and CSV remain unchanged.
+- Verify grid equality, clock rollback, restart anchors, bounded rows, failed-write cache rollback, migration provenance and asynchronous source selection with isolated fixtures. Minute/monthly channel migration, separate OS-reported health acquisition and broader physical parity remain in progress.
+
 ## 0.3.89
 
 - Acquire automatic battery telemetry every two seconds on a serial background worker and feed accepted samples into the production policy pipeline, independently of dashboard focus. Keep initial and explicit manual refreshes fresh and synchronous.

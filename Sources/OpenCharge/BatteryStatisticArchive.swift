@@ -1,6 +1,7 @@
 import Foundation
 import SQLite3
 import Darwin
+import ChargeHardware
 
 struct BatteryStatisticRecord: Equatable, Sendable {
  let date: Date
@@ -120,9 +121,105 @@ struct BatteryStatisticArchive: Equatable, Sendable {
   let db = try Database(url: url, writable: true)
   try db.transaction {
    try db.execute("DELETE FROM observations")
+   try db.execute("DELETE FROM channel_observations")
    // A partially failed legacy-file clear must not import old records again.
    try db.execute("INSERT OR REPLACE INTO metadata(key,value) VALUES('legacy_imported',1)")
   }
+ }
+
+ enum Channel: String, CaseIterable, Sendable {
+  case rawCapacity, cycles
+  var interval: TimeInterval { 86400 }
+  var capacity: Int { 3650 }
+ }
+ struct ChannelCache {
+  struct Entry { let anchor: Date; var latest: Date }
+  var entries: [Channel: Entry] = [:]
+ }
+
+ /// Called for every accepted sample while history recording is enabled. Each
+ /// channel has its own anchored clock grid and bounded row count.
+ @discardableResult func appendChannels(_ reading: BatteryReading, at now: Date, cache: inout ChannelCache) throws -> Bool {
+  guard now.timeIntervalSince1970.isFinite else { throw Failure(detail:"Invalid observation date") }
+  var values: [(Channel, Int)] = []
+  if let raw = reading.rawFullCapacityMAH, raw.isFinite, (1...100000).contains(raw), raw.rounded(.towardZero) == raw {
+   values.append((.rawCapacity,Int(raw)))
+  }
+  if let cycles = reading.cycleCount, (0...1000000).contains(cycles) { values.append((.cycles,cycles)) }
+  func admits(_ entry: ChannelCache.Entry, channel: Channel) -> Bool {
+   let steps = floor(abs(now.timeIntervalSince(entry.anchor)) / channel.interval)
+   let boundary = entry.anchor.addingTimeInterval(steps * channel.interval)
+   return boundary.timeIntervalSince1970.isFinite && entry.latest <= boundary && boundary <= now
+  }
+  values = values.filter { channel,_ in
+   guard let entry = cache.entries[channel] else { return true }
+   return admits(entry,channel:channel)
+  }
+  guard !values.isEmpty else { return false }
+  let db = try Database(url:url,writable:true)
+  var next = cache
+  var changed = false
+  try db.transaction {
+   for (channel,value) in values {
+    let key = channel.rawValue
+    if next.entries[channel] == nil {
+     let dates = try db.prepare("SELECT MIN(date),MAX(date) FROM channel_observations WHERE channel='\(key)'")
+     defer { sqlite3_finalize(dates) }
+     try db.check(sqlite3_step(dates),expected:SQLITE_ROW)
+     if sqlite3_column_type(dates,0) != SQLITE_NULL {
+      let first = sqlite3_column_double(dates,0), last = sqlite3_column_double(dates,1)
+      guard first.isFinite, last.isFinite else { throw Failure(detail:"Invalid channel date") }
+      next.entries[channel] = ChannelCache.Entry(anchor:Date(timeIntervalSince1970:first),latest:Date(timeIntervalSince1970:last))
+     }
+    }
+    let entry = next.entries[channel] ?? ChannelCache.Entry(anchor:now,latest:now)
+    guard admits(entry,channel:channel) else { continue }
+    let count = try db.scalar("SELECT COUNT(*) FROM channel_observations WHERE channel='\(key)'")
+    let sql: String
+    if count < channel.capacity {
+     sql = "INSERT INTO channel_observations(date,value,channel) VALUES(?,?,'\(key)')"
+    } else {
+     sql = "UPDATE channel_observations SET date=?,value=? WHERE id=(SELECT id FROM channel_observations WHERE channel='\(key)' ORDER BY date,id LIMIT 1)"
+    }
+    let statement = try db.prepare(sql); defer { sqlite3_finalize(statement) }
+    try db.check(sqlite3_bind_double(statement,1,now.timeIntervalSince1970),expected:SQLITE_OK)
+    try db.check(sqlite3_bind_int64(statement,2,Int64(value)),expected:SQLITE_OK)
+    try db.check(sqlite3_step(statement),expected:SQLITE_DONE)
+    next.entries[channel] = ChannelCache.Entry(anchor:entry.anchor,latest:now)
+    changed = true
+   }
+  }
+  // Failed transactions must not advance admission caches.
+  cache = next
+  return changed
+ }
+
+ func loadChannels(hours: Int, endingAt end: Date, metric: BatteryStatistic, designCapacity: Double?) throws -> [BatteryStatisticRecord] {
+  guard (1...Self.maximumQueryHours).contains(hours), end.timeIntervalSince1970.isFinite else { throw Failure(detail:"Invalid statistics window") }
+  guard metric.supportsArchive, FileManager.default.fileExists(atPath:url.path) else { return [] }
+  let db = try Database(url:url,writable:false)
+  guard try db.scalar("PRAGMA user_version") >= 2 else { return [] }
+  let channel: Channel = metric == .cycles ? .cycles : .rawCapacity
+  let statement = try db.prepare("SELECT date,value FROM channel_observations WHERE channel='\(channel.rawValue)' AND date>=? AND date<=? ORDER BY date,id")
+  defer { sqlite3_finalize(statement) }
+  try db.check(sqlite3_bind_double(statement,1,end.addingTimeInterval(-Double(hours)*3600).timeIntervalSince1970),expected:SQLITE_OK)
+  try db.check(sqlite3_bind_double(statement,2,end.timeIntervalSince1970),expected:SQLITE_OK)
+  var records: [BatteryStatisticRecord] = []
+  while true {
+   let status = sqlite3_step(statement); if status == SQLITE_DONE { break }
+   try db.check(status,expected:SQLITE_ROW)
+   let date = sqlite3_column_double(statement,0), value = sqlite3_column_double(statement,1)
+   guard [SQLITE_FLOAT,SQLITE_INTEGER].contains(sqlite3_column_type(statement,0)), date.isFinite,
+    sqlite3_column_type(statement,1) == SQLITE_INTEGER, value.isFinite,
+    (channel == .cycles ? 0...1000000 : 1...100000).contains(value) else { throw Failure(detail:"Invalid channel observation") }
+   let health: Double?
+   if let designCapacity, designCapacity.isFinite, (1...100000).contains(designCapacity) { health = value / designCapacity * 100 }
+   else { health = nil }
+   records.append(BatteryStatisticRecord(date:Date(timeIntervalSince1970:date),
+    health:channel == .rawCapacity ? health : nil,
+    fullCapacityMAH:channel == .rawCapacity ? value : nil,cycles:channel == .cycles ? Int(value) : nil))
+  }
+  return records
  }
 
  struct Failure: LocalizedError {
@@ -167,8 +264,18 @@ struct BatteryStatisticArchive: Equatable, Sendable {
       try execute("PRAGMA user_version=1")
      }
     }
-    guard try scalar("PRAGMA user_version") == 1, try scalar("PRAGMA application_id") == Self.applicationID else {
+    let schema = try scalar("PRAGMA user_version")
+    guard (schema == 1 || schema == 2), try scalar("PRAGMA application_id") == Self.applicationID else {
      throw Failure(detail: NSLocalizedString("记录格式不受支持，请使用更新版本", comment: ""))
+    }
+    if writable && schema == 1 {
+     // Additive, transactional migration: old observations keep their values and
+     // provenance. They must not be relabelled as raw-capacity sensor samples.
+     try transaction {
+      try execute("CREATE TABLE channel_observations(id INTEGER PRIMARY KEY,channel TEXT NOT NULL CHECK(channel IN ('rawCapacity','cycles')),date REAL NOT NULL CHECK(typeof(date) IN ('real','integer')),value INTEGER NOT NULL CHECK(typeof(value)='integer' AND value>=0 AND value<=1000000))")
+      try execute("CREATE INDEX channel_dates ON channel_observations(channel,date)")
+      try execute("PRAGMA user_version=2")
+     }
     }
    } catch {
     sqlite3_close(opened); connection = nil; throw error

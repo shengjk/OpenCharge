@@ -59,11 +59,11 @@ struct OverviewView: View {
   case .powerConsumption:
    Card(item.title) { PowerConsumptionView(reading: d.reading, history: d.history, preferences: m.powerGraphPreferences, active: !d.paused, read: PowerGraphMonitor.liveRead) }
   case .temperatureTrend:
-   Card(item.title) { BatteryStatisticChart(metric: .temperature, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
+   Card(item.title) { BatteryStatisticChart(metric: .temperature, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError, designCapacity: d.reading?.designCapacityMAH) }
   case .capacityTrend:
-   Card(item.title) { BatteryStatisticChart(metric: .health, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
+   Card(item.title) { BatteryStatisticChart(metric: .health, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError, designCapacity: d.reading?.designCapacityMAH) }
   case .cycleTrend:
-   Card(item.title) { BatteryStatisticChart(metric: .cycles, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
+   Card(item.title) { BatteryStatisticChart(metric: .cycles, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError, designCapacity: d.reading?.designCapacityMAH) }
   case .trend:
    Card(NSLocalizedString("最近趋势", comment: "")) { TrendChart(points: TrendWindow.day(d.history, endingAt: d.reading?.date ?? Date())).frame(height: 150) }
   case .calibration:

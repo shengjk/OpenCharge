@@ -13,7 +13,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 - Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings. Persisted Average/Instant runtime estimates use a separate display reader with focus-aware refresh.
 - Twelve App Intents, five App Shortcuts, CLI and an `opencharge://` URL scheme.
 - English and Simplified Chinese interface resources, selected through macOS language preferences.
-- Local history and explicit diagnostic exports; no account, analytics or cloud storage. Opt-in health, full-charge capacity and cycle statistics support 360-day queries; raw observations remain local until Clear History. Existing recent records are imported once on the next enabled recording.
+- Local history and explicit diagnostic exports; no account, analytics or cloud storage. Opt-in health, full-charge capacity and cycle statistics support 360-day queries; raw observations remain local until Clear History. Existing recent records are imported once on the next enabled recording. Periodic capacity and cycle records use independent daily channels capped at 3650 rows each. Select **Raw observations** to view older saved values; these are retained without inferring missing raw-sensor provenance. Periodic health uses current design capacity. Statistics schema 2 requires version 0.3.90 or newer; older app versions cannot open this archive, while recent JSON history and CSV stay unchanged.
 - Optional GitHub release checks and user-requested ZIP downloads with SHA-256 verification.
 
 ## Quick start

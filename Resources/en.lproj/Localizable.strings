@@ -786,3 +786,7 @@
 "平均模式采用所选窗口的记录平均值；即时模式采用当前系统负载。" = "Average mode uses recorded values in the selected window; Instant mode uses the current system load.";
 
 "功耗读取失败：%@" = "Could not read power: %@";
+"周期记录" = "Periodic records";
+"原始观察" = "Raw observations";
+"记录来源" = "Record source";
+"周期记录按指标独立保存；健康比例使用原始满充容量与当前设计容量。原始观察保留旧记录。" = "Periodic records are stored per metric. Health uses raw full-charge capacity and current design capacity. Raw observations retain older records.";

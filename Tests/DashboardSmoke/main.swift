@@ -12,6 +12,7 @@ import ChargeHardware
   powerConsumptionChecks()
   try await powerGraphModeChecks()
   try await batterySampleChecks()
+  try await batteryChannelChecks()
   try systemChargingStatusChecks()
   try batteryStatisticChecks()
   try lowPowerWidgetChecks()

@@ -97,11 +97,15 @@ struct BatteryStatisticPlot {
  let active: Bool
  let endingAt: Date
  let archiveWriteError: String?
+ let designCapacity: Double?
+ @State private var series: BatteryStatisticSeries
  @State private var hours: Int
  @StateObject private var archived: BatteryStatisticArchiveLoader
 
  init(metric: BatteryStatistic, points: [HistoryPoint], archive: BatteryStatisticArchive? = nil,
-      revision: Int = 0, active: Bool = true, endingAt: Date? = nil, archiveWriteError: String? = nil, archiveLoader: BatteryStatisticArchiveLoader? = nil) {
+      revision: Int = 0, active: Bool = true, endingAt: Date? = nil, archiveWriteError: String? = nil, archiveLoader: BatteryStatisticArchiveLoader? = nil, designCapacity: Double? = nil, initialSeries: BatteryStatisticSeries? = nil) {
+  _series = State(initialValue:initialSeries ?? (archive == nil ? .observations : .channels))
+  self.designCapacity = designCapacity.flatMap { $0.isFinite && (1...100000).contains($0) ? $0 : nil }
   self.metric = metric; self.points = points; self.archive = archive
   self.revision = revision; self.active = active; self.archiveWriteError = archiveWriteError
   self.endingAt = endingAt ?? points.lazy.map(\.date).filter { $0.timeIntervalSinceReferenceDate.isFinite }.max() ?? Date()
@@ -110,15 +114,20 @@ struct BatteryStatisticPlot {
  }
  private var end: Date { endingAt }
  private var request: BatteryStatisticArchiveRequest {
-  BatteryStatisticArchiveRequest(url: archive?.url, hours: hours, revision: revision, active: active && metric.supportsArchive, metric: metric, endingAt: end)
+  BatteryStatisticArchiveRequest(url: archive?.url, hours: hours, revision: revision, active: active && metric.supportsArchive, metric: metric, endingAt: end, series: series, designCapacity: designCapacity)
  }
- private func reloadArchive() { archived.load(archive: archive, hours: hours, endingAt: end, active: request.active, metric: metric) }
+ private func reloadArchive() { archived.load(archive: archive, hours: hours, endingAt: end, active: request.active, metric: metric, series: series, designCapacity: designCapacity) }
 
 
  var body: some View {
-  let data = BatteryStatisticPlot(points: points, metric: metric, hours: hours,
+  let data = BatteryStatisticPlot(points: metric.supportsArchive && series == .channels ? [] : points, metric: metric, hours: hours,
    end: end, archived: archived.records)
   VStack(alignment: .leading, spacing: 8) {
+   if metric.supportsArchive {
+    Picker(NSLocalizedString("记录来源",comment:""),selection:$series) {
+     ForEach(BatteryStatisticSeries.allCases) { item in Text(item.title).tag(item) }
+    }.pickerStyle(.segmented).accessibilityLabel(Text(NSLocalizedString("记录来源",comment:"")))
+   }
    Picker(NSLocalizedString("统计时间窗口", comment: ""), selection: $hours) {
     Text(NSLocalizedString("1 小时", comment: "")).tag(1)
     Text(NSLocalizedString("24 小时", comment: "")).tag(24)
@@ -135,6 +144,10 @@ struct BatteryStatisticPlot {
     }.font(.caption.monospacedDigit())
    } else {
     Text(NSLocalizedString("此时间段尚无该指标的记录", comment: "")).font(.caption).presentationSecondary()
+   }
+   if metric.supportsArchive && series == .channels {
+    Text(NSLocalizedString("周期记录按指标独立保存；健康比例使用原始满充容量与当前设计容量。原始观察保留旧记录。",comment:""))
+     .font(.caption).presentationSecondary().fixedSize(horizontal:false,vertical:true)
    }
    if archived.loading {
     HStack(spacing: 6) { ProgressView().scaleEffect(0.6).frame(width: 12, height: 12); Text(NSLocalizedString("正在读取长期记录…", comment: "")) }
