@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.86
+
+- Add persisted Average and Instant runtime calculation, with a saved 5/15/30-minute graph window. Keep Average and 15 minutes as defaults; settings reset reloads these defaults along with the other app preferences.
+- Use the selected window's record mean in Average mode and the current system load in Instant mode. Show the selected power and runtime together while preserving the graph, mean and system-reported runtime.
+- Refresh display telemetry independently of charging control: every 10 seconds for Average or 2 seconds for Instant. Follow the dashboard's focus/background policy, stop when the widget disappears, reject stale results and cancelled queued reads, and report read failures without changing charge configuration or history.
+- Validate persistence, reset, selected runtime, timer replacement, pause/re-entry, errors, stale work and cleanup with injected readers. Exercise actual SwiftUI view lifecycle callbacks in private offscreen previews. Physical control and older-system runtime remain unverified.
+
 ## 0.3.85
 
 - Share query-time change and endpoint selection across power, temperature, capacity, cycles and both charge-trend renderers. Apply strict minimum intervals of 0 seconds for power, 10 seconds for statistics and 180 seconds for charge/limit records, with the previous plateau endpoint and final-record rules.

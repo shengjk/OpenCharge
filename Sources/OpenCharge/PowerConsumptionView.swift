@@ -41,6 +41,9 @@ struct PowerConsumptionSnapshot {
  let averageMinutes: Double?
  let averageDateRange: ClosedRange<Date>?
 
+ func selectedWatts(_ mode: PowerCalculationMode) -> Double? { mode == .average ? average?.watts : currentWatts }
+ func selectedMinutes(_ mode: PowerCalculationMode) -> Double? { mode == .average ? averageMinutes : currentMinutes }
+
  var plotRange: ClosedRange<Double> { GraphValueRange.range(records.compactMap(\.watts)) }
 
  init(reading: BatteryReading?, history: [HistoryPoint], minutes: Int, end fallbackEnd: Date = Date()) {
@@ -98,36 +101,53 @@ struct PowerConsumptionSnapshot {
  }
 }
 
-struct PowerConsumptionView: View {
+@MainActor struct PowerConsumptionView: View {
  let reading: BatteryReading?
  let history: [HistoryPoint]
- @State private var minutes = 15
-
+ let active: Bool
+ @ObservedObject private var preferences: PowerGraphPreferences
+ @StateObject private var monitor: PowerGraphMonitor
+ @State private var visible = false
+ init(reading: BatteryReading?, history: [HistoryPoint], preferences: PowerGraphPreferences? = nil,
+      active: Bool = false, read: PowerGraphMonitor.Read? = nil, monitor: PowerGraphMonitor? = nil) {
+  self.reading = reading; self.history = history; self.active = active
+  _preferences = ObservedObject(wrappedValue: preferences ?? PowerGraphPreferences())
+  _monitor = StateObject(wrappedValue: monitor ?? PowerGraphMonitor(read: read))
+ }
+ private var minutes: Int { preferences.period.rawValue }
+ private var displayedReading: BatteryReading? { monitor.attempted ? monitor.reading : reading }
  var body: some View {
-  let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: minutes)
+  let data = PowerConsumptionSnapshot(reading: displayedReading, history: history, minutes: minutes)
   VStack(alignment: .leading, spacing: 8) {
-   Picker(NSLocalizedString("功耗时间窗口", comment: ""), selection: $minutes) {
-    ForEach([5, 15, 30], id: \.self) { value in
-     Text(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟", comment: ""), Int64(value))).tag(value)
-    }
+   Picker(NSLocalizedString("续航估算方式", comment: ""), selection: $preferences.mode) {
+    ForEach(PowerCalculationMode.allCases) { mode in Text(mode.title).tag(mode) }
+   }.pickerStyle(.segmented)
+   Picker(NSLocalizedString("功耗时间窗口", comment: ""), selection: $preferences.period) {
+    ForEach(PowerGraphPeriod.allCases) { period in Text(period.title).tag(period) }
    }.pickerStyle(.segmented)
    if data.records.isEmpty {
     Text(NSLocalizedString("记录系统负载后，功耗曲线将在这里显示。", comment: "")).font(.caption).presentationSecondary()
    } else {
     graph(data)
    }
-   valueRow(label: NSLocalizedString("当前系统负载", comment: ""), value: watts(data.currentWatts))
-   valueRow(label: NSLocalizedString("按当前负载估算续航", comment: ""), value: duration(data.currentMinutes))
+   valueRow(label: NSLocalizedString("估算采用的功耗", comment: ""), value: watts(data.selectedWatts(preferences.mode)))
+   valueRow(label: NSLocalizedString("预计电池续航", comment: ""), value: duration(data.selectedMinutes(preferences.mode)))
    if let average = data.average {
     Text(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟平均：%@ · 数据覆盖 %@", comment: ""),
      Int64(minutes), watts(average.watts), String(format: "%.0f%%", average.coverageFraction * 100)))
      .font(.caption).presentationSecondary()
    }
-   valueRow(label: NSLocalizedString("按平均负载估算续航", comment: ""), value: duration(data.averageMinutes))
-   valueRow(label: DashboardSpecification.timeToEmpty.title, value: BatterySpecificationFormatter.value(.timeToEmpty, reading: reading))
+   valueRow(label: DashboardSpecification.timeToEmpty.title, value: BatterySpecificationFormatter.value(.timeToEmpty, reading: displayedReading))
+   if let error = monitor.error { Text(error).font(.caption).foregroundColor(.orange).fixedSize(horizontal: false, vertical: true) }
+   Text(NSLocalizedString("平均模式采用所选窗口的记录平均值；即时模式采用当前系统负载。", comment: ""))
+    .font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
    Text(NSLocalizedString("续航优先使用已知机型的标称电压；否则使用系统设计电压，最后回退到当前端电压。平均功耗为记录值平均，不是时间加权值；覆盖率单独反映有效观测时长。", comment: ""))
     .font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
-  }
+  }.onAppear { visible = true; monitor.configure(active: active, mode: preferences.mode) }
+   .onChange(of: active) { monitor.configure(active: visible && $0, mode: preferences.mode) }
+   .onChange(of: preferences.mode) { monitor.configure(active: visible && active, mode: $0) }
+   .onChange(of: preferences.period) { _ in if visible && active { monitor.refresh() } }
+   .onDisappear { visible = false; monitor.stop() }
  }
 
  private func graph(_ data: PowerConsumptionSnapshot) -> some View {

@@ -4,7 +4,7 @@ import AppKit
 /// Explicit application-owned preferences only. OS, managed and unknown keys are retained.
 enum AppPreferenceReset {
  static let keys = ["appearance", "menuDisplay", "menuIconStyle", "menuTintLowPower", "showDockIcon",
-  "energySensitivity", "dashboardShowOnStartup", "dashboardBackgroundUpdates", "dashboardLayout",
+  "dashboardPowerMode", "dashboardPowerPeriod", "energySensitivity", "dashboardShowOnStartup", "dashboardBackgroundUpdates", "dashboardLayout",
   "popoverCompactLowPower", "popoverAnimationsEnabled", "popoverShowPercentage", "popoverLayout", "menuRightClickAction",
   "updatesAutomatic", "updatesAutomaticDownloads", "updatesPreviews", "updatesLastAttempt", SetupWizardPresentation.key, LowChargeLimitNotice.key]
  static func removeOverrides(from defaults: UserDefaults) {

@@ -697,9 +697,6 @@
 "功耗与续航" = "Power Consumption and Runtime";
 "功耗时间窗口" = "Power Consumption Window";
 "记录系统负载后，功耗曲线将在这里显示。" = "The power graph will appear when system load has been recorded.";
-"当前系统负载" = "Current System Load";
-"按当前负载估算续航" = "Estimated Runtime at Current Load";
-"按平均负载估算续航" = "Estimated Runtime at Average Load";
 "系统负载曲线" = "System Load Graph";
 "电池温度趋势" = "Battery Temperature History";
 "容量健康趋势" = "Capacity Health History";
@@ -775,3 +772,17 @@
 "正在读取长期记录…" = "Loading long-term records…";
 
 "容量与循环次数支持查询最近 360 天的已有记录；清空记录会同时删除长期统计。" = "Capacity and cycle statistics can query existing records from the last 360 days. Clear History also deletes long-term statistics.";
+
+"平均" = "Average";
+
+"即时" = "Instant";
+
+"续航估算方式" = "Runtime Calculation";
+
+"估算采用的功耗" = "Power Used for Estimate";
+
+"预计电池续航" = "Estimated Battery Runtime";
+
+"平均模式采用所选窗口的记录平均值；即时模式采用当前系统负载。" = "Average mode uses recorded values in the selected window; Instant mode uses the current system load.";
+
+"功耗读取失败：%@" = "Could not read power: %@";

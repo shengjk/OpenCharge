@@ -10,7 +10,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 - Separate idle and system/lid sleep protection, automatic discharge/calibration protection, recovery journals and optional foreground lid locking.
 - Deferred discharge-exit recovery with retry, cancellation and explicit timeout choices.
 - Recurring schedules, departure estimates, presets, decision history and JSON configuration backups.
-- Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings.
+- Configurable dashboard and menu-bar components, measured power flow and optional significant-energy app readings. Persisted Average/Instant runtime estimates use a separate display reader with focus-aware refresh.
 - Twelve App Intents, five App Shortcuts, CLI and an `opencharge://` URL scheme.
 - English and Simplified Chinese interface resources, selected through macOS language preferences.
 - Local history and explicit diagnostic exports; no account, analytics or cloud storage. Opt-in health, full-charge capacity and cycle statistics support 360-day queries; raw observations remain local until Clear History. Existing recent records are imported once on the next enabled recording.
@@ -18,7 +18,7 @@ A local-first macOS battery manager with a native dashboard, menu-bar controls, 
 
 ## Quick start
 
-Version 0.3.85 targets macOS 11+. Building requires Swift 5.9+ and Apple's command-line developer tools on a compatible build host. Runtime behavior on macOS 11/12 remains unverified; published 0.3.46 packages still require macOS 13. Native Shortcuts packaging also requires an installed App Intents metadata processor (normally supplied by Xcode).
+Version 0.3.86 targets macOS 11+. Building requires Swift 5.9+ and Apple's command-line developer tools on a compatible build host. Runtime behavior on macOS 11/12 remains unverified; published 0.3.46 packages still require macOS 13. Native Shortcuts packaging also requires an installed App Intents metadata processor (normally supplied by Xcode).
 
 ```sh
 git clone https://github.com/shengjk/OpenCharge.git

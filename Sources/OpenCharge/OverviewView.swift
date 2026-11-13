@@ -57,7 +57,7 @@ struct OverviewView: View {
   case .manualAwake:
    Card(item.title) { ManualAwakeView(model: m, session: m.manualAwake) }
   case .powerConsumption:
-   Card(item.title) { PowerConsumptionView(reading: d.reading, history: d.history) }
+   Card(item.title) { PowerConsumptionView(reading: d.reading, history: d.history, preferences: m.powerGraphPreferences, active: !d.paused, read: PowerGraphMonitor.liveRead) }
   case .temperatureTrend:
    Card(item.title) { BatteryStatisticChart(metric: .temperature, points: d.history, archive: d.statisticArchive, revision: d.statisticRevision, active: !d.paused, endingAt: d.reading?.date ?? Date(), archiveWriteError: d.statisticArchiveError) }
   case .capacityTrend:

@@ -27,6 +27,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   guard popoverVisible != anyVisible else { return }
   popoverVisible = anyVisible; syncDashboard()
  }
+ let powerGraphPreferences: PowerGraphPreferences
  let dashboardPreferences: DashboardPreferences
  let dashboard = DashboardPresentation()
  private var dashboardFocused = false
@@ -177,6 +178,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   self.readBattery = readBattery
   self.screenLockRequest = screenLockRequest
   updates = appUpdates ?? AppUpdates(defaults: dashboardDefaults)
+  powerGraphPreferences = PowerGraphPreferences(defaults: dashboardDefaults)
   dashboardPreferences = DashboardPreferences(defaults: dashboardDefaults)
   popoverPreferences = PopoverPreferences(defaults: dashboardDefaults)
   menuBarActions = MenuBarActionPreferences(defaults: dashboardDefaults)
@@ -1077,7 +1079,7 @@ enum PopoverConsumer: Hashable { case preview, statusItem }
   sleepOverrideFailed = false; sleepOverrideCapability = nil
   chargeContextEnabled = false; multiDisplaySleepEnabled = false; lidLockPolicy = LidLockPolicy()
   AppPreferenceReset.removeOverrides(from:settingsDefaults)
-  dashboardPreferences.reloadAfterReset(); popoverPreferences.reloadAfterReset(); menuBarActions.reloadAfterReset(); updates.reloadAfterReset()
+  powerGraphPreferences.reloadAfterReset(); dashboardPreferences.reloadAfterReset(); popoverPreferences.reloadAfterReset(); menuBarActions.reloadAfterReset(); updates.reloadAfterReset()
   applyDock(settingsDefaults.object(forKey:"showDockIcon") as? Bool ?? true)
   decision = Decision(.restore,NSLocalizedString("监测模式", comment: ""),limit:config.policy.limit)
   helperStatus = NSLocalizedString("监测模式", comment: "")

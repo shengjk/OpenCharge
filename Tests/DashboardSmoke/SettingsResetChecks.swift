@@ -41,6 +41,7 @@ private final class ResetManagedDefaults: UserDefaults {
   var task = ChargeSchedule(); task.date = Date().addingTimeInterval(3600); m.config.schedules = [task]
   m.config.scheduleHistory = [ScheduleExecution(scheduleID:task.id,action:.limit,scheduledAt:Date(timeIntervalSince1970:400),result:"fixture")]
   m.dashboardPreferences.layout = DashboardLayout(widgets:[.battery],specifications:[.voltage])
+  m.powerGraphPreferences.mode = .instant; m.powerGraphPreferences.period = .thirty
   m.dashboardPreferences.showOnStartup = false; m.dashboardPreferences.backgroundUpdates = true
   m.popoverPreferences.layout = PopoverLayout(widgets:[.specifications],specifications:[.current])
   m.popoverPreferences.animationsEnabled = false; m.popoverPreferences.showPercentage = false
@@ -118,6 +119,7 @@ private final class ResetManagedDefaults: UserDefaults {
    let kept = try canonical(m.config.scheduleHistory); precondition(kept == oldHistory)
    precondition(m.history.count == 1 && m.history[0].date == point.date)
    let diskHistory = try Data(contentsOf:historyURL); precondition(diskHistory == historyBytes)
+   precondition(m.powerGraphPreferences.mode == .average && m.powerGraphPreferences.period == .fifteen)
    precondition(m.dashboardPreferences.showOnStartup && !m.dashboardPreferences.backgroundUpdates && m.dashboardPreferences.layout == DashboardLayout())
    precondition(m.popoverPreferences.animationsEnabled && m.popoverPreferences.showPercentage && m.popoverPreferences.layout == PopoverLayout() && !m.popoverPreferences.isEditing(.statusItem) && !m.popoverPreferences.dragging)
    precondition(m.menuBarActions.rightClick == .popover && !m.updates.automaticChecks && m.updates.includePreviews)
