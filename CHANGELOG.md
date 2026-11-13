@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.87
+
+- Calculate the power graph, its mean and Average runtime only from recorded observations. Display refreshes no longer insert an unrecorded point or replace a recorded value at the same timestamp; Instant power and runtime continue to use live telemetry.
+- Keep empty recorded windows unavailable even when a live reading exists. Preserve recorded gaps and retain a recorded mean when the current power sensor is unavailable.
+- Verify live-only windows, equal timestamps, missing values, plateau projection and independent Average/Instant runtime using isolated fixtures. Logger cadence, broader physical parity and older-system runtime remain in progress.
+
 ## 0.3.86
 
 - Add persisted Average and Instant runtime calculation, with a saved 5/15/30-minute graph window. Keep Average and 15 minutes as defaults; settings reset reloads these defaults along with the other app preferences.

@@ -56,7 +56,8 @@ struct PowerConsumptionSnapshot {
   for point in history where point.date >= oldest && point.date <= end {
    byDate[point.date] = PowerSample(date: point.date, watts: point.systemWatts)
   }
-  if let reading { byDate[end] = PowerSample(date: end, watts: reading.systemPowerW) }
+  // Display polling is independent of recording. Only persisted observations
+  // contribute to the curve, its mean and coverage; live power drives Instant.
   let points = byDate.values.sorted { $0.date < $1.date }
   intervals = points.indices.compactMap { index in
    let point = points[index]

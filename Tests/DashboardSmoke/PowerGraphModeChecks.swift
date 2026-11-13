@@ -62,7 +62,7 @@ private final class PowerGraphFixtureReader: @unchecked Sendable {
  }
  let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: 15)
  precondition(data.selectedWatts(.instant) == 20 && data.selectedMinutes(.instant) == 60)
- precondition(data.selectedWatts(.average) == 50.0 / 3 && abs((data.selectedMinutes(.average) ?? 0) - 72) < 0.000001)
+ precondition(data.selectedWatts(.average) == 10 && abs((data.selectedMinutes(.average) ?? 0) - 120) < 0.000001)
  let missing = PowerConsumptionSnapshot(reading: nil, history: [], minutes: 15, end: end)
  precondition(missing.selectedWatts(.average) == nil && missing.selectedMinutes(.instant) == nil)
  func wait(_ condition: @MainActor () -> Bool) async throws {
