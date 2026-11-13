@@ -46,8 +46,7 @@ struct PowerConsumptionSnapshot {
 
  var plotRange: ClosedRange<Double> { GraphValueRange.range(records.compactMap(\.watts)) }
 
- init(reading: BatteryReading?, history: [HistoryPoint], minutes: Int, end fallbackEnd: Date = Date()) {
-  let end = reading?.date ?? fallbackEnd
+ init(reading: BatteryReading?, history: [HistoryPoint], minutes: Int, end: Date) {
   let start = end.addingTimeInterval(-60 * Double(minutes))
   self.end = end; self.start = start
   // Later readings replace earlier readings at an identical timestamp, including missing values.
@@ -109,16 +108,19 @@ struct PowerConsumptionSnapshot {
  @ObservedObject private var preferences: PowerGraphPreferences
  @StateObject private var monitor: PowerGraphMonitor
  @State private var visible = false
+ @State private var initialQueryDate: Date
  init(reading: BatteryReading?, history: [HistoryPoint], preferences: PowerGraphPreferences? = nil,
-      active: Bool = false, read: PowerGraphMonitor.Read? = nil, monitor: PowerGraphMonitor? = nil) {
+      active: Bool = false, read: PowerGraphMonitor.Read? = nil, monitor: PowerGraphMonitor? = nil,
+      queryDate: Date = Date()) {
   self.reading = reading; self.history = history; self.active = active
+  _initialQueryDate = State(initialValue: queryDate)
   _preferences = ObservedObject(wrappedValue: preferences ?? PowerGraphPreferences())
   _monitor = StateObject(wrappedValue: monitor ?? PowerGraphMonitor(read: read))
  }
  private var minutes: Int { preferences.period.rawValue }
  private var displayedReading: BatteryReading? { monitor.attempted ? monitor.reading : reading }
  var body: some View {
-  let data = PowerConsumptionSnapshot(reading: displayedReading, history: history, minutes: minutes)
+  let data = PowerConsumptionSnapshot(reading: displayedReading, history: history, minutes: minutes, end: monitor.queryDate ?? initialQueryDate)
   VStack(alignment: .leading, spacing: 8) {
    Picker(NSLocalizedString("续航估算方式", comment: ""), selection: $preferences.mode) {
     ForEach(PowerCalculationMode.allCases) { mode in Text(mode.title).tag(mode) }

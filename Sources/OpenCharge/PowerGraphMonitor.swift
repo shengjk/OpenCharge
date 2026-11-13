@@ -8,6 +8,7 @@ import ChargeHardware
  typealias Schedule = @MainActor (_ interval: TimeInterval, _ tick: @escaping @MainActor () -> Void) -> (() -> Void)
  static let liveRead: Read = { try BatteryReader.read() }
  @Published private(set) var reading: BatteryReading?
+ @Published private(set) var queryDate: Date?
  @Published private(set) var error: String?
  @Published private(set) var attempted = false
  @Published private(set) var loading = false
@@ -15,13 +16,14 @@ import ChargeHardware
  private(set) var mode: PowerCalculationMode = .average
  private let read: Read?
  private let schedule: Schedule
+ private let now: () -> Date
  private let queue = DispatchQueue(label: "org.opencharge.power-graph", qos: .utility)
  private var cancelTimer: (() -> Void)?
  private var generation = 0
  private var ticket: ReadTicket?
 
- init(read: Read? = nil, schedule: Schedule? = nil) {
-  self.read = read; self.schedule = schedule ?? Self.makeTimer
+ init(read: Read? = nil, schedule: Schedule? = nil, now: @escaping () -> Date = { Date() }) {
+  self.read = read; self.schedule = schedule ?? Self.makeTimer; self.now = now
  }
  deinit { cancelTimer?(); ticket?.cancel() }
 
@@ -50,6 +52,9 @@ import ChargeHardware
    let result = Result { try read() }
    DispatchQueue.main.async { [weak self] in
     guard let self, self.active, request.valid, self.ticket === request else { return }
+    // Capture the query clock when accepting this result, independently of the
+    // sensor timestamp. Inactive/stale replies never advance the frozen window.
+    self.queryDate = self.now()
     self.ticket = nil; self.loading = false; self.attempted = true
     switch result {
     case .success(let reading): self.reading = reading; self.error = nil

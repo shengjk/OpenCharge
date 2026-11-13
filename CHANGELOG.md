@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.88
+
+- Capture the power graph query time independently of the sensor timestamp. Delayed, future-dated and unavailable sensor readings no longer move the selected history window or hide otherwise valid recorded observations.
+- Advance the query clock only when an active display request is accepted, including read failures. Freeze it while inactive and reject clock changes from cancelled or outdated replies; keep a stable initial time before the first request completes.
+- Verify window ageing, clock rollback, stale sensor dates, failed reads, focus suspension and asynchronous cancellation with injected clocks and readers. The separate global telemetry acquisition and per-channel recording migration remain in progress.
+
 ## 0.3.87
 
 - Calculate the power graph, its mean and Average runtime only from recorded observations. Display refreshes no longer insert an unrecorded point or replace a recorded value at the same timestamp; Instant power and runtime continue to use live telemetry.

@@ -60,7 +60,7 @@ private final class PowerGraphFixtureReader: @unchecked Sendable {
   HistoryPoint(date: end.addingTimeInterval(offset), percent: 70, temperature: nil, watts: nil,
    reason: "fixture", systemWatts: offset == -120 ? 5 : 10)
  }
- let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: 15)
+ let data = PowerConsumptionSnapshot(reading: reading, history: history, minutes: 15, end: end)
  precondition(data.selectedWatts(.instant) == 20 && data.selectedMinutes(.instant) == 60)
  precondition(data.selectedWatts(.average) == 10 && abs((data.selectedMinutes(.average) ?? 0) - 120) < 0.000001)
  let missing = PowerConsumptionSnapshot(reading: nil, history: [], minutes: 15, end: end)
@@ -69,12 +69,14 @@ private final class PowerGraphFixtureReader: @unchecked Sendable {
   for _ in 0..<600 { if condition() { return }; try await Task.sleep(nanoseconds: 5_000_000) }
   preconditionFailure("power graph fixture did not settle")
  }
+ var queryClock = end
  let source = PowerGraphFixtureReader(), schedule = PowerGraphFixtureSchedule()
- let monitor = PowerGraphMonitor(read: { try source.read() }, schedule: schedule.install)
+ let monitor = PowerGraphMonitor(read: { try source.read() }, schedule: schedule.install, now: { queryClock })
  monitor.configure(active: false, mode: .average)
- precondition(source.count == 0 && schedule.intervals.isEmpty)
+ precondition(source.count == 0 && schedule.intervals.isEmpty && monitor.queryDate == nil)
  monitor.configure(active: true, mode: .average); try await wait { !monitor.loading }
  precondition(schedule.intervals == [10] && source.count == 1 && monitor.attempted && monitor.reading?.systemPowerW == 5)
+ precondition(monitor.queryDate == end && monitor.reading?.date != monitor.queryDate)
  let oldTick = schedule.ticks[0]
  monitor.configure(active: true, mode: .average)
  precondition(schedule.intervals.count == 1 && source.count == 1)
@@ -82,26 +84,31 @@ private final class PowerGraphFixtureReader: @unchecked Sendable {
  precondition(schedule.intervals == [10,2] && schedule.cancelled == 1 && source.count == 2)
  oldTick(); try await Task.sleep(nanoseconds: 20_000_000)
  precondition(source.count == 2, "cancelled timer callbacks must not read under a new mode")
+ queryClock = end.addingTimeInterval(30)
  source.fail(); schedule.ticks.last!(); try await wait { !monitor.loading }
- precondition(monitor.reading == nil && monitor.error != nil && monitor.attempted)
+ precondition(monitor.reading == nil && monitor.error != nil && monitor.attempted && monitor.queryDate == queryClock)
  schedule.ticks.last!(); try await wait { !monitor.loading }
  precondition(monitor.error == nil && monitor.reading?.systemPowerW == 20)
  let frozenDate = monitor.reading?.date
+ let frozenQuery = monitor.queryDate
+ queryClock = end.addingTimeInterval(90)
  monitor.stop(); schedule.ticks.last!(); try await Task.sleep(nanoseconds: 20_000_000)
- precondition(!monitor.active && source.count == 4 && monitor.reading?.date == frozenDate && schedule.cancelled == 2)
+ precondition(!monitor.active && source.count == 4 && monitor.reading?.date == frozenDate && monitor.queryDate == frozenQuery && schedule.cancelled == 2)
  monitor.configure(active: true, mode: .instant); try await wait { !monitor.loading }
  precondition(source.count == 5 && schedule.intervals.last == 2)
  monitor.stop()
  // A slow old read cannot overwrite a later mode. A cancelled queued read must
  // not call its provider after focus is lost; only the new active request runs.
+ precondition(monitor.queryDate == queryClock)
  let blocked = PowerGraphFixtureReader(blockFirst: true), queuedSchedule = PowerGraphFixtureSchedule()
  defer { blocked.firstGate?.signal() }
- let queued = PowerGraphMonitor(read: { try blocked.read() }, schedule: queuedSchedule.install)
+ var queuedClockCalls = 0
+ let queued = PowerGraphMonitor(read: { try blocked.read() }, schedule: queuedSchedule.install, now: { queuedClockCalls += 1; return end })
  queued.configure(active: true, mode: .average); try await wait { blocked.count == 1 }
  queued.configure(active: true, mode: .instant); queued.stop()
  queued.configure(active: true, mode: .instant)
  blocked.firstGate?.signal(); try await wait { !queued.loading }
- precondition(blocked.count == 2 && queued.reading?.systemPowerW == 10 && queued.active)
+ precondition(blocked.count == 2 && queued.reading?.systemPowerW == 10 && queued.active && queued.queryDate == end && queuedClockCalls == 1)
  queued.stop()
  let disabled = PowerGraphMonitor(schedule: schedule.install)
  disabled.configure(active: true, mode: .instant)
@@ -114,5 +121,5 @@ private final class PowerGraphFixtureReader: @unchecked Sendable {
  precondition(weakReleased == nil && schedule.cancelled == cancellations + 1)
  precondition((try? Data(contentsOf: Configuration.url)) == configurationBytes)
  precondition((try? Data(contentsOf: historyURL)) == historyBytes, "display sampling must not persist history")
- print("PASS power graph modes: persisted defaults/validation/reset, selected runtime source, 10s/2s scheduling, inactive/focus/re-entry gates, stale timer/read suppression, queued cancellation, failure/retry and lifetime cleanup; injected read-only providers only")
+ print("PASS power graph modes: persisted defaults/validation/reset, selected runtime source, independent query clock on success/failure, frozen inactive clock, stale result clock suppression, 10s/2s scheduling, inactive/focus/re-entry gates, stale timer/read suppression, queued cancellation, failure/retry and lifetime cleanup; injected read-only providers only")
 }
