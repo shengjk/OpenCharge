@@ -47,6 +47,12 @@ struct OverviewView: View {
    Text(d.reading?.adapterName ?? NSLocalizedString("适配器名称不可用", comment: "")).font(.headline)
    Text(d.reading?.adapterManufacturer ?? NSLocalizedString("制造商不可用", comment: "")).font(.caption).presentationSecondary()
    HStack { Metric(label: NSLocalizedString("适配器额定", comment: ""), value: d.reading?.adapterWatts.map { String(format: "%.0f W", $0) } ?? "—", icon: "powerplug"); Metric(label: NSLocalizedString("实际电源输入", comment: ""), value: d.reading?.adapterPowerW.map { String(format: "%.1f W", $0) } ?? "—", icon: "bolt"); Metric(label: NSLocalizedString("系统负载", comment: ""), value: d.reading?.systemPowerW.map { String(format: "%.1f W", $0) } ?? "—", icon: "laptopcomputer") }
+   if let source = d.reading?.adapterPowerSource {
+    Text(String.localizedStringWithFormat(NSLocalizedString("输入功率来源：%@", comment: ""), source.displayName)).font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
+   }
+   if let source = d.reading?.systemPowerSource {
+    Text(String.localizedStringWithFormat(NSLocalizedString("系统负载来源：%@", comment: ""), source.displayName)).font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
+   }
    ForEach([5.0, 15, 30], id: \.self) { minutes in
     if let average = d.powerAverages[minutes] { Text(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟平均：%@ · 数据覆盖 %@", comment: ""), Int64(Int(minutes)), String(format: "%.1f W", average.watts), String(format: "%.1f%%", average.coverageFraction * 100))).font(.caption).presentationSecondary() }
    }

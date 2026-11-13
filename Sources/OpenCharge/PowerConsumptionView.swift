@@ -135,6 +135,10 @@ struct PowerConsumptionSnapshot {
    }
    valueRow(label: NSLocalizedString("估算采用的功耗", comment: ""), value: watts(data.selectedWatts(preferences.mode)))
    valueRow(label: NSLocalizedString("预计电池续航", comment: ""), value: duration(data.selectedMinutes(preferences.mode)))
+   if preferences.mode == .instant, let source = displayedReading?.systemPowerSource {
+    Text(String.localizedStringWithFormat(NSLocalizedString("功率来源：%@", comment: ""), source.displayName))
+     .font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
+   }
    if let average = data.average {
     Text(String.localizedStringWithFormat(NSLocalizedString("%lld 分钟平均：%@ · 数据覆盖 %@", comment: ""),
      Int64(minutes), watts(average.watts), String(format: "%.0f%%", average.coverageFraction * 100)))

@@ -88,6 +88,65 @@ import ChargeHardware
   for (type, bytes): (String, [UInt8]) in [("sp78", [0]), ("flt ", [0, 0]), ("ui16", [0, 33]), ("flt ", [0, 0, 128, 127]), ("sp78", [127, 255])] {
    check(TelemetryMath.smcTemperatureCelsius(dataType: type, bytes: bytes) == nil, "unknown, malformed, nonfinite or implausible temperatures must be rejected")
   }
+  // Exercise the production fixed-key acquisition and complete source-selection boundary.
+  func flt(_ value: Float) -> (dataType: String, bytes: [UInt8]) {
+   let bits = value.bitPattern
+   return ("flt ", (0..<4).map { UInt8(truncatingIfNeeded: bits >> ($0 * 8)) })
+  }
+  let registry = try decode(properties.merging(["InstantAmperage": -1200, "Voltage": 12000,
+   "PowerTelemetryData": ["SystemLoad": 12000, "SystemPowerIn": 30000]]) { _, new in new })
+  check(registry.systemPowerW == 12 && registry.adapterPowerW == 30 && registry.systemPowerSource == .registrySystem && registry.adapterPowerSource == .registryInput, "registry power uses milliwatts and explicit per-metric sources")
+  var queried: [String] = []
+  let sensors = SMCTelemetryReading.capture { key in
+   queried.append(key)
+   switch key {
+   case "TB0T": return flt(32)
+   case "PSTR": return ("sp78", [0x13, 0x80])
+   case "VD0R": return flt(20)
+   case "ID0R": return flt(2.5)
+   default: preconditionFailure("unexpected key")
+   }
+  }
+  check(queried == ["TB0T", "PSTR", "VD0R", "ID0R"], "acquisition reads exactly four fixed sensors, no control keys")
+  let selected = try BatteryTelemetryReader.read(base: { registry }, smc: { sensors })
+  check(selected.temperature == 32 && selected.systemPowerW == 19.5 && selected.adapterPowerW == 50, "typed system watts and measured volts times amps selected independently")
+  check(selected.systemPowerSource == .smcSystem && selected.adapterPowerSource == .smcInput && selected.registrySystemPowerW == 12 && selected.registryAdapterPowerW == 30, "selection retains registry alternates and per-metric provenance")
+  check(selected.currentMA == -1200 && selected.voltageMV == 12000 && selected.adapterWatts == registry.adapterWatts && selected.hardwarePercent == registry.hardwarePercent, "power selection cannot change signed battery telemetry, adapter rating or control percentage")
+  let coded = try JSONDecoder().decode(BatteryReading.self, from: encoder.encode(selected))
+  check(coded.systemPowerSource == .smcSystem && coded.adapterPowerSource == .smcInput && coded.registryAdapterPowerW == 30, "power values and sources survive JSON coding")
+  var legacyPower = try JSONSerialization.jsonObject(with: encoder.encode(selected)) as! [String: Any]
+  for field in ["systemPowerSource", "adapterPowerSource", "registrySystemPowerW", "registryAdapterPowerW"] { legacyPower.removeValue(forKey: field) }
+  let oldPower = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject: legacyPower))
+  check(oldPower.systemPowerW == 19.5 && oldPower.systemPowerSource == nil && oldPower.registrySystemPowerW == nil, "legacy values do not acquire invented sources")
+  let failed = try BatteryTelemetryReader.read(base: { registry }, smc: { throw HardwareError.permissionRequired })
+  check(failed.systemPowerW == 12 && failed.adapterPowerW == 30 && failed.systemPowerSource == .registrySystem, "connection failure preserves identified registry fallback")
+  let partial = SMCTelemetryReading.capture { key in
+   if key == "PSTR" { return flt(22) }
+   throw HardwareError.unavailable("fixture")
+  }
+  let mixed = try BatteryTelemetryReader.read(base: { registry }, smc: { partial })
+  check(mixed.systemPowerW == 22 && mixed.systemPowerSource == .smcSystem && mixed.adapterPowerW == 30 && mixed.adapterPowerSource == .registryInput && mixed.temperature == 30, "one missing key cannot discard unrelated valid sensors")
+  for bad in [flt(-1), flt(.nan), flt(.infinity), flt(1001), ("ui16", [0, 20]), ("flt ", [0, 0])] {
+   let invalid = SMCTelemetryReading.capture { key in key == "PSTR" ? bad : flt(1) }
+   check(invalid.systemPowerW == nil && invalid.adapterPowerW == 1, "unsupported type, size, sign and range fail only the affected metric")
+  }
+  for bad in [flt(-1), flt(.nan), flt(101), ("sp78", [1, 0])] {
+   let invalid = SMCTelemetryReading.capture { key in key == "ID0R" ? bad : flt(20) }
+   check(invalid.adapterPowerW == nil && invalid.systemPowerW == 20, "input product needs valid float volts and amps; unknown layouts are never guessed")
+  }
+  let excessive = SMCTelemetryReading.capture { _ in flt(100) }
+  check(excessive.adapterPowerW == nil, "reject an implausible product even if factors are bounded")
+  let zero = SMCTelemetryReading.capture { _ in flt(0) }
+  let zeroSelected = try BatteryTelemetryReader.read(base: { registry }, smc: { zero })
+  check(zeroSelected.systemPowerW == 0 && zeroSelected.adapterPowerW == 0 && zeroSelected.systemPowerSource == .smcSystem, "measured zero remains distinct from a missing reading")
+  var disconnected = registry; disconnected.connected = false; disconnected.adapterPowerW = nil; disconnected.adapterPowerSource = nil
+  let noInput = try BatteryTelemetryReader.read(base: { disconnected }, smc: { sensors })
+  check(noInput.adapterPowerW == nil && noInput.adapterPowerSource == nil && noInput.systemPowerW == 19.5, "disconnected or owned-cutoff state cannot invent adapter input")
+  var queriedAll = false
+  do {
+   _ = try BatteryTelemetryReader.read(base: { throw HardwareError.unavailable("fixture") }, smc: { queriedAll = true; return sensors })
+   preconditionFailure("missing base must fail")
+  } catch { check(!queriedAll, "complete acquisition does not query SMC without a battery") }
   print("Telemetry source/capacity/legacy decoding: \(count) fixture checks passed; no hardware access")
  }
 }

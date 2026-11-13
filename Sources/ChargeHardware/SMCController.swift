@@ -90,6 +90,15 @@ public final class SMCController {
         return SMCTemperatureReading(dataType: reading.dataType, bytes: reading.bytes)
     }
 
+    /// One serialized connection for fixed read-only sensors; never probes control capabilities.
+    public func telemetryReading() -> SMCTelemetryReading {
+        lock.lock(); defer { lock.unlock() }
+        return SMCTelemetryReading.capture { key in
+            let value = try self.keyIO.read(key)
+            return (value.dataType, value.bytes)
+        }
+    }
+
     /// Explicit numeric-profile observation only; never loads a recovery journal.
     /// Architecture is the current process architecture; the exact physical model
     /// check also prevents Rosetta on an Apple Silicon model from selecting Intel.

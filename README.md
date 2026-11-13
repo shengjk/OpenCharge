@@ -65,3 +65,5 @@ Battery data stays in `~/Library/Application Support/OpenCharge/`. Update prefer
 ## License
 
 MIT. Third-party notices and protocol references are retained in [docs/licenses/Hardware-MIT.txt](docs/licenses/Hardware-MIT.txt) and [hardware documentation](docs/HARDWARE.md).
+
+Measured system load and DC input prefer fixed read-only SMC sensors when supported. The dashboard and telemetry JSON identify each source; IORegistry fallback values remain separate. Older history is not assigned a sensor source retrospectively. Battery current/voltage and adapter ratings retain their existing sources.

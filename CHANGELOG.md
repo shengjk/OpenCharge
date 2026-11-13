@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.91
+
+- Read fixed SMC system-load and DC-input sensors through one read-only connection. Decode PSTR using its Float or sp78 metadata and calculate input power from Float VD0R volts × ID0R amps; reject unsupported layouts, nonfinite values and implausible readings independently.
+- Retain IORegistry power as an explicit fallback when a sensor or connection is unavailable. Preserve the alternate registry values and record per-metric sources in telemetry JSON and new recent history. Show current sources in the dashboard and Instant power view; older saved values keep unknown provenance.
+- Preserve signed registry battery power and adapter ratings. No helper deployment or hardware-control changes. Fixed-key acquisition, partial failures, zero readings, source coding and legacy decoding are verified with injected fixtures; model-wide physical equivalence and independent minute/monthly statistics remain in progress.
+
 ## 0.3.90
 
 - Record raw full-charge capacity and cycle counts in independent daily channels with anchored time grids, repeated-value admission and a 3650-row limit per channel. Reuse the oldest row at capacity; preserve actual observation times and process-lifetime anchors.

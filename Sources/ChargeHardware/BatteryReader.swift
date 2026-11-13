@@ -17,6 +17,21 @@ public enum BatteryTemperatureSource: String, Codable, Sendable {
     public var displayName: String { self == .smc ? "SMC TB0T" : NSLocalizedString("系统电池传感器", comment: "") }
 }
 
+public enum PowerMeasurementSource: String, Codable, Sendable {
+    case smcSystem = "smc.PSTR"
+    case smcInput = "smc.VD0R*ID0R"
+    case registrySystem = "ioregistry.PowerTelemetryData.SystemLoad"
+    case registryInput = "ioregistry.PowerTelemetryData.SystemPowerIn"
+    public var displayName: String {
+        switch self {
+        case .smcSystem: return "SMC PSTR"
+        case .smcInput: return "SMC VD0R × ID0R"
+        case .registrySystem: return "IORegistry SystemLoad"
+        case .registryInput: return "IORegistry SystemPowerIn"
+        }
+    }
+}
+
 public struct BatteryReading: Codable, Sendable {
     public var date: Date
     public var percent: Double
@@ -48,10 +63,14 @@ public struct BatteryReading: Codable, Sendable {
     /// Negotiated adapter profile in mV/mA, not measured instantaneous input.
     public var adapterVoltageMV: Double?
     public var adapterCurrentMA: Double?
-    /// OS-reported system load and actual DC adapter input, converted from mW.
-    /// These undocumented telemetry fields can refresh slower than the app polls.
+    /// Selected measured system load and DC adapter input, in watts.
+    /// See source labels; retained registry fields can refresh slower than polling.
     public var systemPowerW: Double?
     public var adapterPowerW: Double?
+    public var systemPowerSource: PowerMeasurementSource?
+    public var adapterPowerSource: PowerMeasurementSource?
+    public var registrySystemPowerW: Double?
+    public var registryAdapterPowerW: Double?
     public var temperatureSource: BatteryTemperatureSource?
     public var registryTemperature: Double?
     public var virtualTemperature: Double?
@@ -80,7 +99,9 @@ public struct BatteryReading: Codable, Sendable {
                 registryTemperature: Double? = nil, virtualTemperature: Double? = nil,
                 nominalCapacityMAH: Double? = nil, healthCondition: String? = nil,
                 remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil,
-                modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil, rawFullCapacityMAH: Double? = nil) {
+                modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil, rawFullCapacityMAH: Double? = nil,
+                systemPowerSource: PowerMeasurementSource? = nil, adapterPowerSource: PowerMeasurementSource? = nil,
+                registrySystemPowerW: Double? = nil, registryAdapterPowerW: Double? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -99,6 +120,8 @@ public struct BatteryReading: Codable, Sendable {
         self.modelNominalVoltageMV = modelNominalVoltageMV
         self.optimizedChargingEngaged = optimizedChargingEngaged
         self.rawFullCapacityMAH = rawFullCapacityMAH
+        self.systemPowerSource = systemPowerSource; self.adapterPowerSource = adapterPowerSource
+        self.registrySystemPowerW = registrySystemPowerW; self.registryAdapterPowerW = registryAdapterPowerW
     }
 }
 
@@ -106,6 +129,17 @@ public extension BatteryReading {
  func applyingSMCTemperature(_ value: Double?) -> BatteryReading {
   guard let value, value.isFinite, (-40...100).contains(value) else { return self }
   var result = self; result.temperature = value; result.temperatureSource = .smc; return result
+ }
+ func applyingSMCPower(system: Double?, input: Double?) -> BatteryReading {
+  var result = self
+  if let system, system.isFinite, (0...1000).contains(system) {
+   result.systemPowerW = system; result.systemPowerSource = .smcSystem
+  }
+  // OS connection state can be false during owned input cutoff. Do not invent an input reading then.
+  if connected, let input, input.isFinite, (0...1000).contains(input) {
+   result.adapterPowerW = input; result.adapterPowerSource = .smcInput
+  }
+  return result
  }
  func controlPercentage(useHardware: Bool) throws -> Double {
   if useHardware { guard let value = hardwarePercent, value.isFinite, (0...100).contains(value) else { throw HardwareError.unavailable("hardware battery percentage") }; return value }
@@ -243,7 +277,10 @@ public enum BatteryReader {
             healthCondition: (source?[kIOPSBatteryHealthConditionKey] as? String).flatMap { $0.isEmpty ? nil : $0 },
             remainingCapacityMAH: remaining, designVoltageMV: valid(number("DesignVoltage"), 1...65535),
             modelNominalVoltageMV: modelIdentifier.flatMap { ModelNominalBatteryVoltage.millivolts(for: $0) },
-            optimizedChargingEngaged: optimized, rawFullCapacityMAH: rawFull)
+            optimizedChargingEngaged: optimized, rawFullCapacityMAH: rawFull,
+            systemPowerSource: watts("SystemLoad") == nil ? nil : .registrySystem,
+            adapterPowerSource: connected && watts("SystemPowerIn") != nil ? .registryInput : nil,
+            registrySystemPowerW: watts("SystemLoad"), registryAdapterPowerW: connected ? watts("SystemPowerIn") : nil)
     }
 }
 

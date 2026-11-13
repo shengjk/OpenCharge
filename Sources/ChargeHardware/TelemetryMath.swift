@@ -15,6 +15,12 @@ public enum TelemetryMath {
     /// sp78 is signed big-endian 8.8 fixed point; Apple Silicon flt payloads are IEEE little-endian.
     /// Only exact known layouts are accepted; unknown types and non-finite values remain unavailable.
     public static func smcTemperatureCelsius(dataType: String, bytes: [UInt8]) -> Double? {
+        guard let value = smcScalar(dataType: dataType, bytes: bytes), (-40...100).contains(value) else { return nil }
+        return value
+    }
+
+    /// Decode only evidenced scalar layouts. Units and ranges belong to each fixed sensor.
+    public static func smcScalar(dataType: String, bytes: [UInt8]) -> Double? {
         let value: Double
         switch dataType {
         case "sp78":
@@ -26,7 +32,7 @@ public enum TelemetryMath {
             value = Double(Float(bitPattern: bits))
         default: return nil
         }
-        guard value.isFinite, (-40...100).contains(value) else { return nil }; return value
+        guard value.isFinite else { return nil }; return value
     }
 
     public static func batteryTemperatureCelsius(raw: Double?) -> Double? {

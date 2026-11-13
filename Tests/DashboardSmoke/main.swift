@@ -48,14 +48,14 @@ import ChargeHardware
   precondition(MenuBarLabel(display: "unknown", reading: labelReading).text == "80%")
   precondition(MenuBarLabel(display: "percentage", reading: nil).text == "—")
   precondition(MenuBarLabel(display: "hardware", reading: BatteryReading(percent: 80, connected: true, charging: false, hardwarePercent: .nan)).text == "—")
-  let point = HistoryPoint(date: Date(), percent: 80, temperature: 33.5, watts: 0, reason: "fixture", temperatureSource: .smc)
+  let point = HistoryPoint(date: Date(), percent: 80, temperature: 33.5, watts: 0, reason: "fixture", systemPowerSource: .smcSystem, adapterPowerSource: .registryInput, temperatureSource: .smc)
   let encodedPoint = try JSONEncoder().encode(point)
   let newPoint = try JSONDecoder().decode(HistoryPoint.self, from: encodedPoint)
-  precondition(newPoint.temperatureSource == .smc)
+  precondition(newPoint.temperatureSource == .smc && newPoint.systemPowerSource == .smcSystem && newPoint.adapterPowerSource == .registryInput)
   var oldObject = try JSONSerialization.jsonObject(with: encodedPoint) as! [String: Any]
-  oldObject.removeValue(forKey: "temperatureSource")
+  for key in ["temperatureSource", "systemPowerSource", "adapterPowerSource"] { oldObject.removeValue(forKey: key) }
   let oldPoint = try JSONDecoder().decode(HistoryPoint.self, from: JSONSerialization.data(withJSONObject: oldObject))
-  precondition(oldPoint.temperature == 33.5 && oldPoint.temperatureSource == nil, "legacy history must not invent a source")
+  precondition(oldPoint.temperature == 33.5 && oldPoint.temperatureSource == nil && oldPoint.systemPowerSource == nil && oldPoint.adapterPowerSource == nil, "legacy history must not invent a source")
   let suite = "org.opencharge.dashboard-test." + UUID().uuidString
   let defaults = UserDefaults(suiteName: suite)!
   defer { defaults.removePersistentDomain(forName: suite) }
