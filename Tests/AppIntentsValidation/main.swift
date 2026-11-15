@@ -51,10 +51,10 @@ import ChargeHardware
    var hardwarePause = try Configuration.load(); hardwarePause.policy.useHardwarePercent = true
    hardwarePause.policy.mode = .calibration; hardwarePause.calibrationCheckpoint = CalibrationCheckpoint(stage: .holding)
    try hardwarePause.save()
-   PauseIntentTelemetry.read = { BatteryReading(percent: 80, connected: true, charging: false, hardwarePercent: 55.8) }
+   PauseIntentTelemetry.read = { try BatteryTelemetryReader.read(base: { BatteryReading(percent:80,connected:true,charging:false,hardwarePercent:40,rawCapacityPercent:40) }, smc:{ SMCTelemetryReading(hardwarePercent:55) }) }
    _ = try await StopChargingIntent().perform()
    let hardwarePaused = try Configuration.load()
-   if hardwarePaused.policy.limit != Double(Float(55.8)) || hardwarePaused.policy.mode != .paused || hardwarePaused.policy.pauseAtCurrent != true || hardwarePaused.calibrationCheckpoint != nil { failures += 1; print("FAIL hardware pause or calibration cancellation") }
+   if hardwarePaused.policy.limit != 55 || hardwarePaused.policy.mode != .paused || hardwarePaused.policy.pauseAtCurrent != true || hardwarePaused.calibrationCheckpoint != nil { failures += 1; print("FAIL hardware pause or calibration cancellation") }
    PauseIntentTelemetry.read = { BatteryReading(percent: 80, connected: true, charging: false) }
    do { _ = try await StopChargingIntent().perform(); failures += 1; print("FAIL missing hardware percentage accepted") } catch {}
    let indefinite = SetChargeModeIntent(); indefinite.mode = .paused; _ = try await indefinite.perform()

@@ -36,8 +36,11 @@ struct OverviewView: View {
   case .specifications:
    Card(NSLocalizedString("电池规格", comment: "")) {
    if preferences.layout.specifications.isEmpty { Text(NSLocalizedString("未选择规格指标", comment: "")).presentationSecondary() }
-   LazyVGrid(columns: [GridItem(.flexible(), spacing: 24), GridItem(.flexible(), spacing: 24), GridItem(.flexible())], alignment: .leading, spacing: 24) {
+   LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 24)], alignment: .leading, spacing: 24) {
     ForEach(preferences.layout.specifications) { spec in Metric(label: spec.title, value: d.value(spec), icon: "info.circle") }
+   }
+   if preferences.layout.specifications.contains(.hardwarePercent), let source = d.reading?.hardwarePercentageSource {
+    Text(String.localizedStringWithFormat(NSLocalizedString("硬件电量来源：%@", comment: ""), source.displayName)).font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
    }
    if let nominal = d.reading?.nominalCapacityMAH { Text(String(format: NSLocalizedString("系统标称容量：%.0f mAh · 与满充容量分别记录", comment: ""), nominal)).font(.caption).presentationSecondary() }
    if let hint = d.reading?.healthCondition { Text(String.localizedStringWithFormat(NSLocalizedString("系统维护提示：%@", comment: ""), hint)).font(.caption).presentationSecondary() }

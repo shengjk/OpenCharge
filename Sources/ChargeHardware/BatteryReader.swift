@@ -32,6 +32,14 @@ public enum PowerMeasurementSource: String, Codable, Sendable {
     }
 }
 
+public enum HardwarePercentageSource: String, Codable, Sendable {
+    case smc = "smc.BRSC"
+    case rawCapacityRatio = "ioregistry.rawCapacityRatio"
+    public var displayName: String {
+        self == .smc ? "SMC BRSC" : NSLocalizedString("原始容量比值", comment: "")
+    }
+}
+
 public struct BatteryReading: Codable, Sendable {
     public var date: Date
     public var percent: Double
@@ -47,7 +55,11 @@ public struct BatteryReading: Codable, Sendable {
     /// Raw AppleRawExternalConnected; may be false during an owned input cutoff.
     /// This is not independent confirmation that the cable was unplugged.
     public var physicalAdapterConnected: Bool?
+    /// Selected hardware percentage: BRSC when available; identified capacity-ratio fallback otherwise.
     public var hardwarePercent: Double?
+    public var hardwarePercentageSource: HardwarePercentageSource?
+    /// AppleRawCurrentCapacity / AppleRawMaxCapacity; independent of BRSC and OS percentage.
+    public var rawCapacityPercent: Double?
     public var designCapacityMAH: Double?
     /// Raw full-charge capacity when valid; nominal/legacy capacity otherwise.
     public var fullCapacityMAH: Double?
@@ -101,7 +113,8 @@ public struct BatteryReading: Codable, Sendable {
                 remainingCapacityMAH: Double? = nil, designVoltageMV: Double? = nil,
                 modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil, rawFullCapacityMAH: Double? = nil,
                 systemPowerSource: PowerMeasurementSource? = nil, adapterPowerSource: PowerMeasurementSource? = nil,
-                registrySystemPowerW: Double? = nil, registryAdapterPowerW: Double? = nil) {
+                registrySystemPowerW: Double? = nil, registryAdapterPowerW: Double? = nil,
+                hardwarePercentageSource: HardwarePercentageSource? = nil, rawCapacityPercent: Double? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -122,6 +135,7 @@ public struct BatteryReading: Codable, Sendable {
         self.rawFullCapacityMAH = rawFullCapacityMAH
         self.systemPowerSource = systemPowerSource; self.adapterPowerSource = adapterPowerSource
         self.registrySystemPowerW = registrySystemPowerW; self.registryAdapterPowerW = registryAdapterPowerW
+        self.hardwarePercentageSource = hardwarePercentageSource; self.rawCapacityPercent = rawCapacityPercent
     }
 }
 
@@ -139,6 +153,11 @@ public extension BatteryReading {
   if connected, let input, input.isFinite, (0...1000).contains(input) {
    result.adapterPowerW = input; result.adapterPowerSource = .smcInput
   }
+  return result
+ }
+ func applyingSMCHardwarePercentage(_ value: Double?) -> BatteryReading {
+  guard let value, value.isFinite, (0...100).contains(value) else { return self }
+  var result = self; result.hardwarePercent = value; result.hardwarePercentageSource = .smc
   return result
  }
  func controlPercentage(useHardware: Bool) throws -> Double {
@@ -280,7 +299,8 @@ public enum BatteryReader {
             optimizedChargingEngaged: optimized, rawFullCapacityMAH: rawFull,
             systemPowerSource: watts("SystemLoad") == nil ? nil : .registrySystem,
             adapterPowerSource: connected && watts("SystemPowerIn") != nil ? .registryInput : nil,
-            registrySystemPowerW: watts("SystemLoad"), registryAdapterPowerW: connected ? watts("SystemPowerIn") : nil)
+            registrySystemPowerW: watts("SystemLoad"), registryAdapterPowerW: connected ? watts("SystemPowerIn") : nil,
+            hardwarePercentageSource: rawPercent == nil ? nil : .rawCapacityRatio, rawCapacityPercent: rawPercent)
     }
 }
 

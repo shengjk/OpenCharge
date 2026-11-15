@@ -182,8 +182,14 @@ The system reading remained 80%, so the 79% target-stop criterion was not reache
 
 ### Read-only power telemetry
 
-The shared app/CLI telemetry reader uses one serialized SMC connection for TB0T, PSTR, VD0R and ID0R. PSTR is system-total watts (Float or sp78 metadata); measured DC input is Float VD0R volts × Float ID0R amps. Unsupported types, malformed sizes, unavailable keys and nonfinite/out-of-range readings fail independently. No charge-control keys, capability probes or helper writes are involved.
+The shared app/CLI telemetry reader uses one serialized SMC connection for TB0T, PSTR, VD0R, ID0R and BRSC. PSTR is system-total watts (Float or sp78 metadata); measured DC input is Float VD0R volts × Float ID0R amps. Unsupported types, malformed sizes, unavailable keys and nonfinite/out-of-range readings fail independently. No charge-control keys, capability probes or helper writes are involved.
 
 Each selected power metric carries its own source. IORegistry `PowerTelemetryData.SystemLoad` and `SystemPowerIn` are converted from mW and retained as alternate values; they are used when SMC acquisition fails. Missing data stays unavailable, while a valid measured zero stays zero. Input is only selected when the OS reports connected, which may be false during an owned input cutoff. This flag is not independent cable-presence evidence. Adapter ratings and signed battery current/voltage are separate and unchanged. Old JSON/history does not receive fabricated source labels.
 
 Sensor labels/units are corroborated by the independent [Stats sensor list](https://github.com/exelban/stats/blob/master/Modules/Sensors/values.swift). Availability, refresh timing and numerical equivalence across all models are not yet physically verified. The power path does not decode B0AC/B0AV until their model-specific layouts are established.
+
+### Hardware percentage source
+
+The shared reader prefers the fixed read-only BRSC key. It accepts exact `ui8 ` (one byte) and `ui16` (two bytes) layouts. The latter follows the observed integer-reader conversion: big-endian input through 100 is used directly, otherwise the high byte is used. This normalization adapts a generic integer reader; it is not a declaration that BRSC has a fixed-point format. Unknown types, malformed sizes and results outside 0–100 remain unavailable.
+
+The OS percentage, selected hardware percentage and raw current/full capacity ratio are separate fields. New telemetry and recent history identify the selected hardware source. If BRSC cannot be read, the validated raw-capacity ratio remains the identified fallback. Older records do not receive inferred source labels. Enabling hardware percentage makes the selected value the reference for policy decisions and automation; default OS-percentage operation is unchanged. BRSC and the ratio can differ by more than rounding at a particular instant.

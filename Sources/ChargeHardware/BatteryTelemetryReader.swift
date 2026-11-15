@@ -14,6 +14,7 @@ public enum BatteryTelemetryReader {
         guard let sensors = try? smc() else { return reading }
         return reading.applyingSMCTemperature(sensors.temperature)
             .applyingSMCPower(system: sensors.systemPowerW, input: sensors.adapterPowerW)
+            .applyingSMCHardwarePercentage(sensors.hardwarePercent)
     }
 
     public static func read(base: () throws -> BatteryReading,

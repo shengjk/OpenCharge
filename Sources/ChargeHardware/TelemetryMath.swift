@@ -35,6 +35,25 @@ public enum TelemetryMath {
         guard value.isFinite else { return nil }; return value
     }
 
+    /// BRSC is a percentage, not a raw-capacity ratio. ui8 is read directly.
+    /// For ui16, reproduce the observed big-endian wrapper and >100 normalization.
+    /// The shift adapts the integer reader; it does not declare a fixed-point format.
+    public static func smcHardwarePercentage(dataType: String, bytes: [UInt8]) -> Double? {
+        let value: UInt16
+        switch dataType {
+        case "ui8 ":
+            guard bytes.count == 1 else { return nil }
+            value = UInt16(bytes[0])
+        case "ui16":
+            guard bytes.count == 2 else { return nil }
+            let wrapped = UInt16(bytes[0]) << 8 | UInt16(bytes[1])
+            value = wrapped <= 100 ? wrapped : wrapped >> 8
+        default: return nil
+        }
+        guard value <= 100 else { return nil }
+        return Double(value)
+    }
+
     public static func batteryTemperatureCelsius(raw: Double?) -> Double? {
         guard let raw, raw.isFinite else { return nil }
         let value = raw / 100

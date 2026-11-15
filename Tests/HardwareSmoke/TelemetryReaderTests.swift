@@ -94,7 +94,7 @@ import ChargeHardware
    return ("flt ", (0..<4).map { UInt8(truncatingIfNeeded: bits >> ($0 * 8)) })
   }
   let registry = try decode(properties.merging(["InstantAmperage": -1200, "Voltage": 12000,
-   "PowerTelemetryData": ["SystemLoad": 12000, "SystemPowerIn": 30000]]) { _, new in new })
+   "AppleRawCurrentCapacity": 2100, "PowerTelemetryData": ["SystemLoad": 12000, "SystemPowerIn": 30000]]) { _, new in new })
   check(registry.systemPowerW == 12 && registry.adapterPowerW == 30 && registry.systemPowerSource == .registrySystem && registry.adapterPowerSource == .registryInput, "registry power uses milliwatts and explicit per-metric sources")
   var queried: [String] = []
   let sensors = SMCTelemetryReading.capture { key in
@@ -104,14 +104,15 @@ import ChargeHardware
    case "PSTR": return ("sp78", [0x13, 0x80])
    case "VD0R": return flt(20)
    case "ID0R": return flt(2.5)
+   case "BRSC": return ("ui8 ", [70])
    default: preconditionFailure("unexpected key")
    }
   }
-  check(queried == ["TB0T", "PSTR", "VD0R", "ID0R"], "acquisition reads exactly four fixed sensors, no control keys")
+  check(queried == ["TB0T", "PSTR", "VD0R", "ID0R", "BRSC"], "acquisition reads exactly five fixed sensors, no control keys")
   let selected = try BatteryTelemetryReader.read(base: { registry }, smc: { sensors })
   check(selected.temperature == 32 && selected.systemPowerW == 19.5 && selected.adapterPowerW == 50, "typed system watts and measured volts times amps selected independently")
   check(selected.systemPowerSource == .smcSystem && selected.adapterPowerSource == .smcInput && selected.registrySystemPowerW == 12 && selected.registryAdapterPowerW == 30, "selection retains registry alternates and per-metric provenance")
-  check(selected.currentMA == -1200 && selected.voltageMV == 12000 && selected.adapterWatts == registry.adapterWatts && selected.hardwarePercent == registry.hardwarePercent, "power selection cannot change signed battery telemetry, adapter rating or control percentage")
+  check(selected.currentMA == -1200 && selected.voltageMV == 12000 && selected.adapterWatts == registry.adapterWatts && selected.hardwarePercent == 70 && selected.rawCapacityPercent == 50, "BRSC selection retains independent raw ratio, signed battery telemetry and adapter rating")
   let coded = try JSONDecoder().decode(BatteryReading.self, from: encoder.encode(selected))
   check(coded.systemPowerSource == .smcSystem && coded.adapterPowerSource == .smcInput && coded.registryAdapterPowerW == 30, "power values and sources survive JSON coding")
   var legacyPower = try JSONSerialization.jsonObject(with: encoder.encode(selected)) as! [String: Any]
@@ -147,6 +148,33 @@ import ChargeHardware
    _ = try BatteryTelemetryReader.read(base: { throw HardwareError.unavailable("fixture") }, smc: { queriedAll = true; return sensors })
    preconditionFailure("missing base must fail")
   } catch { check(!queriedAll, "complete acquisition does not query SMC without a battery") }
+  check(registry.hardwarePercent == 50 && registry.hardwarePercentageSource == .rawCapacityRatio && registry.rawCapacityPercent == 50, "registry fallback identifies the raw ratio")
+  check(selected.hardwarePercentageSource == .smc && selected.percent == 80 && selected.rawCapacityPercent == 50, "BRSC, OS and raw-ratio values remain distinct")
+  check(try selected.controlPercentage(useHardware: true) == 70 && selected.controlPercentage(useHardware: false) == 80, "selected hardware value reaches shared automation/policy reference; OS mode remains independent")
+  for p in 0...100 {
+   check(TelemetryMath.smcHardwarePercentage(dataType: "ui8 ", bytes: [UInt8(p)]) == Double(p), "all valid one-byte percentages")
+   check(TelemetryMath.smcHardwarePercentage(dataType: "ui16", bytes: [0, UInt8(p)]) == Double(p), "all valid big-endian integer percentages")
+   check(TelemetryMath.smcHardwarePercentage(dataType: "ui16", bytes: [UInt8(p), 0]) == Double(p), "generic 16-bit reader normalization of zero-padded one-byte percentages")
+  }
+  check(TelemetryMath.smcHardwarePercentage(dataType: "ui16", bytes: [0, 101]) == 0, "preserve observed >100 reader normalization, without calling it fixed point")
+  for (type, bytes): (String, [UInt8]) in [("ui8 ", []), ("ui8 ", [71, 0]), ("ui8 ", [101]), ("ui16", [0]), ("ui16", [101, 0]), ("ui16", [255,255]), ("si16", [0,71]), ("flt ", [0,0,142,66])] {
+   check(TelemetryMath.smcHardwarePercentage(dataType:type, bytes:bytes) == nil, "malformed, unknown and out-of-range hardware percentage must stay unknown")
+  }
+  for value: Double? in [nil, .nan, .infinity, -1, 101] {
+   let fallback = try BatteryTelemetryReader.read(base: { registry }, smc: { SMCTelemetryReading(hardwarePercent:value) })
+   check(fallback.hardwarePercent == 50 && fallback.hardwarePercentageSource == .rawCapacityRatio && fallback.rawCapacityPercent == 50, "failed selection preserves the identified ratio fallback")
+  }
+  let missingBRSC = SMCTelemetryReading.capture { key in
+   if key == "BRSC" { throw HardwareError.unavailable("fixture") }
+   return flt(20)
+  }
+  check(missingBRSC.hardwarePercent == nil && missingBRSC.systemPowerW == 20, "missing BRSC cannot discard unrelated power sensors")
+  let codedHardware = try JSONDecoder().decode(BatteryReading.self, from: encoder.encode(selected))
+  check(codedHardware.hardwarePercentageSource == .smc && codedHardware.hardwarePercent == 70 && codedHardware.rawCapacityPercent == 50, "hardware source and alternate value round-trip")
+  var oldHardware = try JSONSerialization.jsonObject(with: encoder.encode(selected)) as! [String: Any]
+  for field in ["hardwarePercentageSource", "rawCapacityPercent"] { oldHardware.removeValue(forKey:field) }
+  let legacyHardware = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject:oldHardware))
+  check(legacyHardware.hardwarePercent == 70 && legacyHardware.hardwarePercentageSource == nil && legacyHardware.rawCapacityPercent == nil, "old telemetry keeps its value and unknown provenance")
   print("Telemetry source/capacity/legacy decoding: \(count) fixture checks passed; no hardware access")
  }
 }

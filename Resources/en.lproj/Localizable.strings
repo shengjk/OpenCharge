@@ -796,3 +796,7 @@
 "输入功率来源：%@" = "Input power source: %@";
 
 "系统负载来源：%@" = "System load source: %@";
+
+"原始容量比值" = "Raw capacity ratio";
+
+"硬件电量来源：%@" = "Hardware percentage source: %@";

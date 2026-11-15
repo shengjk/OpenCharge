@@ -6,9 +6,11 @@ public struct SMCTelemetryReading: Sendable {
     public var temperature: Double?
     public var systemPowerW: Double?
     public var adapterPowerW: Double?
+    public var hardwarePercent: Double?
 
-    public init(temperature: Double? = nil, systemPowerW: Double? = nil, adapterPowerW: Double? = nil) {
+    public init(temperature: Double? = nil, systemPowerW: Double? = nil, adapterPowerW: Double? = nil, hardwarePercent: Double? = nil) {
         self.temperature = temperature; self.systemPowerW = systemPowerW; self.adapterPowerW = adapterPowerW
+        self.hardwarePercent = hardwarePercent
     }
 
     public static func capture(read: (String) throws -> (dataType: String, bytes: [UInt8])) -> Self {
@@ -26,6 +28,9 @@ public struct SMCTelemetryReading: Sendable {
         let input: Double?
         if let voltage, let current, voltage * current <= 1000 { input = voltage * current }
         else { input = nil }
-        return Self(temperature: temperature, systemPowerW: system, adapterPowerW: input)
+        let hardware = (try? read("BRSC")).flatMap {
+            TelemetryMath.smcHardwarePercentage(dataType: $0.dataType, bytes: $0.bytes)
+        }
+        return Self(temperature: temperature, systemPowerW: system, adapterPowerW: input, hardwarePercent: hardware)
     }
 }

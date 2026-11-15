@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.3.92
+
+- Adapt battery-specification columns to the available width so percentage labels and values remain readable in narrow windows.
+
+- Prefer the read-only SMC BRSC value for hardware percentage. Decode exact ui8/ui16 payloads with the observed integer-reader normalization; preserve OS percentage and the independent raw-capacity ratio.
+- Identify the selected hardware-percentage source in telemetry JSON, new recent history and the dashboard. Preserve the capacity-ratio fallback if BRSC is missing, malformed or unavailable; older JSON keeps unknown provenance.
+- Feed the shared selected value into the app, CLI, automation and policy pipeline when hardware percentage is enabled. The ordinary OS-percentage mode is unchanged. Validate boundary values, missing sensors, JSON compatibility and policy selection with isolated fixtures; no helper deployment or actuator tests are included.
+- Battery-power integer byte-order/model binding, independent minute/monthly statistics, separate OS-health acquisition and broader physical/older-system parity remain in progress.
+
 ## 0.3.91
 
 - Read fixed SMC system-load and DC-input sensors through one read-only connection. Decode PSTR using its Float or sp78 metadata and calculate input power from Float VD0R volts × ID0R amps; reject unsupported layouts, nonfinite values and implausible readings independently.

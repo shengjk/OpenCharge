@@ -11,6 +11,7 @@ import ChargeHardware
   powerFlowConnectionChecks()
   powerConsumptionChecks()
   try await powerGraphModeChecks()
+  try hardwarePercentageSourceChecks()
   try await batterySampleChecks()
   try await batteryChannelChecks()
   try systemChargingStatusChecks()
@@ -48,14 +49,14 @@ import ChargeHardware
   precondition(MenuBarLabel(display: "unknown", reading: labelReading).text == "80%")
   precondition(MenuBarLabel(display: "percentage", reading: nil).text == "—")
   precondition(MenuBarLabel(display: "hardware", reading: BatteryReading(percent: 80, connected: true, charging: false, hardwarePercent: .nan)).text == "—")
-  let point = HistoryPoint(date: Date(), percent: 80, temperature: 33.5, watts: 0, reason: "fixture", systemPowerSource: .smcSystem, adapterPowerSource: .registryInput, temperatureSource: .smc)
+  let point = HistoryPoint(date: Date(), percent: 80, temperature: 33.5, watts: 0, reason: "fixture", hardwarePercentageSource: .smc, systemPowerSource: .smcSystem, adapterPowerSource: .registryInput, temperatureSource: .smc)
   let encodedPoint = try JSONEncoder().encode(point)
   let newPoint = try JSONDecoder().decode(HistoryPoint.self, from: encodedPoint)
-  precondition(newPoint.temperatureSource == .smc && newPoint.systemPowerSource == .smcSystem && newPoint.adapterPowerSource == .registryInput)
+  precondition(newPoint.hardwarePercentageSource == .smc && newPoint.temperatureSource == .smc && newPoint.systemPowerSource == .smcSystem && newPoint.adapterPowerSource == .registryInput)
   var oldObject = try JSONSerialization.jsonObject(with: encodedPoint) as! [String: Any]
-  for key in ["temperatureSource", "systemPowerSource", "adapterPowerSource"] { oldObject.removeValue(forKey: key) }
+  for key in ["temperatureSource", "systemPowerSource", "adapterPowerSource", "hardwarePercentageSource"] { oldObject.removeValue(forKey: key) }
   let oldPoint = try JSONDecoder().decode(HistoryPoint.self, from: JSONSerialization.data(withJSONObject: oldObject))
-  precondition(oldPoint.temperature == 33.5 && oldPoint.temperatureSource == nil && oldPoint.systemPowerSource == nil && oldPoint.adapterPowerSource == nil, "legacy history must not invent a source")
+  precondition(oldPoint.temperature == 33.5 && oldPoint.hardwarePercentageSource == nil && oldPoint.temperatureSource == nil && oldPoint.systemPowerSource == nil && oldPoint.adapterPowerSource == nil, "legacy history must not invent a source")
   let suite = "org.opencharge.dashboard-test." + UUID().uuidString
   let defaults = UserDefaults(suiteName: suite)!
   defer { defaults.removePersistentDomain(forName: suite) }
