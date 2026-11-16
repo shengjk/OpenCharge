@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.94
+
+- Bound the background macOS Battery Health report command to ten seconds. A stuck local system-report process is terminated and leaves the previous cached health value unchanged; telemetry and charging policy never wait for it.
+- Add isolated regression coverage for cache cadence and failed-refresh retention, plus command-timeout termination. The command remains local and read-only; no helper deployment or actuator tests are included.
+
 ## 0.3.93
 
 - Add a separate macOS Battery Health reading for the system-reported maximum capacity and condition. It remains distinct from the raw full-charge-capacity/design-capacity ratio and is never used by charging policy.

@@ -47,6 +47,32 @@ public enum MacOSBatteryHealthParser {
     }
 }
 
+/// Runs the local structured profiler with a bounded wait. This is deliberately
+/// read-only: callers receive output only after the child has exited cleanly.
+public enum MacOSBatteryHealthCommand {
+    public static let timeout: TimeInterval = 10
+
+    public static func output(executableURL: URL, arguments: [String], timeout: TimeInterval = timeout) throws -> Data? {
+        guard timeout.isFinite, timeout > 0 else { return nil }
+        let process = Process()
+        let output = Pipe()
+        let exited = DispatchSemaphore(value: 0)
+        process.executableURL = executableURL
+        process.arguments = arguments
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        process.terminationHandler = { _ in exited.signal() }
+        try process.run()
+        guard exited.wait(timeout: .now() + timeout) == .success else {
+            process.terminate()
+            _ = exited.wait(timeout: .now() + 1)
+            return nil
+        }
+        guard process.terminationStatus == 0 else { return nil }
+        return output.fileHandleForReading.readDataToEndOfFile()
+    }
+}
+
 /// A non-blocking, low-frequency cache. Calling this API never waits for the
 /// profiler process and does not affect charge-control decisions.
 public final class MacOSBatteryHealthCache: @unchecked Sendable {
@@ -93,14 +119,10 @@ public final class MacOSBatteryHealthCache: @unchecked Sendable {
     }
 
     private static func readSystemProfiler() throws -> MacOSBatteryHealth? {
-        let process = Process(); let output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
-        process.arguments = ["-nospawn", "-xml", "SPPowerDataType"]
-        process.standardOutput = output; process.standardError = FileHandle.nullDevice
-        try process.run()
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
+        guard let data = try MacOSBatteryHealthCommand.output(
+            executableURL: URL(fileURLWithPath: "/usr/sbin/system_profiler"),
+            arguments: ["-nospawn", "-xml", "SPPowerDataType"]
+        ) else { return nil }
         return MacOSBatteryHealthParser.parse(data)
     }
 }

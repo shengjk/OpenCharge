@@ -92,6 +92,9 @@ import ChargeHardware
   for badProfile in [Data(), Data("<plist version=\"1.0\"><array/></plist>".utf8)] {
    check(MacOSBatteryHealthParser.parse(badProfile) == nil, "missing or malformed system health does not invent a value")
   }
+  let commandStart = Date()
+  let timedOutCommand = try MacOSBatteryHealthCommand.output(executableURL: URL(fileURLWithPath:"/bin/sleep"), arguments:["2"], timeout:0.05)
+  check(timedOutCommand == nil && Date().timeIntervalSince(commandStart) < 1, "bounded local profiler command terminates instead of blocking telemetry")
   let appliedHealth = base.applyingMacOSHealth(macOSHealth)
   check(appliedHealth.healthPercent == 84 && appliedHealth.macOSHealthPercent == 85 && appliedHealth.macOSHealthCondition == "Good", "macOS health stays distinct from raw capacity health")
   let codedHealth = try JSONDecoder().decode(BatteryReading.self, from: encoder.encode(appliedHealth))
@@ -100,6 +103,22 @@ import ChargeHardware
   legacyHealth.removeValue(forKey: "macOSHealthPercent"); legacyHealth.removeValue(forKey: "macOSHealthCondition")
   let oldHealth = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject: legacyHealth))
   check(oldHealth.macOSHealthPercent == nil && oldHealth.macOSHealthCondition == nil, "legacy telemetry keeps system-health provenance unknown")
+  final class HealthProbe: @unchecked Sendable {
+   let lock = NSLock(); let signal = DispatchSemaphore(value: 0); var calls = 0
+   func read() -> MacOSBatteryHealth? {
+    lock.lock(); calls += 1; let count = calls; lock.unlock(); signal.signal()
+    return count == 1 ? MacOSBatteryHealth(maximumCapacityPercent:85,condition:"Good") : nil
+   }
+   func count() -> Int { lock.lock(); defer { lock.unlock() }; return calls }
+  }
+  let probe = HealthProbe(), cachedHealth = MacOSBatteryHealthCache(read: { probe.read() })
+  let cacheStart = Date(timeIntervalSince1970:2_000_000_000)
+  check(cachedHealth.value(now:cacheStart) == nil, "first system-health cache read is asynchronous")
+  check(probe.signal.wait(timeout:.now()+1) == .success, "first system-health refresh completes")
+  check(cachedHealth.value(now:cacheStart.addingTimeInterval(1))?.maximumCapacityPercent == 85 && probe.count() == 1, "completed health is returned without another refresh inside cadence")
+  _ = cachedHealth.value(now:cacheStart.addingTimeInterval(MacOSBatteryHealthCache.refreshInterval+1))
+  check(probe.signal.wait(timeout:.now()+1) == .success && probe.count() == 2, "health refresh retries on the next bounded cadence")
+  check(cachedHealth.value(now:cacheStart.addingTimeInterval(MacOSBatteryHealthCache.refreshInterval+2))?.maximumCapacityPercent == 85, "a failed refresh preserves the last known health rather than fabricating a replacement")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0x21, 0x80]) == 33.5, "signed 8.8 fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0xF5, 0x80]) == -10.5, "negative signed fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "flt ", bytes: [0, 0, 6, 66]) == 33.5, "little-endian float payload")
