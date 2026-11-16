@@ -82,6 +82,24 @@ import ChargeHardware
   for field in ["temperatureSource", "registryTemperature", "virtualTemperature", "nominalCapacityMAH", "healthCondition", "modelNominalVoltageMV", "optimizedChargingEngaged"] { legacy.removeValue(forKey: field) }
   let old = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject: legacy))
   check(old.temperature == 33.5 && old.temperatureSource == nil && old.nominalCapacityMAH == nil && old.modelNominalVoltageMV == nil && old.optimizedChargingEngaged == nil, "legacy telemetry must decode without inventing provenance")
+  let profile = Data("""
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+  <plist version="1.0"><array><dict><key>_items</key><array><dict><key>_name</key><string>spbattery_information</string><key>sppower_battery_health_info</key><dict><key>sppower_battery_health_maximum_capacity</key><string>85%</string><key>sppower_battery_health</key><string>Good</string></dict></dict></array></dict></array></plist>
+  """.utf8)
+  let macOSHealth = MacOSBatteryHealthParser.parse(profile)
+  check(macOSHealth?.maximumCapacityPercent == 85 && macOSHealth?.condition == "Good", "structured system health report parses without localized text")
+  for badProfile in [Data(), Data("<plist version=\"1.0\"><array/></plist>".utf8)] {
+   check(MacOSBatteryHealthParser.parse(badProfile) == nil, "missing or malformed system health does not invent a value")
+  }
+  let appliedHealth = base.applyingMacOSHealth(macOSHealth)
+  check(appliedHealth.healthPercent == 84 && appliedHealth.macOSHealthPercent == 85 && appliedHealth.macOSHealthCondition == "Good", "macOS health stays distinct from raw capacity health")
+  let codedHealth = try JSONDecoder().decode(BatteryReading.self, from: encoder.encode(appliedHealth))
+  check(codedHealth.macOSHealthPercent == 85 && codedHealth.macOSHealthCondition == "Good", "macOS health survives telemetry coding")
+  var legacyHealth = try JSONSerialization.jsonObject(with: encoder.encode(appliedHealth)) as! [String: Any]
+  legacyHealth.removeValue(forKey: "macOSHealthPercent"); legacyHealth.removeValue(forKey: "macOSHealthCondition")
+  let oldHealth = try JSONDecoder().decode(BatteryReading.self, from: JSONSerialization.data(withJSONObject: legacyHealth))
+  check(oldHealth.macOSHealthPercent == nil && oldHealth.macOSHealthCondition == nil, "legacy telemetry keeps system-health provenance unknown")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0x21, 0x80]) == 33.5, "signed 8.8 fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0xF5, 0x80]) == -10.5, "negative signed fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "flt ", bytes: [0, 0, 6, 66]) == 33.5, "little-endian float payload")

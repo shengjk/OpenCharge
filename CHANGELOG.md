@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.93
+
+- Add a separate macOS Battery Health reading for the system-reported maximum capacity and condition. It remains distinct from the raw full-charge-capacity/design-capacity ratio and is never used by charging policy.
+- Read the structured local System Profiler result in a background cache no more than once every six hours. Telemetry refreshes return only the last completed value, and a missing or failed read stays unknown.
+- Show the value as an optional dashboard specification and in the battery details. The telemetry JSON remains backward compatible; English and Simplified Chinese resources cover the added labels.
+- Verify structured parsing, invalid inputs, source separation and legacy JSON decoding with isolated fixture tests; no helper deployment or actuator tests are included.
+
 ## 0.3.92
 
 - Adapt battery-specification columns to the available width so percentage labels and values remain readable in narrow windows.

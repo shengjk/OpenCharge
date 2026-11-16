@@ -4,7 +4,10 @@ import Foundation
 /// SMC unavailability preserves the registry reading and its source label.
 public enum BatteryTelemetryReader {
     public static func read() throws -> BatteryReading {
-        try read(base: BatteryReader.read, smc: { try SMCController().telemetryReading() })
+        let reading = try read(base: BatteryReader.read, smc: { try SMCController().telemetryReading() })
+        // This only returns a completed cached read; a slow System Profiler
+        // refresh happens off the caller's path and cannot block telemetry.
+        return reading.applyingMacOSHealth(MacOSBatteryHealthCache.shared.value())
     }
 
     /// Inject the complete acquisition boundary; fixtures never open an SMC connection.

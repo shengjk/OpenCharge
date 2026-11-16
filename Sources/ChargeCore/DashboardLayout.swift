@@ -16,10 +16,10 @@ public enum DashboardWidget: String, Codable, CaseIterable, Identifiable {
  } }
 }
 public enum DashboardSpecification: String, Codable, CaseIterable, Identifiable {
- case hardwarePercent, health, condition, fullCapacity, designCapacity, timeToFull, timeToEmpty, voltage, current
+ case hardwarePercent, health, macOSHealth, condition, fullCapacity, designCapacity, timeToFull, timeToEmpty, voltage, current
  public var id: Self { self }
  public var title: String { switch self {
- case .hardwarePercent: return NSLocalizedString("硬件电量", comment: ""); case .health: return NSLocalizedString("容量健康比例", comment: ""); case .condition: return NSLocalizedString("电池状况", comment: "")
+ case .hardwarePercent: return NSLocalizedString("硬件电量", comment: ""); case .health: return NSLocalizedString("容量健康比例", comment: ""); case .macOSHealth: return NSLocalizedString("macOS 最大容量", comment: ""); case .condition: return NSLocalizedString("电池状况", comment: "")
  case .fullCapacity: return NSLocalizedString("满充容量", comment: ""); case .designCapacity: return NSLocalizedString("设计容量", comment: ""); case .timeToFull: return NSLocalizedString("系统预计充满", comment: "")
  case .timeToEmpty: return NSLocalizedString("系统预计续航", comment: ""); case .voltage: return NSLocalizedString("电池电压", comment: ""); case .current: return NSLocalizedString("电池电流", comment: "")
  } }

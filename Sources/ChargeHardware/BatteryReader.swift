@@ -89,6 +89,10 @@ public struct BatteryReading: Codable, Sendable {
     public var nominalCapacityMAH: Double?
     /// Separate service recommendation; not the macOS battery health assessment.
     public var healthCondition: String?
+    /// Low-frequency macOS Battery Health report. It is intentionally separate
+    /// from the raw-capacity ratio above and is never used for charge control.
+    public var macOSHealthPercent: Double?
+    public var macOSHealthCondition: String?
     /// Measured remaining capacity paired with a full-capacity field in mAh.
     public var remainingCapacityMAH: Double?
     /// Design pack voltage, when the registry exposes it explicitly.
@@ -114,7 +118,8 @@ public struct BatteryReading: Codable, Sendable {
                 modelNominalVoltageMV: Double? = nil, optimizedChargingEngaged: Bool? = nil, rawFullCapacityMAH: Double? = nil,
                 systemPowerSource: PowerMeasurementSource? = nil, adapterPowerSource: PowerMeasurementSource? = nil,
                 registrySystemPowerW: Double? = nil, registryAdapterPowerW: Double? = nil,
-                hardwarePercentageSource: HardwarePercentageSource? = nil, rawCapacityPercent: Double? = nil) {
+                hardwarePercentageSource: HardwarePercentageSource? = nil, rawCapacityPercent: Double? = nil,
+                macOSHealthPercent: Double? = nil, macOSHealthCondition: String? = nil) {
         self.date = date; self.percent = percent; self.temperature = temperature
         self.currentMA = currentMA; self.voltageMV = voltageMV; self.cycleCount = cycleCount
         self.healthPercent = healthPercent; self.connected = connected; self.charging = charging
@@ -136,6 +141,8 @@ public struct BatteryReading: Codable, Sendable {
         self.systemPowerSource = systemPowerSource; self.adapterPowerSource = adapterPowerSource
         self.registrySystemPowerW = registrySystemPowerW; self.registryAdapterPowerW = registryAdapterPowerW
         self.hardwarePercentageSource = hardwarePercentageSource; self.rawCapacityPercent = rawCapacityPercent
+        self.macOSHealthPercent = macOSHealthPercent
+        self.macOSHealthCondition = macOSHealthCondition
     }
 }
 
@@ -158,6 +165,13 @@ public extension BatteryReading {
  func applyingSMCHardwarePercentage(_ value: Double?) -> BatteryReading {
   guard let value, value.isFinite, (0...100).contains(value) else { return self }
   var result = self; result.hardwarePercent = value; result.hardwarePercentageSource = .smc
+  return result
+ }
+ func applyingMacOSHealth(_ health: MacOSBatteryHealth?) -> BatteryReading {
+  guard let health else { return self }
+  var result = self
+  result.macOSHealthPercent = health.maximumCapacityPercent
+  result.macOSHealthCondition = health.condition
   return result
  }
  func controlPercentage(useHardware: Bool) throws -> Double {

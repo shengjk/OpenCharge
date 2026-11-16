@@ -151,6 +151,9 @@
 "完成编辑" = "Done Editing";
 "实际电源输入" = "Measured Power Input";
 "容量健康比例" = "Capacity Health Ratio";
+"macOS 最大容量" = "macOS Maximum Capacity";
+"macOS 最大容量：%.0f%%" = "macOS Maximum Capacity: %.0f%%";
+"macOS 电池状况：%@" = "macOS Battery Condition: %@";
 "导出 CSV" = "Export CSV";
 "导出诊断文件…" = "Export Diagnostics…";
 "导出配置备份" = "Export Configuration Backup";

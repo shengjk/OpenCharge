@@ -65,6 +65,7 @@ enum BatterySpecificationFormatter {
   switch specification {
   case .hardwarePercent: return reading?.hardwarePercent.map { String(format: "%.1f%%", $0) } ?? "—"
   case .health: return reading?.healthPercent.map { String(format: "%.1f%%", $0) } ?? "—"
+  case .macOSHealth: return reading?.macOSHealthPercent.map { String(format: "%.0f%%", $0) } ?? "—"
   case .condition: return reading?.condition ?? "—"
   case .fullCapacity: return reading?.fullCapacityMAH.map { String(format: "%.0f mAh", $0) } ?? "—"
   case .designCapacity: return reading?.designCapacityMAH.map { String(format: "%.0f mAh", $0) } ?? "—"

@@ -43,6 +43,8 @@ struct OverviewView: View {
     Text(String.localizedStringWithFormat(NSLocalizedString("硬件电量来源：%@", comment: ""), source.displayName)).font(.caption).presentationSecondary().fixedSize(horizontal: false, vertical: true)
    }
    if let nominal = d.reading?.nominalCapacityMAH { Text(String(format: NSLocalizedString("系统标称容量：%.0f mAh · 与满充容量分别记录", comment: ""), nominal)).font(.caption).presentationSecondary() }
+   if let macOSHealth = d.reading?.macOSHealthPercent { Text(String.localizedStringWithFormat(NSLocalizedString("macOS 最大容量：%.0f%%", comment: ""), macOSHealth)).font(.caption).presentationSecondary() }
+   if let macOSCondition = d.reading?.macOSHealthCondition { Text(String.localizedStringWithFormat(NSLocalizedString("macOS 电池状况：%@", comment: ""), macOSCondition)).font(.caption).presentationSecondary() }
    if let hint = d.reading?.healthCondition { Text(String.localizedStringWithFormat(NSLocalizedString("系统维护提示：%@", comment: ""), hint)).font(.caption).presentationSecondary() }
   }
   case .adapter:
