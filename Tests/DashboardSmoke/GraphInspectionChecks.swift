@@ -32,11 +32,12 @@ import SwiftUI
  func surfaces(_ view: NSView) -> [GraphPointerView] {
   (view as? GraphPointerView).map { [$0] } ?? view.subviews.flatMap(surfaces)
  }
- func checkSurface<V: View>(_ view: V, _ label: String) {
+ func checkSurface<V: View>(_ view: V, _ label: String, expectedSurface: Bool = true) {
   let host = NSHostingView(rootView: view.frame(width: 600, height: 260))
   host.frame = NSRect(x: 0, y: 0, width: 600, height: 260)
   host.layoutSubtreeIfNeeded()
   let found = surfaces(host)
+  if !expectedSurface { precondition(found.isEmpty, label + " must not expose a pointer surface without a value"); return }
   precondition(found.count == 1, label + " must expose exactly one pointer surface")
   precondition(found[0].bounds.width > 0 && found[0].bounds.height > 0)
  }
@@ -44,7 +45,7 @@ import SwiftUI
   HistoryPoint(date: sample.date, percent: sample.percent, temperature: 31,
    watts: nil, reason: "fixture", limit: sample.limit, health: 96, cycles: 120, fullCapacityMAH: 4200)
  }
- for metric in BatteryStatistic.allCases { checkSurface(BatteryStatisticChart(metric: metric, points: history), metric.rawValue) }
+ for metric in BatteryStatistic.allCases { checkSurface(BatteryStatisticChart(metric: metric, points: history), metric.rawValue, expectedSurface: metric != .macOSHealth) }
  checkSurface(LegacyTrendChart(samples: trend.samples), "legacy trend")
  checkSurface(TrendChart(points: history), "native trend")
  let root = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 200))

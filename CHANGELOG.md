@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.95
+
+- Add a separate daily long-term trend for the system-reported macOS Battery Health maximum capacity. It is available in History after a completed local report and remains distinct from the raw capacity/design-capacity ratio.
+- Upgrade statistics storage transactionally to schema 3. Existing schema-2 channel rows and IDs are retained while the independent system-health channel is added; unavailable or fractional values are not invented or rounded into an archive record.
+- Verify the independent channel, schema-two migration, row identity, unavailable values, chart empty state and native layouts with isolated fixtures. This release does not install a helper or operate charge hardware.
+
 ## 0.3.94
 
 - Bound the background macOS Battery Health report command to ten seconds. A stuck local system-report process is terminated and leaves the previous cached health value unchanged; telemetry and charging policy never wait for it.

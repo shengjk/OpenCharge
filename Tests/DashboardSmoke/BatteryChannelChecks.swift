@@ -21,9 +21,9 @@ import ChargeCore
   precondition(sqlite3_prepare_v2(db,sql,-1,&s,nil) == SQLITE_OK); defer { sqlite3_finalize(s) }
   precondition(sqlite3_step(s) == SQLITE_ROW); return sqlite3_column_int64(s,0)
  }
- func sample(raw: Double? = 4500, cycles: Int? = 100) -> BatteryReading {
+ func sample(raw: Double? = 4500, cycles: Int? = 100, macOSHealth: Double? = nil) -> BatteryReading {
   BatteryReading(percent:70,cycleCount:cycles,healthPercent:88.5,connected:false,charging:false,
-   designCapacityMAH:5000,fullCapacityMAH:4800,nominalCapacityMAH:4700,rawFullCapacityMAH:raw)
+   designCapacityMAH:5000,fullCapacityMAH:4800,nominalCapacityMAH:4700,rawFullCapacityMAH:raw,macOSHealthPercent:macOSHealth)
  }
  var cache = BatteryStatisticArchive.ChannelCache()
  let missing = sample(raw:nil,cycles:nil)
@@ -40,7 +40,7 @@ import ChargeCore
  precondition(try! archive.loadChannels(hours:24,endingAt:start,metric:.health,designCapacity:5000).isEmpty)
  precondition(try! Data(contentsOf:archive.url) == before)
  precondition(try! archive.appendChannels(sample(),at:start,cache:&cache))
- precondition(scalar(archive,"PRAGMA user_version") == 2 && scalar(archive,"SELECT COUNT(*) FROM observations") == 1)
+ precondition(scalar(archive,"PRAGMA user_version") == 3 && scalar(archive,"SELECT COUNT(*) FROM observations") == 1)
  precondition(try! archive.load(hours:24,endingAt:start).first?.health == 88.5)
  precondition(try! archive.appendChannels(sample(),at:start.addingTimeInterval(2),cache:&cache),"inclusive first-anchor equality must admit the next unchanged value")
  precondition(try! !archive.appendChannels(sample(),at:start.addingTimeInterval(4),cache:&cache))
@@ -57,6 +57,19 @@ import ChargeCore
  precondition(try! archive.appendChannels(sample(),at:start.addingTimeInterval(2*day+2),cache:&cache),"a missing raw channel must not share the cycles admission clock")
  precondition(scalar(archive,"SELECT COUNT(*) FROM channel_observations WHERE channel='rawCapacity'") == 4)
  precondition(scalar(archive,"SELECT COUNT(*) FROM channel_observations WHERE channel='cycles'") == 4)
+ let systemOnly = sample(raw:nil,cycles:nil,macOSHealth:85)
+ precondition(try! archive.appendChannels(systemOnly,at:start.addingTimeInterval(3*day+1),cache:&cache))
+ let systemHealth = try archive.loadChannels(hours:24,endingAt:start.addingTimeInterval(3*day+1),metric:.macOSHealth,designCapacity:nil)
+ precondition(systemHealth.count == 1 && systemHealth.first?.macOSHealth == 85 && systemHealth.first?.health == nil,"system-reported health has an independent channel and never becomes capacity-ratio health")
+ precondition(try! !archive.appendChannels(sample(raw:nil,cycles:nil,macOSHealth:85.5),at:start.addingTimeInterval(3*day+2),cache:&cache),"unrepresentable fractional system health is not rounded into an invented archived value")
+ // Schema-two archives retain their rows and ids while widening only the channel constraint.
+ let schemaTwo = BatteryStatisticArchive(url:root.appendingPathComponent("schema-two.sqlite3"))
+ try edit(schemaTwo,"CREATE TABLE observations(date REAL PRIMARY KEY,health REAL,capacity REAL,cycles INTEGER); CREATE TABLE metadata(key TEXT PRIMARY KEY,value INTEGER NOT NULL); INSERT INTO metadata VALUES('legacy_imported',1); CREATE TABLE channel_observations(id INTEGER PRIMARY KEY,channel TEXT NOT NULL CHECK(channel IN ('rawCapacity','cycles')),date REAL NOT NULL,value INTEGER NOT NULL); CREATE INDEX channel_dates ON channel_observations(channel,date); INSERT INTO channel_observations(id,channel,date,value) VALUES(41,'rawCapacity',1800000000,4500); PRAGMA application_id=0x4f434853; PRAGMA user_version=2;")
+ var schemaTwoCache = BatteryStatisticArchive.ChannelCache()
+ precondition(try! schemaTwo.appendChannels(systemOnly,at:start,cache:&schemaTwoCache))
+ precondition(scalar(schemaTwo,"PRAGMA user_version") == 3 && scalar(schemaTwo,"SELECT id FROM channel_observations WHERE channel='rawCapacity'") == 41)
+ let migratedSystem = try schemaTwo.loadChannels(hours:24,endingAt:start,metric:.macOSHealth,designCapacity:nil)
+ precondition(migratedSystem.first?.macOSHealth == 85 && scalar(schemaTwo,"SELECT COUNT(*) FROM channel_observations WHERE channel='macOSHealth'") == 1)
  // Entire batch and cache roll back when the second channel fails.
  let failing = BatteryStatisticArchive(url:root.appendingPathComponent("failure.sqlite3"))
  let old = HistoryPoint(date:start,percent:70,temperature:nil,watts:nil,reason:"fixture",health:88.5)
@@ -127,5 +140,5 @@ import ChargeCore
  precondition(recent.map(\.health) == [90,92])
  model.clearHistory(); precondition(model.history.isEmpty && scalar(modelArchive,"SELECT COUNT(*) FROM channel_observations") == 0)
  model.refresh(); precondition(scalar(modelArchive,"SELECT COUNT(*) FROM channel_observations") == 2,"clear must also reset process-lifetime admission anchors")
- print("PASS daily independent channel admission, inclusive grid edges, unchanged values, rollback, real3650 ring, restart, provenance-preserving schema migration, current-design normalization, atomic clear and actual loader source separation; isolated fixtures only")
+ print("PASS daily independent channels for raw capacity, cycles and system health: grid edges, unchanged values, rollback, real3650 ring, restart, schema-two migration/id preservation, provenance, atomic clear and actual loader source separation; isolated fixtures only")
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import ChargeHardware
 
 enum BatteryStatistic: String, CaseIterable, Identifiable, Sendable {
- case temperature, health, fullCapacity, cycles
+ case temperature, health, macOSHealth, fullCapacity, cycles
  var id: Self { self }
  var supportsArchive: Bool { self != .temperature }
  var defaultHours: Int { supportsArchive ? BatteryStatisticArchive.maximumQueryHours : 24 }
@@ -10,6 +10,7 @@ enum BatteryStatistic: String, CaseIterable, Identifiable, Sendable {
   switch self {
   case .temperature: return NSLocalizedString("电池温度", comment: "")
   case .health: return NSLocalizedString("容量健康比例", comment: "")
+  case .macOSHealth: return NSLocalizedString("macOS 最大容量", comment: "")
   case .fullCapacity: return NSLocalizedString("满充容量", comment: "")
   case .cycles: return NSLocalizedString("循环次数", comment: "")
   }
@@ -20,6 +21,7 @@ enum BatteryStatistic: String, CaseIterable, Identifiable, Sendable {
   switch self {
   case .temperature: value = point.temperature; range = -40...100
   case .health: value = point.health; range = 0...200
+  case .macOSHealth: return nil
   case .fullCapacity: value = point.fullCapacityMAH; range = 1...100000
   case .cycles: value = point.cycles.map(Double.init); range = 0...1000000
   }
@@ -29,6 +31,7 @@ enum BatteryStatistic: String, CaseIterable, Identifiable, Sendable {
   switch self {
   case .temperature: return String(format: "%.1f°C", value)
   case .health: return String(format: "%.1f%%", value)
+  case .macOSHealth: return String(format: "%.0f%%", value)
   case .fullCapacity: return String(format: "%.0f mAh", value)
   case .cycles: return String(format: "%.0f", value)
   }
@@ -146,7 +149,11 @@ struct BatteryStatisticPlot {
     Text(NSLocalizedString("此时间段尚无该指标的记录", comment: "")).font(.caption).presentationSecondary()
    }
    if metric.supportsArchive && series == .channels {
-    Text(NSLocalizedString("周期记录按指标独立保存；健康比例使用原始满充容量与当前设计容量。原始观察保留旧记录。",comment:""))
+    Text(metric == .health
+      ? NSLocalizedString("周期记录按指标独立保存；健康比例使用原始满充容量与当前设计容量。原始观察保留旧记录。",comment:"")
+      : metric == .macOSHealth
+        ? NSLocalizedString("周期记录保存系统报告的最大容量；值不可用时不会补填。",comment:"")
+        : NSLocalizedString("周期记录按指标独立保存；原始观察保留旧记录。",comment:""))
      .font(.caption).presentationSecondary().fixedSize(horizontal:false,vertical:true)
    }
    if archived.loading {

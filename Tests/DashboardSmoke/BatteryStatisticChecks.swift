@@ -17,7 +17,7 @@ import SwiftUI
  precondition(data.minimum == 31 && data.maximum == 32 && data.lower == 31 && abs(data.upper - 32.2) < 0.00001)
  let duplicates = BatteryStatisticPlot(points: points + [point(0, nil)], metric: .temperature, hours: 1, end: end)
  precondition(duplicates.samples.count == 2)
- precondition(BatteryStatistic.temperature.defaultHours == 24 && BatteryStatistic.cycles.defaultHours == 8640 && BatteryStatistic.health.defaultHours == 8640)
+ precondition(BatteryStatistic.temperature.defaultHours == 24 && BatteryStatistic.cycles.defaultHours == 8640 && BatteryStatistic.health.defaultHours == 8640 && BatteryStatistic.macOSHealth.defaultHours == 8640)
  let earlier = BatteryStatisticRecord(date: end.addingTimeInterval(-180 * 86400), health: 99, fullCapacityMAH: 4500, cycles: 90)
  let year = BatteryStatisticPlot(points: points, metric: .cycles, hours: 8640, end: end, archived: [earlier])
  precondition(year.samples.first?.date == end.addingTimeInterval(-180) && year.samples.first?.value == 120)
@@ -39,7 +39,7 @@ import SwiftUI
  precondition(decoded.fullCapacityMAH == 4200)
  for metric in BatteryStatistic.allCases {
   let projection = BatteryStatisticPlot(points: points, metric: metric, hours: 24, end: end)
-  precondition(projection.samples.count == (metric == .temperature ? 3 : 1))
+  precondition(projection.samples.count == (metric == .temperature ? 3 : metric == .macOSHealth ? 0 : 1))
   precondition(projection.lower < projection.upper)
   for source in [points, []] {
    let host = NSHostingView(rootView: BatteryStatisticChart(metric: metric, points: source))

@@ -6,17 +6,19 @@ import ChargeHardware
 struct BatteryStatisticRecord: Equatable, Sendable {
  let date: Date
  let health: Double?
+ let macOSHealth: Double?
  let fullCapacityMAH: Double?
  let cycles: Int?
 
  init(point: HistoryPoint) {
   date = point.date
   health = BatteryStatistic.health.value(point)
+  macOSHealth = nil
   fullCapacityMAH = BatteryStatistic.fullCapacity.value(point)
   cycles = BatteryStatistic.cycles.value(point).map(Int.init)
  }
- init(date: Date, health: Double?, fullCapacityMAH: Double?, cycles: Int?) {
-  self.date = date; self.health = health; self.fullCapacityMAH = fullCapacityMAH; self.cycles = cycles
+ init(date: Date, health: Double?, macOSHealth: Double? = nil, fullCapacityMAH: Double?, cycles: Int?) {
+  self.date = date; self.health = health; self.macOSHealth = macOSHealth; self.fullCapacityMAH = fullCapacityMAH; self.cycles = cycles
  }
  func value(for metric: BatteryStatistic) -> Double? {
   let value: Double?
@@ -24,6 +26,7 @@ struct BatteryStatisticRecord: Equatable, Sendable {
   switch metric {
   case .temperature: return nil
   case .health: value = health; range = 0...200
+  case .macOSHealth: value = macOSHealth; range = 0...100
   case .fullCapacity: value = fullCapacityMAH; range = 1...100_000
   case .cycles: value = cycles.map(Double.init); range = 0...1_000_000
   }
@@ -128,7 +131,7 @@ struct BatteryStatisticArchive: Equatable, Sendable {
  }
 
  enum Channel: String, CaseIterable, Sendable {
-  case rawCapacity, cycles
+  case rawCapacity, macOSHealth, cycles
   var interval: TimeInterval { 86400 }
   var capacity: Int { 3650 }
  }
@@ -146,6 +149,9 @@ struct BatteryStatisticArchive: Equatable, Sendable {
    values.append((.rawCapacity,Int(raw)))
   }
   if let cycles = reading.cycleCount, (0...1000000).contains(cycles) { values.append((.cycles,cycles)) }
+  if let health = reading.macOSHealthPercent, health.isFinite, (0...100).contains(health), health.rounded(.towardZero) == health {
+   values.append((.macOSHealth,Int(health)))
+  }
   func admits(_ entry: ChannelCache.Entry, channel: Channel) -> Bool {
    let steps = floor(abs(now.timeIntervalSince(entry.anchor)) / channel.interval)
    let boundary = entry.anchor.addingTimeInterval(steps * channel.interval)
@@ -199,7 +205,12 @@ struct BatteryStatisticArchive: Equatable, Sendable {
   guard metric.supportsArchive, FileManager.default.fileExists(atPath:url.path) else { return [] }
   let db = try Database(url:url,writable:false)
   guard try db.scalar("PRAGMA user_version") >= 2 else { return [] }
-  let channel: Channel = metric == .cycles ? .cycles : .rawCapacity
+  let channel: Channel
+  switch metric {
+  case .cycles: channel = .cycles
+  case .macOSHealth: channel = .macOSHealth
+  default: channel = .rawCapacity
+  }
   let statement = try db.prepare("SELECT date,value FROM channel_observations WHERE channel='\(channel.rawValue)' AND date>=? AND date<=? ORDER BY date,id")
   defer { sqlite3_finalize(statement) }
   try db.check(sqlite3_bind_double(statement,1,end.addingTimeInterval(-Double(hours)*3600).timeIntervalSince1970),expected:SQLITE_OK)
@@ -211,12 +222,13 @@ struct BatteryStatisticArchive: Equatable, Sendable {
    let date = sqlite3_column_double(statement,0), value = sqlite3_column_double(statement,1)
    guard [SQLITE_FLOAT,SQLITE_INTEGER].contains(sqlite3_column_type(statement,0)), date.isFinite,
     sqlite3_column_type(statement,1) == SQLITE_INTEGER, value.isFinite,
-    (channel == .cycles ? 0...1000000 : 1...100000).contains(value) else { throw Failure(detail:"Invalid channel observation") }
+    (channel == .cycles ? 0...1000000 : channel == .macOSHealth ? 0...100 : 1...100000).contains(value) else { throw Failure(detail:"Invalid channel observation") }
    let health: Double?
    if let designCapacity, designCapacity.isFinite, (1...100000).contains(designCapacity) { health = value / designCapacity * 100 }
    else { health = nil }
    records.append(BatteryStatisticRecord(date:Date(timeIntervalSince1970:date),
     health:channel == .rawCapacity ? health : nil,
+    macOSHealth:channel == .macOSHealth ? value : nil,
     fullCapacityMAH:channel == .rawCapacity ? value : nil,cycles:channel == .cycles ? Int(value) : nil))
   }
   return records
@@ -265,16 +277,30 @@ struct BatteryStatisticArchive: Equatable, Sendable {
      }
     }
     let schema = try scalar("PRAGMA user_version")
-    guard (schema == 1 || schema == 2), try scalar("PRAGMA application_id") == Self.applicationID else {
+    guard (schema == 1 || schema == 2 || schema == 3), try scalar("PRAGMA application_id") == Self.applicationID else {
      throw Failure(detail: NSLocalizedString("记录格式不受支持，请使用更新版本", comment: ""))
     }
     if writable && schema == 1 {
      // Additive, transactional migration: old observations keep their values and
      // provenance. They must not be relabelled as raw-capacity sensor samples.
      try transaction {
-      try execute("CREATE TABLE channel_observations(id INTEGER PRIMARY KEY,channel TEXT NOT NULL CHECK(channel IN ('rawCapacity','cycles')),date REAL NOT NULL CHECK(typeof(date) IN ('real','integer')),value INTEGER NOT NULL CHECK(typeof(value)='integer' AND value>=0 AND value<=1000000))")
+      try execute("CREATE TABLE channel_observations(id INTEGER PRIMARY KEY,channel TEXT NOT NULL CHECK(channel IN ('rawCapacity','macOSHealth','cycles')),date REAL NOT NULL CHECK(typeof(date) IN ('real','integer')),value INTEGER NOT NULL CHECK(typeof(value)='integer' AND value>=0 AND value<=1000000))")
       try execute("CREATE INDEX channel_dates ON channel_observations(channel,date)")
-      try execute("PRAGMA user_version=2")
+      try execute("PRAGMA user_version=3")
+     }
+    }
+    let migratedSchema = try scalar("PRAGMA user_version")
+    if writable && migratedSchema == 2 {
+     // SQLite cannot widen a CHECK constraint in place. Preserve every row and
+     // id while adding the independently sampled system-health channel.
+     try transaction {
+      try execute("DROP INDEX channel_dates")
+      try execute("CREATE TABLE channel_observations_next(id INTEGER PRIMARY KEY,channel TEXT NOT NULL CHECK(channel IN ('rawCapacity','macOSHealth','cycles')),date REAL NOT NULL CHECK(typeof(date) IN ('real','integer')),value INTEGER NOT NULL CHECK(typeof(value)='integer' AND value>=0 AND value<=1000000))")
+      try execute("INSERT INTO channel_observations_next(id,channel,date,value) SELECT id,channel,date,value FROM channel_observations")
+      try execute("DROP TABLE channel_observations")
+      try execute("ALTER TABLE channel_observations_next RENAME TO channel_observations")
+      try execute("CREATE INDEX channel_dates ON channel_observations(channel,date)")
+      try execute("PRAGMA user_version=3")
      }
     }
    } catch {

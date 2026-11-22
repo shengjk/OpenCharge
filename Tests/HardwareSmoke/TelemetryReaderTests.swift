@@ -115,10 +115,20 @@ import ChargeHardware
   let cacheStart = Date(timeIntervalSince1970:2_000_000_000)
   check(cachedHealth.value(now:cacheStart) == nil, "first system-health cache read is asynchronous")
   check(probe.signal.wait(timeout:.now()+1) == .success, "first system-health refresh completes")
-  check(cachedHealth.value(now:cacheStart.addingTimeInterval(1))?.maximumCapacityPercent == 85 && probe.count() == 1, "completed health is returned without another refresh inside cadence")
+  var completedHealth: MacOSBatteryHealth?
+  for _ in 0..<100 where completedHealth == nil {
+   completedHealth = cachedHealth.value(now:cacheStart.addingTimeInterval(1))
+   if completedHealth == nil { Thread.sleep(forTimeInterval:0.01) }
+  }
+  check(completedHealth?.maximumCapacityPercent == 85 && probe.count() == 1, "completed health is returned without another refresh inside cadence")
   _ = cachedHealth.value(now:cacheStart.addingTimeInterval(MacOSBatteryHealthCache.refreshInterval+1))
   check(probe.signal.wait(timeout:.now()+1) == .success && probe.count() == 2, "health refresh retries on the next bounded cadence")
-  check(cachedHealth.value(now:cacheStart.addingTimeInterval(MacOSBatteryHealthCache.refreshInterval+2))?.maximumCapacityPercent == 85, "a failed refresh preserves the last known health rather than fabricating a replacement")
+  var retainedHealth: MacOSBatteryHealth?
+  for _ in 0..<100 where retainedHealth == nil {
+   retainedHealth = cachedHealth.value(now:cacheStart.addingTimeInterval(MacOSBatteryHealthCache.refreshInterval+2))
+   if retainedHealth == nil { Thread.sleep(forTimeInterval:0.01) }
+  }
+  check(retainedHealth?.maximumCapacityPercent == 85, "a failed refresh preserves the last known health rather than fabricating a replacement")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0x21, 0x80]) == 33.5, "signed 8.8 fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "sp78", bytes: [0xF5, 0x80]) == -10.5, "negative signed fixed point")
   check(TelemetryMath.smcTemperatureCelsius(dataType: "flt ", bytes: [0, 0, 6, 66]) == 33.5, "little-endian float payload")

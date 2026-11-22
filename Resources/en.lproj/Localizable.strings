@@ -793,6 +793,8 @@
 "原始观察" = "Raw observations";
 "记录来源" = "Record source";
 "周期记录按指标独立保存；健康比例使用原始满充容量与当前设计容量。原始观察保留旧记录。" = "Periodic records are stored per metric. Health uses raw full-charge capacity and current design capacity. Raw observations retain older records.";
+"周期记录按指标独立保存；原始观察保留旧记录。" = "Periodic records are stored per metric. Raw observations retain older records.";
+"周期记录保存系统报告的最大容量；值不可用时不会补填。" = "Periodic records store the system-reported maximum capacity. Missing values are never filled in.";
 
 "功率来源：%@" = "Power source: %@";
 
