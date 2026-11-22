@@ -762,6 +762,8 @@
 
 "此处显示系统当前报告的介入状态；优化充电开关和系统充电上限请在电池设置中确认。" = "This shows the engagement state currently reported by macOS. Check Battery settings for the optimized-charging switch and system charge limit.";
 
+"系统原生充电上限可在 80–100% 间设置，系统偶尔充至 100% 以保持电量估算准确。" = "The system charge limit can be set from 80% to 100%. macOS may occasionally charge to 100% to keep its battery estimate accurate.";
+
 "请从 Apple 菜单手动打开系统电池设置。" = "Open Battery settings manually from the Apple menu.";
 
 "等待读数更新" = "Waiting for a Fresh Reading";

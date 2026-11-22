@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.97
+
+- Explain the behavior of macOS's system-native Charge Limit in the read-only System Charging Status panel: on supported Apple-silicon Macs it can be set from 80% to 100%, and macOS can occasionally charge to 100% to keep its state-of-charge estimate accurate.
+- Add English and Simplified Chinese native-bundle regression coverage. The panel remains informational only and does not read or change the system Charge Limit, install a helper, or operate charge hardware.
+
 ## 0.3.96
 
 - Publish the existing read-only Battery Temperature and Charge Limit App Intents as discoverable App Shortcuts, matching the other query shortcuts. These shortcuts only return the current reading or saved limit; they do not enable charge control or change a system power mode.

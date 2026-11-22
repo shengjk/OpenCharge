@@ -42,6 +42,8 @@ struct SystemChargingStatusView: View {
    }
    Text(NSLocalizedString("此处显示系统当前报告的介入状态；优化充电开关和系统充电上限请在电池设置中确认。", comment: ""))
     .font(.caption).presentationSecondary()
+   Text(NSLocalizedString("系统原生充电上限可在 80–100% 间设置，系统偶尔充至 100% 以保持电量估算准确。", comment: ""))
+    .font(.caption).presentationSecondary()
    HStack {
     Button(NSLocalizedString("打开电池设置", comment: "")) {
      if let url = URL(string: "x-apple.systempreferences:com.apple.Battery-Settings.extension") {

@@ -36,6 +36,8 @@ import ChargeHardware
   precondition(twoSamples == expected("2 local samples", "2 个本地采样"))
   let range = String(localized:"充电上限必须在 20–100%")
   precondition(range == translated("充电上限必须在 20–100%"),"literal percent damaged")
+  let nativeLimitBehavior = translated("系统原生充电上限可在 80–100% 间设置，系统偶尔充至 100% 以保持电量估算准确。")
+  precondition(nativeLimitBehavior == expected("The system charge limit can be set from 80% to 100%. macOS may occasionally charge to 100% to keep its battery estimate accurate.", "系统原生充电上限可在 80–100% 间设置，系统偶尔充至 100% 以保持电量估算准确。"))
   let phrase = bundle.localizedString(forKey:"读取 ${applicationName} 电量",value:nil,table:"AppShortcuts")
   precondition(phrase == expected("Get the battery level in ${applicationName}", "读取 ${applicationName} 电量"))
   let temperaturePhrase = bundle.localizedString(forKey:"读取 ${applicationName} 电池温度",value:nil,table:"AppShortcuts")
