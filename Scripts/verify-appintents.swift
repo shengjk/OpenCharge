@@ -10,7 +10,7 @@ for action in expected {
   fputs("Missing discoverable App Intent: \(action)\n", stderr); exit(1)
  }
 }
-guard let shortcuts = root["autoShortcuts"] as? [[String: Any]], shortcuts.count == 9,
+guard let shortcuts = root["autoShortcuts"] as? [[String: Any]], shortcuts.count == 10,
       let provider = root["autoShortcutProviderMangledName"] as? String, !provider.isEmpty,
       let limit = actions["SetChargeLimitIntent"] as? [String: Any],
       let limitParameters = limit["parameters"] as? [[String: Any]], limitParameters.first?["name"] as? String == "percentage",
@@ -26,7 +26,7 @@ for name in ["EnableLowPowerModeIntent", "DisableLowPowerModeIntent", "EnableHig
   fputs("Power-mode Shortcut parameters differ from the fixed action contract\n", stderr); exit(1)
  }
 }
-let expectedShortcuts: Set<String> = ["SetChargeLimitIntent", "SetChargeModeIntent", "GetBatteryPercentageIntent", "GetChargeStateIntent", "GetPolicyStateIntent", "EnableLowPowerModeIntent", "DisableLowPowerModeIntent", "EnableHighPowerModeIntent", "DisableHighPowerModeIntent"]
+let expectedShortcuts: Set<String> = ["SetChargeLimitIntent", "SetChargeModeIntent", "GetBatteryPercentageIntent", "GetBatteryTemperatureIntent", "GetChargeLimitIntent", "GetChargeStateIntent", "EnableLowPowerModeIntent", "DisableLowPowerModeIntent", "EnableHighPowerModeIntent", "DisableHighPowerModeIntent"]
 guard Set(shortcuts.compactMap { $0["actionIdentifier"] as? String }) == expectedShortcuts else {
  fputs("App Shortcuts action identities differ from the declared catalog\n", stderr); exit(1)
 }
@@ -51,5 +51,5 @@ for name in ["AppIntents", "Charts", "Accessibility"] {
  }
  print("Verified weak \(name) framework loading in \(frameworkLoads.count) architecture slice(s)")
 }
-print("Verified \(expected.count) discoverable intent declarations, 9 App Shortcuts and setter parameters; metadata version \(version)")
+print("Verified \(expected.count) discoverable intent declarations, 10 App Shortcuts and setter parameters; metadata version \(version)")
 print("Metadata validation does not establish runtime indexing by Shortcuts.")

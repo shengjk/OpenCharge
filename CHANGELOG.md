@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.96
+
+- Publish the existing read-only Battery Temperature and Charge Limit App Intents as discoverable App Shortcuts, matching the other query shortcuts. These shortcuts only return the current reading or saved limit; they do not enable charge control or change a system power mode.
+- Add English and Simplified Chinese invocation phrases, with native bundle regression coverage for both languages. The change does not install a helper or operate charge hardware.
+
 ## 0.3.95
 
 - Add a separate daily long-term trend for the system-reported macOS Battery Health maximum capacity. It is available in History after a completed local report and remains distinct from the raw capacity/design-capacity ratio.
